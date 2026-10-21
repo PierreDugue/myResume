@@ -1,0 +1,19 @@
+# Environment & secrets (Do NOT commit)
+.env
+*.env.local
+
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+.angular/
+
+# Docker persistent data (if bound locally)
+pgdata/
+
+# OS / Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
