@@ -1,0 +1,131 @@
+@if (resume.hasValue()) {
+  @let r = resume.value();
+  <article class="resume">
+    <div class="toolbar no-print">
+      <button class="button print" type="button" (click)="print()">Print / Save as PDF</button>
+    </div>
+
+    @if (r.profile; as p) {
+      <header class="resume-header">
+        <h2>{{ p.fullName }}</h2>
+        <p class="headline">{{ p.headline }}</p>
+        <p class="contact">
+          @if (p.location) {
+            <span>{{ p.location }}{{ p.openToRelocation ? ' (open to relocation)' : '' }}</span>
+          }
+          <a [href]="'mailto:' + p.email">{{ p.email }}</a>
+          @if (p.phone) {
+            <a [href]="'tel:' + p.phone">{{ p.phone }}</a>
+          }
+          @for (link of p.links; track link.url) {
+            <a [href]="link.url" rel="noopener" target="_blank">{{ link.label }}</a>
+          }
+        </p>
+        <p class="summary">{{ p.summary }}</p>
+      </header>
+    }
+
+    @if (skillGroups().length) {
+      <section class="skills">
+        <h3>Skills</h3>
+        <dl>
+          @for (group of skillGroups(); track group.category) {
+            <dt>{{ group.category }}</dt>
+            <dd>{{ group.names }}</dd>
+          }
+        </dl>
+      </section>
+    }
+
+    @if (r.experiences.length) {
+      <section class="experience">
+        <h3>Experience</h3>
+        @for (job of r.experiences; track job.id) {
+          <article>
+            <h3>{{ job.role }} · {{ job.company }}</h3>
+            <p class="meta">
+              {{ period(job.startDate, job.endDate) }}
+              @if (job.location) {
+                — {{ job.location }}
+              }
+            </p>
+            @if (job.summary) {
+              <p class="job-summary">{{ job.summary }}</p>
+            }
+            @if (job.highlights.length) {
+              <ul>
+                @for (h of job.highlights; track h.id) {
+                  <li class="highlight">{{ h.message }}</li>
+                }
+              </ul>
+            }
+            @if (job.skillIds.length) {
+              <p class="stack">Tech stack: {{ stack(job.skillIds) }}</p>
+            }
+          </article>
+        }
+      </section>
+    }
+
+    @if (r.projects.length) {
+      <section class="projects">
+        <h3>Projects</h3>
+        @for (project of r.projects; track project.id) {
+          <article>
+            <h3>
+              @if (project.url) {
+                <a [href]="project.url" rel="noopener" target="_blank">{{ project.title }}</a>
+              } @else {
+                {{ project.title }}
+              }
+            </h3>
+            <p class="meta">{{ period(project.startDate, project.endDate) }}</p>
+            <p>{{ project.description }}</p>
+            @if (project.skillIds.length) {
+              <p class="stack">Tech stack: {{ stack(project.skillIds) }}</p>
+            }
+          </article>
+        }
+      </section>
+    }
+
+    @if (r.education.length) {
+      <section class="education">
+        <h3>Education</h3>
+        @for (ed of r.education; track ed.id) {
+          <article>
+            <h3>
+              {{ ed.school }} — {{ ed.degree }}
+              @if (ed.field) {
+                ({{ ed.field }})
+              }
+            </h3>
+            <p class="meta">
+              {{ period(ed.startDate, ed.endDate) }}
+              @if (ed.location) {
+                | {{ ed.location }}
+              }
+            </p>
+            @if (ed.description) {
+              <p>{{ ed.description }}</p>
+            }
+          </article>
+        }
+      </section>
+    }
+
+    @if (r.profile?.interests; as interests) {
+      <section class="interests">
+        <h3>Interests</h3>
+        <p>{{ interests }}</p>
+      </section>
+    }
+  </article>
+} @else if (resume.error()) {
+  <section class="panel empty-state">
+    <p role="alert">The resume could not be loaded.</p>
+    <button class="button retry" type="button" (click)="resume.reload()">Try again</button>
+  </section>
+} @else {
+  <p class="loading">Loading the resume…</p>
+}

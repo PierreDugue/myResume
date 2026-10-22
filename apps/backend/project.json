@@ -79,6 +79,12 @@
           "TS_NODE_PROJECT": "apps/backend/tsconfig.app.json"
         }
       }
+    },
+    "integration": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "vitest run --config apps/backend/vitest.int.config.mts"
+      }
     }
   }
 }

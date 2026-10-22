@@ -1,0 +1,79 @@
+<section class="panel edit">
+  @if (page.notFound()) {
+    <p class="form-error" role="alert">This entry was not found.</p>
+    <a routerLink="..">Back to education</a>
+  } @else {
+    <h2>{{ page.isNew ? 'New education' : 'Edit education' }}</h2>
+    <form [formRoot]="form" novalidate>
+      @if (page.error(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
+      <div class="grid-2">
+        <div class="field">
+          <label for="ed-school">School</label>
+          <input
+            id="ed-school"
+            [formField]="form.school"
+            [attr.aria-invalid]="showError(form.school()) || null"
+          />
+          @if (showError(form.school())) {
+            <p class="field-error">{{ form.school().errors()[0].message }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="ed-degree">Degree</label>
+          <input
+            id="ed-degree"
+            [formField]="form.degree"
+            [attr.aria-invalid]="showError(form.degree()) || null"
+          />
+          @if (showError(form.degree())) {
+            <p class="field-error">{{ form.degree().errors()[0].message }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="ed-field">Field</label>
+          <input id="ed-field" [formField]="form.field" />
+        </div>
+        <div class="field">
+          <label for="ed-location">Location</label>
+          <input id="ed-location" [formField]="form.location" />
+        </div>
+        <div class="field">
+          <label for="ed-start">Start date</label>
+          <input
+            id="ed-start"
+            type="date"
+            [formField]="form.startDate"
+            [attr.aria-invalid]="showError(form.startDate()) || null"
+          />
+          @if (showError(form.startDate())) {
+            <p class="field-error">{{ form.startDate().errors()[0].message }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="ed-end">End date</label>
+          <input
+            id="ed-end"
+            type="date"
+            [formField]="form.endDate"
+            [attr.aria-invalid]="showError(form.endDate()) || null"
+          />
+          @if (showError(form.endDate())) {
+            <p class="field-error">{{ form.endDate().errors()[0].message }}</p>
+          }
+        </div>
+      </div>
+      <div class="field">
+        <label for="ed-description">Description</label>
+        <textarea id="ed-description" [formField]="form.description" rows="3"></textarea>
+      </div>
+      <div class="form-actions">
+        <button class="button primary" type="submit" [disabled]="form().submitting()">
+          {{ page.isNew ? 'Create' : 'Save' }}
+        </button>
+        <a class="button" routerLink="..">Cancel</a>
+      </div>
+    </form>
+  }
+</section>

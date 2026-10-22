@@ -134,6 +134,7 @@ export class Experience {
 ## 9. Tests (Vitest)
 
 - **Unit:** `Test.createTestingModule({ providers: [Service, { provide: getRepositoryToken(Entity), useValue: repoMock }] })`, where `repoMock` is built from `vi.fn()`. Assert on behavior: returned values, thrown exceptions, and calls that matter (e.g. `save` called with the mapped entity).
+- **Integration (`*.int.spec.ts`, `npx nx run backend:integration`):** `createTestApp()` from `src/testing/test-app.ts` starts the real `AppModule` on a throwaway database. Use `t.truncateContent()` in `beforeEach` and `api(t)` for requests (writes are signed in by default). This is the default for create/read/update/delete and database behavior: transactions, cascades, unique constraints, ordering.
 - **HTTP (e2e):** create the app with `moduleRef.createNestApplication()`, call `configureApp(app)`, then `app.init()`, and use `supertest`. Cover 200/201/204, 400 (validation, unknown fields), 401 (no token), 404, and 409.
 - Override providers instead of reaching into internals: `.overrideProvider(TypeOrmHealthIndicator).useValue(...)`, `.overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })` (only in tests that aren't about auth).
 - Freeze time with an injected `CLOCK` or `vi.useFakeTimers()`, and restore it in `afterEach`.

@@ -1,7 +1,7 @@
 <section class="panel login">
   <h2>Sign in to edit the resume</h2>
 
-  <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+  <form [formRoot]="form" novalidate>
     @if (error(); as message) {
       <p class="form-error" role="alert">{{ message }}</p>
     }
@@ -11,13 +11,13 @@
       <input
         id="login-email"
         type="email"
-        formControlName="email"
+        [formField]="form.email"
         autocomplete="username"
-        [attr.aria-invalid]="showError('email') ? 'true' : null"
-        [attr.aria-describedby]="showError('email') ? 'login-email-error' : null"
+        [attr.aria-invalid]="showError(form.email()) ? 'true' : null"
+        [attr.aria-describedby]="showError(form.email()) ? 'login-email-error' : null"
       />
-      @if (showError('email')) {
-        <p class="field-error" id="login-email-error">{{ errorFor('email') }}</p>
+      @if (showError(form.email())) {
+        <p class="field-error" id="login-email-error">{{ form.email().errors()[0].message }}</p>
       }
     </div>
 
@@ -26,18 +26,20 @@
       <input
         id="login-password"
         type="password"
-        formControlName="password"
+        [formField]="form.password"
         autocomplete="current-password"
-        [attr.aria-invalid]="showError('password') ? 'true' : null"
-        [attr.aria-describedby]="showError('password') ? 'login-password-error' : null"
+        [attr.aria-invalid]="showError(form.password()) ? 'true' : null"
+        [attr.aria-describedby]="showError(form.password()) ? 'login-password-error' : null"
       />
-      @if (showError('password')) {
-        <p class="field-error" id="login-password-error">{{ errorFor('password') }}</p>
+      @if (showError(form.password())) {
+        <p class="field-error" id="login-password-error">
+          {{ form.password().errors()[0].message }}
+        </p>
       }
     </div>
 
-    <button class="button primary" type="submit" [disabled]="submitting()">
-      {{ submitting() ? 'Signing in…' : 'Sign in' }}
+    <button class="button primary" type="submit" [disabled]="form().submitting()">
+      {{ form().submitting() ? 'Signing in…' : 'Sign in' }}
     </button>
   </form>
 </section>

@@ -71,6 +71,16 @@ describe('LoginPage', () => {
     expect(el.querySelector('input[type="email"]')?.getAttribute('aria-invalid')).toBe('true');
   });
 
+  it('shows a field error once the user leaves the field', async () => {
+    const { el, fixture } = await render();
+    const email = $<HTMLInputElement>(el, 'input[type="email"]');
+    expect(el.textContent).not.toContain('Enter your email address');
+    email.dispatchEvent(new Event('blur'));
+    await fixture.whenStable();
+    expect(el.textContent).toContain('Enter your email address');
+    expect(el.textContent).not.toContain('Enter your password');
+  });
+
   it('signs in and goes to the admin home', async () => {
     const { el, fixture, navigate } = await render();
     fill(el, 'pierre@example.com', 'secret-123');

@@ -1,0 +1,91 @@
+<section class="panel edit">
+  @if (page.notFound()) {
+    <p class="form-error" role="alert">This project was not found.</p>
+    <a routerLink="..">Back to projects</a>
+  } @else {
+    <h2>{{ page.isNew ? 'New project' : 'Edit project' }}</h2>
+    <form [formRoot]="form" novalidate>
+      @if (page.error(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
+      <div class="grid-2">
+        <div class="field">
+          <label for="pr-title">Title</label>
+          <input
+            id="pr-title"
+            [formField]="form.title"
+            [attr.aria-invalid]="showError(form.title()) || null"
+          />
+          @if (showError(form.title())) {
+            <p class="field-error">{{ form.title().errors()[0].message }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="pr-slug">Slug (optional, generated from the title)</label>
+          <input
+            id="pr-slug"
+            [formField]="form.slug"
+            [attr.aria-invalid]="showError(form.slug()) || null"
+          />
+          @if (showError(form.slug())) {
+            <p class="field-error">{{ form.slug().errors()[0].message }}</p>
+          }
+        </div>
+      </div>
+      <div class="field">
+        <label for="pr-description">Description</label>
+        <textarea
+          id="pr-description"
+          [formField]="form.description"
+          rows="3"
+          [attr.aria-invalid]="showError(form.description()) || null"
+        ></textarea>
+        @if (showError(form.description())) {
+          <p class="field-error">{{ form.description().errors()[0].message }}</p>
+        }
+      </div>
+      <div class="grid-2">
+        @for (link of links; track link.id) {
+          <div class="field">
+            <label [for]="link.id">{{ link.label }}</label>
+            <input
+              [id]="link.id"
+              type="url"
+              [formField]="link.field"
+              [attr.aria-invalid]="showError(link.field()) || null"
+            />
+            @if (showError(link.field())) {
+              <p class="field-error">{{ link.field().errors()[0].message }}</p>
+            }
+          </div>
+        }
+        <div class="field">
+          <label for="pr-start">Start date</label>
+          <input id="pr-start" type="date" [formField]="form.startDate" />
+        </div>
+        <div class="field">
+          <label for="pr-end">End date</label>
+          <input
+            id="pr-end"
+            type="date"
+            [formField]="form.endDate"
+            [attr.aria-invalid]="showError(form.endDate()) || null"
+          />
+          @if (showError(form.endDate())) {
+            <p class="field-error">{{ form.endDate().errors()[0].message }}</p>
+          }
+        </div>
+      </div>
+      <h3>Skills</h3>
+      @if (skills.hasValue()) {
+        <app-skill-picker [skills]="skills.value()" [(selected)]="selectedSkills" />
+      }
+      <div class="form-actions">
+        <button class="button primary" type="submit" [disabled]="form().submitting()">
+          {{ page.isNew ? 'Create project' : 'Save' }}
+        </button>
+        <a class="button" routerLink="..">Cancel</a>
+      </div>
+    </form>
+  }
+</section>

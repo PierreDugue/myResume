@@ -1,0 +1,46 @@
+@if (items().length === 0) {
+  <p class="empty">Nothing here yet.</p>
+} @else {
+  <ol [attr.aria-label]="label()">
+    @for (item of items(); track item.id; let i = $index, first = $first, last = $last) {
+      <li>
+        <div class="text">
+          <a class="title" [routerLink]="item.link ?? item.id">{{ item.title }}</a>
+          @if (item.subtitle) {
+            <span class="subtitle">{{ item.subtitle }}</span>
+          }
+        </div>
+        <div class="actions">
+          <button
+            class="icon-button move-up"
+            type="button"
+            [disabled]="first"
+            [attr.aria-label]="'Move &quot;' + item.title + '&quot; up'"
+            (click)="move(i, -1)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+          </button>
+          <button
+            class="icon-button move-down"
+            type="button"
+            [disabled]="last"
+            [attr.aria-label]="'Move &quot;' + item.title + '&quot; down'"
+            (click)="move(i, 1)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
+          </button>
+          <button
+            class="icon-button delete"
+            type="button"
+            [attr.aria-label]="'Delete &quot;' + item.title + '&quot;'"
+            (click)="remove(item)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+            </svg>
+          </button>
+        </div>
+      </li>
+    }
+  </ol>
+}

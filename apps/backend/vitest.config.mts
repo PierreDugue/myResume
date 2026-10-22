@@ -10,6 +10,8 @@ export default defineConfig(() => ({
     globals: true,
     environment: 'node',
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
+    // Integration specs need PostgreSQL: they run with `nx run backend:integration`.
+    exclude: ['**/node_modules/**', '**/*.int.spec.ts'],
     passWithNoTests: true,
     reporters: ['default'],
     coverage: {

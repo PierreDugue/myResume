@@ -14,9 +14,15 @@
 
   <h2>Content</h2>
   <ul class="sections">
-    @for (section of sections; track section) {
+    @for (section of sections; track section.path) {
       <li>
-        <span>{{ section }}</span>
+        <a [routerLink]="section.path">{{ section.label }}</a>
+        <span class="hint">{{ section.hint }}</span>
+      </li>
+    }
+    @for (label of comingSoon; track label) {
+      <li class="soon">
+        <span>{{ label }}</span>
         <span class="badge">Coming soon</span>
       </li>
     }

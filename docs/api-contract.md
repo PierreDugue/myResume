@@ -89,25 +89,204 @@ interface AuthUser {
 }
 ```
 
-### Later features
+### Content (resume data)
 
-> ⚠️ The rows below are from before the observability redesign of `docs/spec.md` and must be redone (see the spec's "API" section). The `api-contract` agent rewrites them feature by feature, following the build order.
+| Method                | Path                     | Auth | Request                                               | Response                        | Status |
+| --------------------- | ------------------------ | ---- | ----------------------------------------------------- | ------------------------------- | ------ |
+| GET                   | `/api/resume`            | –    | –                                                     | `ResumeResponse`                | done   |
+| GET                   | `/api/profile`           | ✔    | –                                                     | `Profile`, or `404` if none     | done   |
+| PUT                   | `/api/profile`           | ✔    | `UpdateProfileRequest`                                | `Profile`                       | done   |
+| GET                   | `/api/skills`            | –    | –                                                     | `Skill[]`                       | done   |
+| POST / PATCH / DELETE | `/api/skills[/:id]`      | ✔    | `CreateSkillRequest` / `UpdateSkillRequest`           | `Skill` (`201` / `200`) / `204` | done   |
+| PUT                   | `/api/skills/order`      | ✔    | `ReorderRequest`                                      | `204`                           | done   |
+| GET                   | `/api/experiences`       | –    | –                                                     | `Experience[]`                  | done   |
+| POST / PATCH / DELETE | `/api/experiences[/:id]` | ✔    | `CreateExperienceRequest` / `UpdateExperienceRequest` | `Experience` / `204`            | done   |
+| PUT                   | `/api/experiences/order` | ✔    | `ReorderRequest`                                      | `204`                           | done   |
+| GET                   | `/api/education`         | –    | –                                                     | `Education[]`                   | done   |
+| POST / PATCH / DELETE | `/api/education[/:id]`   | ✔    | `CreateEducationRequest` / `UpdateEducationRequest`   | `Education` / `204`             | done   |
+| PUT                   | `/api/education/order`   | ✔    | `ReorderRequest`                                      | `204`                           | done   |
+| GET                   | `/api/projects`          | –    | –                                                     | `Project[]`                     | done   |
+| POST / PATCH / DELETE | `/api/projects[/:id]`    | ✔    | `CreateProjectRequest` / `UpdateProjectRequest`       | `Project` / `204`               | done   |
+| PUT                   | `/api/projects/order`    | ✔    | `ReorderRequest`                                      | `204`                           | done   |
 
-| Method                | Path                                 | Auth | Request                             | Response       | Status  |
-| --------------------- | ------------------------------------ | ---- | ----------------------------------- | -------------- | ------- |
-| GET                   | `/profile`                           | –    | –                                   | `Profile`      | planned |
-| PUT                   | `/profile`                           | ✔    | `UpdateProfileRequest`              | `Profile`      | planned |
-| GET                   | `/experiences`                       | –    | –                                   | `Experience[]` | planned |
-| POST / PATCH / DELETE | `/experiences[/:id]`                 | ✔    | `CreateExperienceRequest` / partial | `Experience`   | planned |
-| PUT                   | `/experiences/order`                 | ✔    | `ReorderRequest`                    | –              | planned |
-| …                     | `/projects`, `/skills`, `/education` |      | same pattern as experiences         |                | planned |
+**Rules shared by every resource:**
 
-## Types
+- **Lists** are sorted by `sortOrder`, ascending. New items are added **at the end**. `PUT …/order` with `{ ids }` sets the order; `ids` must contain **every** existing id of that list exactly once, or the API returns `400`.
+- **`PATCH /:id`** updates only the fields sent. Sending `null` clears an optional field; leaving a field out keeps it.
+- **Errors:**
+  - `400` for validation errors, or for unknown ids in `skillIds`
+  - `401` when signed out
+  - `404` when the id doesn't exist (`:id` must be a uuid, otherwise `400`)
+  - `409` for a duplicate unique value (skill name or slug, project slug)
+- **Dates** are `YYYY-MM-DD`, and `endDate` (if set) can't be before `startDate`. An empty `endDate` means "current".
+- **Slugs** match `^[a-z0-9]+(-[a-z0-9]+)*$`. If left out on create, the slug is generated from the name or title.
+- **URLs** must be `http(s)://…`.
+- **Text limits:** names and titles up to 120 characters; summaries, descriptions and messages up to 2000.
 
-Each type is defined here when its feature is designed; see [spec.md](spec.md) for the fields.
+**Per resource:**
+
+- **`GET /api/resume`** is the public, read-only bundle used by the plain view and later the dashboards: the profile plus every list, already sorted. The profile's `phone` is `null` unless `showPhone` is `true`.
+- **`GET /api/profile`** is the admin's view of the profile, with the phone. There's a single profile; `PUT` creates it if it doesn't exist yet, then replaces it entirely.
+- **Experiences** include their **highlights** (achievements, the future log lines).
+  - In `POST` and `PATCH`, `highlights` is the complete, ordered list: items with an `id` are updated, items without one are created, and existing highlights missing from the list are deleted. An `id` that belongs to another experience returns `400`.
+  - Deleting an experience deletes its highlights.
+- **Skills:** deleting a skill removes it from every experience and project (no error).
 
 ```ts
+type IsoDate = string; // 'YYYY-MM-DD'
+
+interface ProfileLink {
+  label: string; // 1..40, e.g. "LinkedIn"
+  url: string; // http(s)
+}
+
+interface Profile {
+  fullName: string;
+  headline: string;
+  summary: string;
+  email: string;
+  phone: string | null;
+  showPhone: boolean; // false by default: the phone is only in the PDF
+  location: string | null;
+  openToRelocation: boolean;
+  avatarUrl: string | null;
+  links: ProfileLink[]; // max 10
+  interests: string | null;
+  yearsInIt: number | null; // headline figures, entered by hand (0..80)
+  yearsOfAngular: number | null;
+}
+type UpdateProfileRequest = Profile;
+type PublicProfile = Omit<Profile, 'showPhone'>; // phone is null unless showPhone
+
+type SkillLevel = 1 | 2 | 3 | 4 | 5;
+interface Skill {
+  id: string;
+  name: string; // unique (case-insensitive)
+  slug: string; // unique
+  category: string; // e.g. "Core Frameworks", "Languages", "AI"
+  level: SkillLevel | null;
+  sortOrder: number;
+}
+interface CreateSkillRequest {
+  name: string;
+  slug?: string;
+  category: string;
+  level?: SkillLevel | null;
+}
+type UpdateSkillRequest = Partial<CreateSkillRequest>;
+
+type HighlightLevel = 'achievement' | 'info' | 'learning' | 'milestone';
+interface Impact {
+  metric: string; // e.g. "Page load time"
+  before: number | null;
+  after: number | null;
+  changePct: number | null; // e.g. -35
+  unit: string | null; // e.g. "%", "s"
+  direction: 'up-is-good' | 'down-is-good';
+}
+interface Highlight {
+  id: string;
+  date: IsoDate;
+  level: HighlightLevel;
+  message: string;
+  impact: Impact | null;
+  sortOrder: number;
+}
+interface HighlightInput {
+  id?: string; // existing highlight of this experience, to update it
+  date: IsoDate;
+  level: HighlightLevel;
+  message: string;
+  impact?: Impact | null;
+}
+
+interface Experience {
+  id: string;
+  company: string;
+  role: string;
+  location: string | null; // e.g. "Sydney, Australia / Full Remote"
+  startDate: IsoDate;
+  endDate: IsoDate | null; // null = current job
+  summary: string | null;
+  skillIds: string[];
+  highlights: Highlight[]; // ordered
+  sortOrder: number;
+}
+interface CreateExperienceRequest {
+  company: string;
+  role: string;
+  location?: string | null;
+  startDate: IsoDate;
+  endDate?: IsoDate | null;
+  summary?: string | null;
+  skillIds?: string[];
+  highlights?: HighlightInput[];
+}
+type UpdateExperienceRequest = Partial<CreateExperienceRequest>;
+
+interface Education {
+  id: string;
+  school: string;
+  degree: string;
+  field: string | null;
+  location: string | null;
+  startDate: IsoDate;
+  endDate: IsoDate | null;
+  description: string | null;
+  sortOrder: number;
+}
+interface CreateEducationRequest {
+  school: string;
+  degree: string;
+  field?: string | null;
+  location?: string | null;
+  startDate: IsoDate;
+  endDate?: IsoDate | null;
+  description?: string | null;
+}
+type UpdateEducationRequest = Partial<CreateEducationRequest>;
+
+interface Project {
+  id: string;
+  slug: string; // unique, used in URLs (/traces/:slug)
+  title: string;
+  description: string;
+  url: string | null;
+  repoUrl: string | null;
+  imageUrl: string | null;
+  startDate: IsoDate | null;
+  endDate: IsoDate | null;
+  skillIds: string[];
+  sortOrder: number;
+}
+interface CreateProjectRequest {
+  slug?: string;
+  title: string;
+  description: string;
+  url?: string | null;
+  repoUrl?: string | null;
+  imageUrl?: string | null;
+  startDate?: IsoDate | null;
+  endDate?: IsoDate | null;
+  skillIds?: string[];
+}
+type UpdateProjectRequest = Partial<CreateProjectRequest>;
+
 interface ReorderRequest {
   ids: string[];
 }
+
+interface ResumeResponse {
+  profile: PublicProfile | null;
+  experiences: Experience[];
+  education: Education[];
+  skills: Skill[];
+  projects: Project[];
+}
 ```
+
+**Not yet (later steps):** highlight labels and skills (step 5, Explore), project spans (step 6), status alerts (step 7), the resume PDF (step 9).
+
+## Types
+
+Shared types are defined in each section above.

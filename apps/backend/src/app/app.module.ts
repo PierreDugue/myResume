@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { AppEnv, validateEnv } from './config/env.validation';
 import { buildTypeOrmOptions } from './database/typeorm-options';
 import { HealthModule } from './health/health.module';
+import { ResumeModule } from './resume/resume.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { HealthModule } from './health/health.module';
     }),
     AuthModule,
     HealthModule,
+    ResumeModule,
   ],
 })
 export class AppModule {}

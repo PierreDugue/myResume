@@ -1,0 +1,172 @@
+<section class="panel edit">
+  <h2>Profile</h2>
+  <form [formRoot]="form" novalidate>
+    @if (error(); as message) {
+      <p class="form-error" role="alert">{{ message }}</p>
+    }
+    <div class="grid-2">
+      <div class="field">
+        <label for="pf-name">Full name</label>
+        <input
+          id="pf-name"
+          [formField]="form.fullName"
+          [attr.aria-invalid]="showError(form.fullName()) || null"
+        />
+        @if (showError(form.fullName())) {
+          <p class="field-error">{{ form.fullName().errors()[0].message }}</p>
+        }
+      </div>
+      <div class="field">
+        <label for="pf-headline">Headline</label>
+        <input
+          id="pf-headline"
+          [formField]="form.headline"
+          [attr.aria-invalid]="showError(form.headline()) || null"
+        />
+        @if (showError(form.headline())) {
+          <p class="field-error">{{ form.headline().errors()[0].message }}</p>
+        }
+      </div>
+    </div>
+    <div class="field">
+      <label for="pf-summary">Summary</label>
+      <textarea
+        id="pf-summary"
+        [formField]="form.summary"
+        rows="4"
+        [attr.aria-invalid]="showError(form.summary()) || null"
+      ></textarea>
+      @if (showError(form.summary())) {
+        <p class="field-error">{{ form.summary().errors()[0].message }}</p>
+      }
+    </div>
+    <div class="grid-2">
+      <div class="field">
+        <label for="pf-email">Email</label>
+        <input
+          id="pf-email"
+          type="email"
+          [formField]="form.email"
+          [attr.aria-invalid]="showError(form.email()) || null"
+        />
+        @if (showError(form.email())) {
+          <p class="field-error">{{ form.email().errors()[0].message }}</p>
+        }
+      </div>
+      <div class="field">
+        <label for="pf-phone">Phone</label>
+        <input id="pf-phone" type="tel" [formField]="form.phone" />
+      </div>
+      <div class="field">
+        <label for="pf-location">Location</label>
+        <input id="pf-location" [formField]="form.location" />
+      </div>
+      <div class="field">
+        <label for="pf-avatar">Photo URL</label>
+        <input
+          id="pf-avatar"
+          type="url"
+          [formField]="form.avatarUrl"
+          [attr.aria-invalid]="showError(form.avatarUrl()) || null"
+        />
+        @if (showError(form.avatarUrl())) {
+          <p class="field-error">{{ form.avatarUrl().errors()[0].message }}</p>
+        }
+      </div>
+      <div class="field">
+        <label for="pf-years-it">Years in IT</label>
+        <input
+          id="pf-years-it"
+          type="number"
+          [formField]="form.yearsInIt"
+          [attr.aria-invalid]="showError(form.yearsInIt()) || null"
+        />
+        @if (showError(form.yearsInIt())) {
+          <p class="field-error">{{ form.yearsInIt().errors()[0].message }}</p>
+        }
+      </div>
+      <div class="field">
+        <label for="pf-years-angular">Years of Angular</label>
+        <input
+          id="pf-years-angular"
+          type="number"
+          [formField]="form.yearsOfAngular"
+          [attr.aria-invalid]="showError(form.yearsOfAngular()) || null"
+        />
+        @if (showError(form.yearsOfAngular())) {
+          <p class="field-error">{{ form.yearsOfAngular().errors()[0].message }}</p>
+        }
+      </div>
+    </div>
+    <div class="checks">
+      <label for="pf-relocation" class="check">
+        <input id="pf-relocation" type="checkbox" [formField]="form.openToRelocation" /> Open to
+        relocation
+      </label>
+      <label for="pf-show-phone" class="check">
+        <input id="pf-show-phone" type="checkbox" [formField]="form.showPhone" /> Show phone on the
+        site
+      </label>
+    </div>
+    <div class="field">
+      <label for="pf-interests">Interests</label>
+      <textarea id="pf-interests" [formField]="form.interests" rows="2"></textarea>
+    </div>
+
+    <h3>Links</h3>
+    <div class="links">
+      @for (link of form.links; track link; let i = $index) {
+        <div class="grid-link">
+          <div class="field">
+            <label [for]="'pf-link-' + i + '-label'">Link {{ i + 1 }} label</label>
+            <input
+              [id]="'pf-link-' + i + '-label'"
+              [formField]="link.label"
+              [attr.aria-invalid]="showError(link.label()) || null"
+            />
+            @if (showError(link.label())) {
+              <p class="field-error">{{ link.label().errors()[0].message }}</p>
+            }
+          </div>
+          <div class="field">
+            <label [for]="'pf-link-' + i + '-url'">Link {{ i + 1 }} URL</label>
+            <input
+              [id]="'pf-link-' + i + '-url'"
+              type="url"
+              [formField]="link.url"
+              [attr.aria-invalid]="showError(link.url()) || null"
+            />
+            @if (showError(link.url())) {
+              <p class="field-error">{{ link.url().errors()[0].message }}</p>
+            }
+          </div>
+          <button
+            class="icon-button"
+            type="button"
+            [attr.aria-label]="'Remove link ' + (i + 1)"
+            (click)="removeLink(i)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+      }
+    </div>
+    <button
+      class="button add-link"
+      type="button"
+      (click)="addLink()"
+      [disabled]="form.links.length >= maxLinks"
+    >
+      Add link
+    </button>
+
+    <div class="form-actions">
+      <button class="button primary" type="submit" [disabled]="form().submitting()">
+        Save profile
+      </button>
+      @if (saved()) {
+        <p class="saved" role="status">Saved.</p>
+      }
+    </div>
+  </form>
+</section>

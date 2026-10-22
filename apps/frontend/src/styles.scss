@@ -190,3 +190,111 @@ svg {
   border: 1px solid var(--color-error);
   border-radius: var(--radius);
 }
+
+/* Admin edit pages */
+.edit {
+  max-width: 900px;
+  h2 {
+    margin: 0 0 var(--space-4);
+    font-size: 1.125rem;
+  }
+  h3 {
+    margin: var(--space-5) 0 var(--space-3);
+    font-size: 1rem;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+}
+
+.grid-2,
+.grid-3,
+.grid-link {
+  display: grid;
+  gap: var(--space-3) var(--space-4);
+}
+.grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.grid-3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.grid-link {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto;
+  align-items: end;
+}
+@media (max-width: 700px) {
+  .grid-2,
+  .grid-3,
+  .grid-link {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8125rem;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  .saved {
+    margin: 0;
+    color: var(--color-ok);
+  }
+}
+
+/* Print: only the page content (the plain resume prints like a document) */
+@media print {
+  :root {
+    --color-bg: #fff;
+    --color-surface: #fff;
+    --color-text: #000;
+    --color-text-muted: #333;
+    --color-border: #bbb;
+    --color-accent: #1d4f7a;
+  }
+  html,
+  body {
+    background: #fff;
+  }
+  app-shell {
+    display: block !important;
+  }
+  app-shell .sidebar,
+  app-shell .topbar,
+  app-shell .backdrop,
+  .skip-link,
+  .no-print {
+    display: none !important;
+  }
+  app-shell main {
+    padding: 0 !important;
+  }
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}

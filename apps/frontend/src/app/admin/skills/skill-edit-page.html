@@ -1,0 +1,56 @@
+<section class="panel edit">
+  @if (page.notFound()) {
+    <p class="form-error" role="alert">This skill was not found.</p>
+    <a routerLink="..">Back to skills</a>
+  } @else {
+    <h2>{{ page.isNew ? 'New skill' : 'Edit skill' }}</h2>
+    <form [formRoot]="form" novalidate>
+      @if (page.error(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
+      <div class="field">
+        <label for="skill-name">Name</label>
+        <input
+          id="skill-name"
+          [formField]="form.name"
+          [attr.aria-invalid]="showError(form.name()) || null"
+        />
+        @if (showError(form.name())) {
+          <p class="field-error">{{ form.name().errors()[0].message }}</p>
+        }
+      </div>
+      <div class="field">
+        <label for="skill-category">Category</label>
+        <input
+          id="skill-category"
+          [formField]="form.category"
+          list="skill-categories"
+          [attr.aria-invalid]="showError(form.category()) || null"
+        />
+        <datalist id="skill-categories">
+          @for (category of categories(); track category) {
+            <option [value]="category"></option>
+          }
+        </datalist>
+        @if (showError(form.category())) {
+          <p class="field-error">{{ form.category().errors()[0].message }}</p>
+        }
+      </div>
+      <div class="field">
+        <label for="skill-level">Level</label>
+        <select id="skill-level" [formField]="form.level">
+          <option value="">No level</option>
+          @for (level of levels; track level) {
+            <option [value]="level">{{ level }} / 5</option>
+          }
+        </select>
+      </div>
+      <div class="form-actions">
+        <button class="button primary" type="submit" [disabled]="form().submitting()">
+          {{ page.isNew ? 'Create skill' : 'Save' }}
+        </button>
+        <a class="button" routerLink="..">Cancel</a>
+      </div>
+    </form>
+  }
+</section>

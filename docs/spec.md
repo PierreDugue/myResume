@@ -268,9 +268,9 @@ The server checks every message the client sends, limits each connection to 20 m
    - Backend: TypeORM, config, migrations, ValidationPipe, `/health`.
    - Frontend: dev proxy, app layout (sidebar and top bar), dark and light theme, routing.
 2. **Auth:** admin seeding, login, JWT guard; login page, interceptor, admin guard.
-3. **Content:** create/read/update/delete plus admin screens for Profile, Skills, Experience, Education, Projects. Then the plain view `/resume`, which is the first usable version.
+3. **Content:** ✅ create/read/update/delete plus admin screens for Profile, Skills, Experience (**including its achievements**, moved here from step 5), Education and Projects; the public `GET /api/resume` bundle; the plain view `/resume` (printable). The initial content is seeded from the resume PDF (no phone number, no skill levels). This is the first usable version.
 4. **Home dashboard:** `GET /resume`, the `/dashboard/*` endpoints, stat, state timeline, time series, bar gauge and heatmap panels, the time range picker and variables (stored in the URL).
-5. **Explore:** Highlight entity and admin screen, the query parser (written test-first), `/logs`, the logs panel UI.
+5. **Explore:** highlight labels and skills, the query parser (written test-first), `/logs`, the logs panel UI.
 6. **Traces and service map:** ProjectSpan entity and admin screen, the waterfall view, the node graph.
 7. **Alerts:** StatusAlert entity and admin screen, alerting page.
 8. **Live site metrics and streaming:**

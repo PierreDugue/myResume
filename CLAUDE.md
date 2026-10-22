@@ -37,6 +37,7 @@ Planned libraries:
 - `npx nx test <project>`: unit tests (`frontend`, `backend`, `api-models`, ...)
   - one file in the backend or a library: `npx vitest run apps/backend/src/app/foo.spec.ts`
   - one file in the frontend: `npx nx test frontend --include=src/app/foo.spec.ts`
+- `npx nx run backend:integration`: backend integration tests (`*.int.spec.ts`). Each test file starts the real app on its **own throwaway PostgreSQL database**, created and dropped by [test-app.ts](apps/backend/src/testing/test-app.ts), with migrations, seed and guards applied. Needs `docker compose up -d postgres`; your dev data is never touched. `nx test backend` excludes them.
 - `npx nx lint <project>`, `npx nx build <project>`, `npx nx typecheck <project>`
 - `npx nx e2e frontend-e2e`: Cypress (starts the frontend and backend itself; needs the database). From a VS Code terminal, prefix with `env -u ELECTRON_RUN_AS_NODE`, because VS Code sets that variable and it stops Cypress from starting.
 - `npm run affected`: lint, test and build only the projects affected by your changes
@@ -87,6 +88,13 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
 
 - **NestJS 11 rules: load the `nestjs-11` skill** ([.claude/skills/nestjs-11/SKILL.md](.claude/skills/nestjs-11/SKILL.md)) before writing backend code. It covers Express 5 route syntax, the terminus `HealthIndicatorService`/`.withTimeout()` API, secure-by-default auth with `@Public()`, TypeORM 1.x patterns and Vitest/supertest tests.
 - One Nest module per resource: `src/app/<resource>/` with `<resource>.module.ts`, `.controller.ts`, `.service.ts`, `entities/`, `dto/`, and a `.spec.ts` next to the service and the controller.
+- Content resources (`skills`, `experiences` with their highlights, `education`, `projects`, `profile`, and the public `resume` bundle) follow one pattern; copy it for new ones:
+  - `toX()` response mappers in `dto/`
+  - `UpdateXDto = PartialType(CreateXDto, { skipNullProperties: false })`, so `null` is only accepted where the field is nullable
+  - `common/` helpers: `applyOrder`/`nextSortOrder` (sortOrder), `IsIsoDate`/`IsOnOrAfter`/`IsHttpUrl`/`IsSlug` validators, `slugify`, `rethrowUniqueViolation` (409)
+  - linked skills via `SkillsService.findByIdsOrFail` and `orderedSkillIds`
+- Create, read, update and delete behavior is tested with **integration tests** against PostgreSQL (`<resource>.int.spec.ts`, using `createTestApp()` and `api()`), not with mocked repositories. Pure logic gets unit tests.
+- **Seed data:** [resume.seed.ts](apps/backend/src/app/database/seed/resume.seed.ts) holds the initial resume content, loaded once by the `SeedResume` migration into an empty database. After that, the admin panel is the source of truth; don't edit the seed to change live content.
 - TypeORM with `@nestjs/typeorm`. **`synchronize: false`**. Every schema change needs a migration in `src/app/database/migrations/`.
 - Global HTTP setup is in [app.setup.ts](apps/backend/src/app/app.setup.ts) (`/api` prefix and `ValidationPipe({ whitelist, forbidNonWhitelisted, transform })`), shared by `main.ts` and the e2e specs. Unknown body properties get a 400.
 - Validate input with `class-validator`/`class-transformer` DTOs.
@@ -104,7 +112,8 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
 - **Angular 22 rules: load the `angular-22` skill** ([.claude/skills/angular-22/SKILL.md](.claude/skills/angular-22/SKILL.md)) before writing Angular code. In short:
   - Services use `@Service()`, not `@Injectable({ providedIn: 'root' })`.
   - Components never set `changeDetection`: OnPush is the default, and `Eager` is not allowed.
-  - Lint enforces both ([eslint.angular.mjs](eslint.angular.mjs)). New Angular libraries must add `angular22Rules` to their ESLint config.
+  - Forms use signal forms, not reactive forms.
+  - Lint enforces the first two ([eslint.angular.mjs](eslint.angular.mjs)). New Angular libraries must add `angular22Rules` to their ESLint config.
 - Standalone components only (no NgModules).
 - The app is zoneless: use signals for state, `input()`/`output()`, `inject()`, and the new control flow (`@if`, `@for`, `@defer`).
 - Folder layout under `src/app/`:
@@ -120,7 +129,15 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
   - `authInterceptor` adds the token to `/api` calls and handles 401.
   - Admin routes use `authGuard` (in `admin/admin.routes.ts`, under the `admin` route), and the login page uses `guestGuard`.
   - In tests, `fakeJwt()` from `core/auth/test-tokens.ts` makes tokens, and `$()` from `src/app/testing.ts` finds elements without `!`.
-- Use reactive forms for admin editing screens.
+- Forms use **signal forms** (`@angular/forms/signals`: `form()`, `[formField]`, `[formRoot]`) by default; see the `angular-22` skill. Reactive forms only where the skill allows it (a library that needs `FormControl`, or small edits to an existing reactive form).
+- Admin patterns ([admin/](apps/frontend/src/app/admin/)):
+  - Lists use the generic `AdminListPage`, configured through route `data: { list }` (`list/list-configs.ts`), with `OrderedList` for reordering and deleting.
+  - Edit pages use `editPage()` (`:id` or `new`, load from the list, then `page.save()` as the form's submit action, which goes back to the list) and `shared/form-utils.ts`: signal-forms rules `httpUrl(path)`, `endOnOrAfterStart(start, end)`, `showError(field())`, and `textOrNull`/`numberOrNull` for the `toRequest(model)` mappers.
+  - Each page keeps its form model in a `signal()`, with pure `toModel(entity)` / `toRequest(model)` functions next to the component.
+  - Skills are picked with `SkillPicker` (`[(selected)]`).
+  - Content API calls go through `core/content/ContentApi`; show errors with `apiErrorMessage()`.
+  - Format dates with `shared/format/period.ts` (`formatPeriod`): it reads the strings directly, never through `Date`, so time zones can't shift them.
+  - Page tests use `admin/testing/render.ts` (`renderRoute`, `field(el, 'Label')`, `type()`, and `settle()` after a click so async submit actions finish) and `admin/testing/fixtures.ts`.
 - Keep component styles under the budget (4kB warning per component). Load charts only when needed (`@defer` / lazy routes).
 - Pages are lazy-loaded child routes of the `Shell` route in `app.routes.ts`, with a `title`. The title feeds the document title and the breadcrumb `h1`, so pages don't add their own `h1`.
 - Styling: use the CSS color tokens in `apps/frontend/src/styles.scss` (`--color-*`, `--series-*`, `--space-*`), never hard-coded colors. Dark is the default; `[data-theme='light']` switches them. Shared classes: `.panel`, `.empty-state`, `.button`, `.icon-button`.

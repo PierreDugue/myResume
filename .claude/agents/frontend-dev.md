@@ -42,7 +42,7 @@ For a complete user journey (for example: change the time range and see the pane
 5. Admin:
    - lazy-loaded routes under `/admin`, protected by an auth guard
    - an HTTP interceptor that adds the Bearer token and redirects to `/admin/login` on a 401
-   - reactive forms with validation messages
+   - signal forms (`@angular/forms/signals`) with validation messages, following the `angular-22` skill. Reactive forms only where that skill allows it.
 6. Public pages: semantic HTML, responsive layout, accessible (labels, alt text, keyboard focus, a table alternative for charts, color never the only signal), and a print stylesheet for the plain view.
 7. Handle loading, empty and error states.
 8. Keep component styles small (budget: 4kB warning per component) and put shared styles in `apps/frontend/src/styles.scss`. Load chart libraries only where they're used.

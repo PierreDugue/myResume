@@ -1,13 +1,45 @@
-import { Component } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
+import { rxResource } from '@angular/core/rxjs-interop';
+import type { Skill } from '@my-resume/api-models';
+import { ContentApi } from '../../core/content/content-api.service';
+import { formatPeriod } from '../../shared/format/period';
 
-/** Classic one-page resume. Content arrives with build step 3 (see docs/spec.md). */
+/** The classic resume: readable, printable (Save as PDF), and ATS-friendly. */
 @Component({
   selector: 'app-plain-resume-page',
-  template: `
-    <section class="panel empty-state">
-      <h2>Plain view</h2>
-      <p>The classic, printable resume will appear here.</p>
-    </section>
-  `,
+  templateUrl: './plain-resume-page.html',
+  styleUrl: './plain-resume-page.scss',
 })
-export class PlainResumePage {}
+export class PlainResumePage {
+  private readonly api = inject(ContentApi);
+
+  protected readonly resume = rxResource({ stream: () => this.api.resume() });
+  protected readonly period = formatPeriod;
+
+  private readonly skillNames = computed(() => {
+    const skills = this.resume.hasValue() ? this.resume.value().skills : [];
+    return new Map(skills.map((s) => [s.id, s.name]));
+  });
+
+  protected readonly skillGroups = computed(() => {
+    const groups = new Map<string, Skill[]>();
+    for (const skill of this.resume.hasValue() ? this.resume.value().skills : []) {
+      groups.set(skill.category, [...(groups.get(skill.category) ?? []), skill]);
+    }
+    return [...groups].map(([category, skills]) => ({
+      category,
+      names: skills.map((s) => s.name).join(', '),
+    }));
+  });
+
+  protected stack(skillIds: string[]): string {
+    return skillIds
+      .map((id) => this.skillNames().get(id))
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  protected print(): void {
+    window.print();
+  }
+}

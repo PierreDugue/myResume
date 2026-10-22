@@ -1,0 +1,217 @@
+<section class="panel edit">
+  @if (page.notFound()) {
+    <p class="form-error" role="alert">This experience was not found.</p>
+    <a routerLink="..">Back to experience</a>
+  } @else {
+    <h2>{{ page.isNew ? 'New experience' : 'Edit experience' }}</h2>
+    <form [formRoot]="form" novalidate>
+      @if (page.error(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
+      <div class="grid-2">
+        <div class="field">
+          <label for="exp-company">Company</label>
+          <input
+            id="exp-company"
+            [formField]="form.company"
+            [attr.aria-invalid]="showError(form.company()) || null"
+          />
+          @if (showError(form.company())) {
+            <p class="field-error">{{ form.company().errors()[0].message }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="exp-role">Role</label>
+          <input
+            id="exp-role"
+            [formField]="form.role"
+            [attr.aria-invalid]="showError(form.role()) || null"
+          />
+          @if (showError(form.role())) {
+            <p class="field-error">{{ form.role().errors()[0].message }}</p>
+          }
+        </div>
+        <div class="field">
+          <label for="exp-location">Location</label>
+          <input
+            id="exp-location"
+            [formField]="form.location"
+            placeholder="e.g. Sydney, Australia / Full Remote"
+          />
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label for="exp-start">Start date</label>
+            <input
+              id="exp-start"
+              type="date"
+              [formField]="form.startDate"
+              [attr.aria-invalid]="showError(form.startDate()) || null"
+            />
+            @if (showError(form.startDate())) {
+              <p class="field-error">{{ form.startDate().errors()[0].message }}</p>
+            }
+          </div>
+          <div class="field">
+            <label for="exp-end">End date</label>
+            <input
+              id="exp-end"
+              type="date"
+              [formField]="form.endDate"
+              aria-describedby="exp-end-hint"
+              [attr.aria-invalid]="showError(form.endDate()) || null"
+            />
+            <p class="hint" id="exp-end-hint">Empty = current job</p>
+            @if (showError(form.endDate())) {
+              <p class="field-error">{{ form.endDate().errors()[0].message }}</p>
+            }
+          </div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="exp-summary">Summary</label>
+        <textarea id="exp-summary" [formField]="form.summary" rows="2"></textarea>
+      </div>
+
+      <h3>Tech stack</h3>
+      @if (skills.hasValue()) {
+        <app-skill-picker [skills]="skills.value()" [(selected)]="selectedSkills" />
+      }
+
+      <h3>Achievements</h3>
+      <ol class="highlights">
+        @for (hl of form.highlights; track hl; let i = $index, first = $first, last = $last) {
+          <li class="highlight">
+            <div class="field">
+              <label [for]="'hl-' + i + '-message'">Achievement {{ i + 1 }}</label>
+              <textarea
+                [id]="'hl-' + i + '-message'"
+                [formField]="hl.message"
+                rows="2"
+                [attr.aria-invalid]="showError(hl.message()) || null"
+              ></textarea>
+              @if (showError(hl.message())) {
+                <p class="field-error">{{ hl.message().errors()[0].message }}</p>
+              }
+            </div>
+            <div class="grid-3">
+              <div class="field">
+                <label [for]="'hl-' + i + '-date'">Achievement {{ i + 1 }} date</label>
+                <input
+                  [id]="'hl-' + i + '-date'"
+                  type="date"
+                  [formField]="hl.date"
+                  [attr.aria-invalid]="showError(hl.date()) || null"
+                />
+                @if (showError(hl.date())) {
+                  <p class="field-error">{{ hl.date().errors()[0].message }}</p>
+                }
+              </div>
+              <div class="field">
+                <label [for]="'hl-' + i + '-level'">Achievement {{ i + 1 }} level</label>
+                <select [id]="'hl-' + i + '-level'" [formField]="hl.level">
+                  @for (level of levels; track level) {
+                    <option [value]="level">{{ level }}</option>
+                  }
+                </select>
+              </div>
+              <label class="check">
+                <input type="checkbox" [formField]="hl.hasImpact" />
+                Achievement {{ i + 1 }} has a measurable impact
+              </label>
+            </div>
+            @if (hl.hasImpact().value()) {
+              <div class="impact grid-3">
+                <div class="field">
+                  <label [for]="'hl-' + i + '-metric'">Achievement {{ i + 1 }} impact metric</label>
+                  <input
+                    [id]="'hl-' + i + '-metric'"
+                    [formField]="hl.impact.metric"
+                    placeholder="e.g. Page load time"
+                    [attr.aria-invalid]="showError(hl.impact.metric()) || null"
+                  />
+                  @if (showError(hl.impact.metric())) {
+                    <p class="field-error">{{ hl.impact.metric().errors()[0].message }}</p>
+                  }
+                </div>
+                <div class="field">
+                  <label [for]="'hl-' + i + '-before'">Before</label>
+                  <input
+                    [id]="'hl-' + i + '-before'"
+                    type="number"
+                    [formField]="hl.impact.before"
+                  />
+                </div>
+                <div class="field">
+                  <label [for]="'hl-' + i + '-after'">After</label>
+                  <input [id]="'hl-' + i + '-after'" type="number" [formField]="hl.impact.after" />
+                </div>
+                <div class="field">
+                  <label [for]="'hl-' + i + '-change'">Change (%)</label>
+                  <input
+                    [id]="'hl-' + i + '-change'"
+                    type="number"
+                    [formField]="hl.impact.changePct"
+                  />
+                </div>
+                <div class="field">
+                  <label [for]="'hl-' + i + '-unit'">Unit</label>
+                  <input
+                    [id]="'hl-' + i + '-unit'"
+                    [formField]="hl.impact.unit"
+                    placeholder="%, s, ms…"
+                  />
+                </div>
+                <div class="field">
+                  <label [for]="'hl-' + i + '-direction'">Better when</label>
+                  <select [id]="'hl-' + i + '-direction'" [formField]="hl.impact.direction">
+                    <option value="down-is-good">it goes down</option>
+                    <option value="up-is-good">it goes up</option>
+                  </select>
+                </div>
+              </div>
+            }
+            <div class="row-actions">
+              <button
+                class="icon-button"
+                type="button"
+                [disabled]="first"
+                [attr.aria-label]="'Move achievement ' + (i + 1) + ' up'"
+                (click)="moveHighlight(i, -1)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+              </button>
+              <button
+                class="icon-button"
+                type="button"
+                [disabled]="last"
+                [attr.aria-label]="'Move achievement ' + (i + 1) + ' down'"
+                (click)="moveHighlight(i, 1)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
+              </button>
+              <button
+                class="icon-button"
+                type="button"
+                [attr.aria-label]="'Remove achievement ' + (i + 1)"
+                (click)="removeHighlight(i)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
+          </li>
+        }
+      </ol>
+      <button class="button add-highlight" type="button" (click)="addHighlight()">
+        Add achievement
+      </button>
+
+      <div class="form-actions">
+        <button class="button primary" type="submit" [disabled]="form().submitting()">
+          {{ page.isNew ? 'Create experience' : 'Save' }}
+        </button>
+        <a class="button" routerLink="..">Cancel</a>
+      </div>
+    </form>
+  }
+</section>
