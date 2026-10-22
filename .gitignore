@@ -5,9 +5,20 @@
 # Dependencies
 node_modules/
 
-# Build artifacts
+# Build & test artifacts
 dist/
+tmp/
+out-tsc/
+coverage/
 .angular/
+apps/frontend-e2e/cypress/screenshots/
+apps/frontend-e2e/cypress/videos/
+vitest.config.*.timestamp*
+.vitest
+
+# Nx
+.nx/cache
+.nx/workspace-data
 
 # Docker persistent data (if bound locally)
 pgdata/
@@ -17,3 +28,6 @@ pgdata/
 Thumbs.db
 .vscode/
 .idea/
+
+# Claude Code personal settings
+.claude/settings.local.json
