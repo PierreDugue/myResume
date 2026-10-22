@@ -1,0 +1,89 @@
+<a class="skip-link" href="#main-content">Skip to content</a>
+
+<aside id="sidebar" class="sidebar" [class.open]="sidebarOpen()">
+  <a class="brand" routerLink="/">
+    <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M3 17l5-6 4 3 4-7 5 5" />
+    </svg>
+    <span>{{ appName }}</span>
+  </a>
+
+  <nav aria-label="Main">
+    <ul>
+      @for (item of navItems; track item.path) {
+        <li>
+          <a
+            [routerLink]="item.path"
+            routerLinkActive="active"
+            [routerLinkActiveOptions]="{ exact: item.exact }"
+            ariaCurrentWhenActive="page"
+          >
+            {{ item.label }}
+          </a>
+        </li>
+      }
+    </ul>
+  </nav>
+
+  <p class="api-status" role="status" [attr.data-status]="apiStatus()">
+    <span class="dot" aria-hidden="true"></span>
+    API {{ apiStatus() === 'unknown' ? 'checking…' : apiStatus() }}
+  </p>
+</aside>
+
+@if (sidebarOpen()) {
+  <div class="backdrop" aria-hidden="true" (click)="sidebarOpen.set(false)"></div>
+}
+
+<div class="content">
+  <header class="topbar">
+    <button
+      class="menu-toggle icon-button"
+      type="button"
+      aria-label="Menu"
+      aria-controls="sidebar"
+      [attr.aria-expanded]="sidebarOpen()"
+      (click)="toggleSidebar()"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" /></svg>
+    </button>
+
+    <nav aria-label="Breadcrumb" class="breadcrumb">
+      <ol>
+        <li><a routerLink="/">Home</a></li>
+        <li aria-current="page">
+          <h1>{{ pageTitle() }}</h1>
+        </li>
+      </ol>
+    </nav>
+
+    <div class="actions">
+      <a class="plain-view button" routerLink="/resume">Plain view</a>
+      <button
+        class="theme-toggle icon-button"
+        type="button"
+        [attr.aria-label]="
+          theme.theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'
+        "
+        (click)="theme.toggle()"
+      >
+        @if (theme.theme() === 'dark') {
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="4" />
+            <path
+              d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5L19 19M5 19l1.5-1.5M17.5 6.5L19 5"
+            />
+          </svg>
+        } @else {
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+          </svg>
+        }
+      </button>
+    </div>
+  </header>
+
+  <main id="main-content" tabindex="-1">
+    <router-outlet />
+  </main>
+</div>

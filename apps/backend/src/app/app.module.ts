@@ -1,10 +1,34 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { AppEnv, validateEnv } from './config/env.validation';
+import { buildTypeOrmOptions } from './database/typeorm-options';
+import { HealthModule } from './health/health.module';
 
 @Module({
-  imports: [],
-  controllers: [AppController],
-  providers: [AppService],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      cache: true,
+      // Local dev: apps/backend/.env, then the root .env (POSTGRES_* fallbacks). In Docker,
+      // the variables come from docker-compose.yml and these files do not exist.
+      envFilePath: ['apps/backend/.env', '.env'],
+      validate: validateEnv,
+    }),
+    TypeOrmModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<AppEnv, true>) =>
+        buildTypeOrmOptions({
+          NODE_ENV: config.get('NODE_ENV', { infer: true }),
+          PORT: config.get('PORT', { infer: true }),
+          DATABASE_HOST: config.get('DATABASE_HOST', { infer: true }),
+          DATABASE_PORT: config.get('DATABASE_PORT', { infer: true }),
+          DATABASE_USER: config.get('DATABASE_USER', { infer: true }),
+          DATABASE_PASSWORD: config.get('DATABASE_PASSWORD', { infer: true }),
+          DATABASE_NAME: config.get('DATABASE_NAME', { infer: true }),
+        }),
+    }),
+    HealthModule,
+  ],
 })
 export class AppModule {}

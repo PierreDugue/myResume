@@ -1,0 +1,79 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { TestBed } from '@angular/core/testing';
+import type { HealthResponse } from '@my-resume/api-models';
+import { ApiStatusService } from './api-status.service';
+
+const up: HealthResponse = {
+  status: 'ok',
+  info: { database: { status: 'up' } },
+  error: {},
+  details: { database: { status: 'up' } },
+};
+const down: HealthResponse = {
+  status: 'error',
+  info: {},
+  error: { database: { status: 'down', message: 'timeout' } },
+  details: { database: { status: 'down', message: 'timeout' } },
+};
+
+describe('ApiStatusService', () => {
+  let service: ApiStatusService;
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    service = TestBed.inject(ApiStatusService);
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => {
+    http.verify();
+    vi.useRealTimers();
+  });
+
+  it('starts as "unknown" before the first check', () => {
+    expect(service.status()).toBe('unknown');
+  });
+
+  it('calls GET /api/health and reports "up" when the API answers ok', () => {
+    service.refresh();
+    const req = http.expectOne('/api/health');
+    expect(req.request.method).toBe('GET');
+    req.flush(up);
+    expect(service.status()).toBe('up');
+  });
+
+  it('reports "down" when the API answers 503', () => {
+    service.refresh();
+    http.expectOne('/api/health').flush(down, { status: 503, statusText: 'Service Unavailable' });
+    expect(service.status()).toBe('down');
+  });
+
+  it('reports "down" when the API cannot be reached', () => {
+    service.refresh();
+    http.expectOne('/api/health').error(new ProgressEvent('error'));
+    expect(service.status()).toBe('down');
+  });
+
+  it('polls immediately and then at the given interval', () => {
+    vi.useFakeTimers();
+    service.startPolling(30_000);
+
+    http.expectOne('/api/health').flush(up);
+    expect(service.status()).toBe('up');
+
+    vi.advanceTimersByTime(30_000);
+    http.expectOne('/api/health').flush(down, { status: 503, statusText: 'Service Unavailable' });
+    expect(service.status()).toBe('down');
+  });
+
+  it('does not start a second polling loop when called twice', () => {
+    vi.useFakeTimers();
+    service.startPolling(30_000);
+    service.startPolling(30_000);
+    expect(http.match('/api/health')).toHaveLength(1);
+  });
+});

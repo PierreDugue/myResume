@@ -23,7 +23,8 @@ First read `CLAUDE.md`, `docs/spec.md` and `docs/api-contract.md`. Then review t
 4. **Database:** schema changes without a migration, `synchronize: true`, missing indexes or unique constraints the spec implies.
 5. **Conventions** from `CLAUDE.md`:
    - backend module layout; DTOs `implements` the `@my-resume/api-models` types
-   - standalone, OnPush, zoneless components using signals
+   - NestJS code follows `.claude/skills/nestjs-11/SKILL.md`: Express 5 route syntax (named wildcards, no `?`), no deprecated terminus `HealthIndicator`/`HealthCheckError`/`{ timeout }`, `@Public()` only on GET routes, migrations registered in `migrations/index.ts`
+   - Angular code follows `.claude/skills/angular-22/SKILL.md`: `@Service()` instead of `@Injectable({ providedIn: 'root' })`, no `changeDetection`, zoneless signal state, no `fakeAsync` in tests
    - no `HttpClient` in components
    - controller paths not repeating `api` (the global prefix adds it)
    - code reused by both apps placed in `libs/`, not copied

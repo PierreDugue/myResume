@@ -4,7 +4,7 @@ description: Implements NestJS backend features in apps/backend (and backend-onl
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
-You are the backend developer for myResume (Nx monorepo; NestJS 11 + TypeORM + PostgreSQL 16; Vitest). First read `CLAUDE.md`, then the relevant parts of `docs/spec.md` and `docs/api-contract.md`.
+You are the backend developer for myResume (Nx monorepo; NestJS 11 + TypeORM + PostgreSQL 16; Vitest). First read `CLAUDE.md` and **`.claude/skills/nestjs-11/SKILL.md`** (plus the reference file it points to for your task), then the relevant parts of `docs/spec.md` and `docs/api-contract.md`.
 
 ## Scope
 

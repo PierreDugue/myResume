@@ -241,7 +241,10 @@ The server checks every message the client sends, limits each connection to 20 m
   - `apps/frontend-e2e`: Cypress
   - shared libraries in `libs/`: `@my-resume/api-models` now; `query-parser` and `ui-panels` planned
 - **Tests:** Vitest for all unit tests (frontend, backend, libraries), Cypress for end-to-end tests, test-driven development as the rule.
-- **Charts:** Apache ECharts via `ngx-echarts`. It covers time series, heatmaps, state timelines, graphs and gauges, and supports themes.
+- **Charts:** Apache ECharts 6, for the time series, heatmap, state timeline, service map and live charts.
+  - It's used through our own small Angular wrapper component in `libs/frontend/ui-panels`: signal inputs, resizing, a theme built from the CSS color tokens, cleanup on destroy. We don't use `ngx-echarts`.
+  - Only the chart types in use are imported, and they load only on the pages that need them.
+  - Stat, impact, bar-gauge, logs and trace-waterfall panels are plain HTML/CSS/SVG: lighter, more accessible, easier to style.
 - **Dashboard grid:** CSS grid, with the layout set in code. Drag-and-drop editing of panels is out of scope.
 - **Site metrics:**
   - `@opentelemetry/sdk-node` plus `prom-client` in NestJS, with a `/metrics` endpoint that is only reachable inside the Docker network.

@@ -1,19 +1,16 @@
-/**
- * This is not a production server yet!
- * This is only a minimal backend to get started.
- */
-
 import { Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app/app.module';
+import { configureApp, GLOBAL_PREFIX } from './app/app.setup';
+import type { AppEnv } from './app/config/env.validation';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  const globalPrefix = 'api';
-  app.setGlobalPrefix(globalPrefix);
-  const port = process.env.PORT || 3000;
+  configureApp(app);
+  const port = app.get(ConfigService<AppEnv, true>).get('PORT', { infer: true });
   await app.listen(port);
-  Logger.log(`🚀 Application is running on: http://localhost:${port}/${globalPrefix}`);
+  Logger.log(`🚀 API running on http://localhost:${port}/${GLOBAL_PREFIX}`, 'Bootstrap');
 }
 
-bootstrap();
+void bootstrap();

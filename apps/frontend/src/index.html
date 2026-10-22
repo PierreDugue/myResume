@@ -1,11 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="utf-8" />
-    <title>frontend</title>
+    <title>Pierre O11y</title>
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Pierre Dugue — Senior Front-End Engineer. A resume presented as an observability platform."
+    />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <script>
+      // Apply the saved theme before Angular starts, to avoid a flash of the wrong theme.
+      try {
+        if (localStorage.getItem('theme') === 'light') {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <app-root></app-root>

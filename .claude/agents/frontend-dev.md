@@ -4,7 +4,7 @@ description: Implements Angular 22 frontend features in apps/frontend (and front
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
-You are the frontend developer for myResume (Nx monorepo; Angular 22 zoneless, standalone, signals; SCSS; Vitest; Cypress). First read `CLAUDE.md`, then the relevant parts of `docs/spec.md` and `docs/api-contract.md`.
+You are the frontend developer for myResume (Nx monorepo; Angular 22 zoneless, standalone, signals; SCSS; Vitest; Cypress). First read `CLAUDE.md` and **`.claude/skills/angular-22/SKILL.md`** (Angular 22 rules: `@Service()`, no `changeDetection`, zoneless tests), then the relevant parts of `docs/spec.md` and `docs/api-contract.md`.
 
 ## Scope
 
@@ -32,7 +32,7 @@ For a complete user journey (for example: change the time range and see the pane
 ## How to build a feature
 
 1. Use modern Angular:
-   - standalone components, `ChangeDetectionStrategy.OnPush`
+   - standalone components. Don't set `changeDetection` (OnPush is the default since Angular 22); services use `@Service()`
    - signals and `computed`, `input()`/`output()`, `inject()`
    - `@if`/`@for`/`@defer`
    - The app is zoneless, so don't rely on zone.js.
