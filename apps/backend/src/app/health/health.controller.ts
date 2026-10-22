@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { HealthCheck, HealthCheckService, TypeOrmHealthIndicator } from '@nestjs/terminus';
+import { Public } from '../auth/public.decorator';
 
 @Controller('health')
 export class HealthController {
@@ -9,6 +10,7 @@ export class HealthController {
   ) {}
 
   /** `GET /api/health`: 200 when every check is up, 503 otherwise (see docs/api-contract.md). */
+  @Public()
   @Get()
   @HealthCheck()
   check() {

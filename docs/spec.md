@@ -228,10 +228,14 @@ The server checks every message the client sends, limits each connection to 20 m
 
 ## Auth
 
-- On startup, the backend creates the admin user from `ADMIN_EMAIL` / `ADMIN_PASSWORD` if none exists. The password is hashed with bcrypt.
-- `POST /auth/login` returns a JWT access token (signed with `JWT_SECRET`, 1 day expiry).
-- The frontend keeps the token in memory and `localStorage`; an HTTP interceptor adds `Authorization: Bearer <token>`.
-- No sign-up and no password reset.
+- **A single admin account**, kept in sync with `ADMIN_EMAIL` / `ADMIN_PASSWORD` on every startup. The backend creates the account, or updates its email or password if they changed. Changing `ADMIN_PASSWORD` and restarting is how the password is reset. Passwords are **salted and peppered**: `HMAC-SHA256(PASSWORD_PEPPER, password)`, then bcrypt (random salt, cost 12). The pepper is a server secret kept outside the database. This also means bcrypt's 72-byte limit doesn't cut long passwords short.
+- `POST /api/auth/login` returns a JWT (HS256, signed with `JWT_SECRET`, 24 h). It's limited to 5 attempts per minute per IP, and answers the same way for an unknown email and a wrong password.
+- **Secure by default:** every API route needs the token unless it's marked public (public routes are `GET` only, plus login).
+- Frontend:
+  - The token is kept in memory and `localStorage`, and the session ends automatically when the token expires.
+  - An HTTP interceptor adds `Authorization: Bearer <token>` to `/api` calls only. If the API answers 401, the frontend signs out and opens the login page, returning to the original page after signing in. Only same-site return paths are allowed.
+  - The sidebar shows "Sign in", or "Admin" and "Sign out" when signed in.
+- No sign-up and no password reset by email.
 
 ## Technical choices
 

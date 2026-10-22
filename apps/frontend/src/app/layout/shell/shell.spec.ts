@@ -1,13 +1,15 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { ApiStatus, ApiStatusService } from '../../core/api/api-status.service';
 import { APP_NAME } from '../../core/app-name';
+import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { providePageTitleStrategy } from '../../core/title/page-title.strategy';
 import { NAV_ITEMS } from '../nav-items';
 import { Shell } from './shell';
+import { $ } from '../../testing';
 
 @Component({ template: '<p>page content</p>' })
 class Page {}
@@ -15,6 +17,8 @@ class Page {}
 describe('Shell', () => {
   const apiStatus = signal<ApiStatus>('up');
   const startPolling = vi.fn();
+  const isAuthenticated = signal(false);
+  const logout = vi.fn();
 
   async function render(url = '/') {
     TestBed.configureTestingModule({
@@ -26,11 +30,16 @@ describe('Shell', () => {
             children: [
               { path: '', title: 'Career Overview', component: Page },
               { path: 'resume', title: 'Plain view', component: Page },
+              { path: 'admin', title: 'Admin', component: Page },
             ],
           },
         ]),
         providePageTitleStrategy(),
         { provide: ApiStatusService, useValue: { status: apiStatus.asReadonly(), startPolling } },
+        {
+          provide: AuthService,
+          useValue: { isAuthenticated: isAuthenticated.asReadonly(), logout },
+        },
       ],
     });
     const harness = await RouterTestingHarness.create();
@@ -43,6 +52,8 @@ describe('Shell', () => {
     localStorage.clear();
     apiStatus.set('up');
     startPolling.mockReset();
+    isAuthenticated.set(false);
+    logout.mockReset();
   });
 
   it('shows the app name as a link to the home dashboard', async () => {
@@ -148,5 +159,32 @@ describe('Shell', () => {
     harness.detectChanges();
     expect(status?.getAttribute('data-status')).toBe('down');
     expect(status?.textContent).toMatch(/API\s+down/);
+  });
+
+  describe('account links (sidebar)', () => {
+    it('offers "Sign in" to visitors', async () => {
+      const { root } = await render();
+      const link = root.querySelector<HTMLAnchorElement>('aside a.sign-in');
+      expect(link?.getAttribute('href')).toBe('/admin/login');
+      expect(root.querySelector('aside button.sign-out')).toBeNull();
+    });
+
+    it('offers "Admin" and "Sign out" to the signed-in admin', async () => {
+      isAuthenticated.set(true);
+      const { root } = await render();
+      expect(root.querySelector('aside a.sign-in')).toBeNull();
+      expect(
+        root.querySelector<HTMLAnchorElement>('aside a.admin-link')?.getAttribute('href'),
+      ).toBe('/admin');
+    });
+
+    it('signs out and goes back to the home dashboard', async () => {
+      isAuthenticated.set(true);
+      const { root, harness } = await render('/admin');
+      $<HTMLButtonElement>(root, 'aside button.sign-out').click();
+      await harness.fixture.whenStable();
+      expect(logout).toHaveBeenCalledOnce();
+      expect(TestBed.inject(Router).url).toBe('/');
+    });
   });
 });

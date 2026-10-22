@@ -76,6 +76,27 @@ nav[aria-label='Main'] {
   }
 }
 
+.account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--space-3);
+  a,
+  button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--color-text-muted);
+    font: inherit;
+    text-decoration: none;
+    cursor: pointer;
+    &:hover,
+    &.active {
+      color: var(--color-text);
+    }
+  }
+}
+
 .api-status {
   display: flex;
   align-items: center;

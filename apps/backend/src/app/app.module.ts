@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AuthModule } from './auth/auth.module';
 import { AppEnv, validateEnv } from './config/env.validation';
 import { buildTypeOrmOptions } from './database/typeorm-options';
 import { HealthModule } from './health/health.module';
@@ -26,8 +27,11 @@ import { HealthModule } from './health/health.module';
           DATABASE_USER: config.get('DATABASE_USER', { infer: true }),
           DATABASE_PASSWORD: config.get('DATABASE_PASSWORD', { infer: true }),
           DATABASE_NAME: config.get('DATABASE_NAME', { infer: true }),
+          JWT_SECRET: config.get('JWT_SECRET', { infer: true }),
+          PASSWORD_PEPPER: config.get('PASSWORD_PEPPER', { infer: true }),
         }),
     }),
+    AuthModule,
     HealthModule,
   ],
 })

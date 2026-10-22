@@ -9,6 +9,10 @@ export interface AppEnv {
   DATABASE_USER: string;
   DATABASE_PASSWORD: string;
   DATABASE_NAME: string;
+  JWT_SECRET: string;
+  PASSWORD_PEPPER: string;
+  ADMIN_EMAIL?: string;
+  ADMIN_PASSWORD?: string;
 }
 
 /**
@@ -57,10 +61,49 @@ export function validateEnv(raw: Record<string, unknown>): AppEnv {
     DATABASE_USER: required('DATABASE_USER', 'POSTGRES_USER'),
     DATABASE_PASSWORD: required('DATABASE_PASSWORD', 'POSTGRES_PASSWORD'),
     DATABASE_NAME: required('DATABASE_NAME', 'POSTGRES_DB'),
+    JWT_SECRET: '',
+    PASSWORD_PEPPER: '',
   };
+
+  const jwtSecret = required('JWT_SECRET');
+  if (jwtSecret && jwtSecret.length < 32) {
+    errors.push('JWT_SECRET must be at least 32 characters (e.g. `openssl rand -base64 48`)');
+  }
+
+  const passwordPepper = required('PASSWORD_PEPPER');
+  if (passwordPepper && passwordPepper.length < 32) {
+    errors.push('PASSWORD_PEPPER must be at least 32 characters (e.g. `openssl rand -base64 48`)');
+  } else if (passwordPepper && passwordPepper === jwtSecret) {
+    errors.push('PASSWORD_PEPPER must be different from JWT_SECRET');
+  }
+
+  // Admin credentials are optional, but go together (see AdminAccountService).
+  const adminEmail = read('ADMIN_EMAIL')?.toLowerCase();
+  const adminPassword =
+    typeof raw['ADMIN_PASSWORD'] === 'string' && raw['ADMIN_PASSWORD'] !== ''
+      ? raw['ADMIN_PASSWORD']
+      : undefined;
+  if (adminEmail !== undefined && adminPassword === undefined) {
+    errors.push('ADMIN_PASSWORD is required when ADMIN_EMAIL is set');
+  }
+  if (adminPassword !== undefined && adminEmail === undefined) {
+    errors.push('ADMIN_EMAIL is required when ADMIN_PASSWORD is set');
+  }
+  if (adminEmail !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) {
+    errors.push('ADMIN_EMAIL must be a valid email address');
+  }
+  if (adminPassword !== undefined && adminPassword.length < 12) {
+    errors.push('ADMIN_PASSWORD must be at least 12 characters');
+  }
 
   if (errors.length > 0) {
     throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
+  }
+  env.JWT_SECRET = jwtSecret;
+  env.PASSWORD_PEPPER = passwordPepper;
+  if (adminEmail !== undefined && adminPassword !== undefined) {
+    env.ADMIN_EMAIL = adminEmail;
+    env.ADMIN_PASSWORD = adminPassword;
   }
   return env;
 }

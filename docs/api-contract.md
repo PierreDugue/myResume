@@ -12,7 +12,8 @@ This file is the single source of truth for the HTTP and WebSocket API between `
   - Ids are uuid strings.
   - Dates are `YYYY-MM-DD` strings.
   - Timestamps are ISO 8601 strings.
-- **Auth:** write endpoints need `Authorization: Bearer <jwt>`. A missing or invalid token returns `401`.
+- **Auth:** every endpoint needs `Authorization: Bearer <jwt>` unless it's marked public (–) in the tables. A missing, invalid or expired token returns `401`. Public endpoints are `GET` only, plus `POST /api/auth/login`.
+- **Rate limits:** too many requests return `429`. Login allows 5 attempts per minute per IP.
 - **Errors:** Nest's default shape, `{ "statusCode": number, "message": string | string[], "error": string }`. Validation errors return `400` with `message` as an array.
 - **Lists:** plain arrays sorted by `sortOrder` ascending (no pagination; the data sets are small).
 - **Create vs update:** `POST` creates and returns `201` with the created object. `PATCH /:id` updates only the fields sent (partial update) and returns the updated object. `DELETE /:id` returns `204`.
@@ -53,33 +54,59 @@ interface HealthResponse {
 
 Example: `{ "status": "ok", "info": { "database": { "responseTime": 2, "status": "up" } }, "error": {}, "details": { "database": { "responseTime": 2, "status": "up" } } }`
 
+### Auth
+
+| Method | Path              | Auth | Request        | Response                                      | Status |
+| ------ | ----------------- | ---- | -------------- | --------------------------------------------- | ------ |
+| POST   | `/api/auth/login` | –    | `LoginRequest` | `LoginResponse` `200`, or `400`, `401`, `429` | done   |
+| GET    | `/api/auth/me`    | ✔    | –              | `AuthUser` `200`, or `401`                    | done   |
+
+- **Single admin account.** There's no sign-up and no password reset. On startup, the backend makes sure the admin account matches `ADMIN_EMAIL` and `ADMIN_PASSWORD`: it creates the account, or updates its email or password if they changed.
+- `POST /api/auth/login`:
+  - `200` with a JWT valid for 24 h (`expiresIn: 86400`, signed HS256).
+  - `400` if the body is invalid: a bad email format, an empty password, or unknown fields.
+  - `401` with `message: "Invalid credentials"` for a wrong email **or** a wrong password. The answer is the same in both cases, and takes about the same time, so it doesn't reveal which emails exist.
+  - `429` after 5 attempts per minute from the same IP.
+  - Email is case-insensitive and trimmed.
+- `GET /api/auth/me`: returns the signed-in admin, or `401` if the token is missing, invalid or expired, or if the account no longer exists. The frontend uses it to show who is signed in.
+- Logout is client-side: the frontend forgets the token. Tokens are stateless and expire after 24 h.
+- The JWT payload is `{ sub: <admin id>, email }`. The frontend may read `exp` from it to log out on expiry; everything else is opaque.
+
+```ts
+interface LoginRequest {
+  email: string; // valid email, case-insensitive
+  password: string; // 1..200 characters
+}
+
+interface LoginResponse {
+  accessToken: string; // JWT, send as "Authorization: Bearer <accessToken>"
+  expiresIn: number; // seconds (86400)
+}
+
+interface AuthUser {
+  id: string;
+  email: string;
+}
+```
+
 ### Later features
 
 > ⚠️ The rows below are from before the observability redesign of `docs/spec.md` and must be redone (see the spec's "API" section). The `api-contract` agent rewrites them feature by feature, following the build order.
 
-| Method                | Path                                 | Auth | Request                             | Response        | Status  |
-| --------------------- | ------------------------------------ | ---- | ----------------------------------- | --------------- | ------- |
-| POST                  | `/auth/login`                        | –    | `LoginRequest`                      | `LoginResponse` | planned |
-| GET                   | `/profile`                           | –    | –                                   | `Profile`       | planned |
-| PUT                   | `/profile`                           | ✔    | `UpdateProfileRequest`              | `Profile`       | planned |
-| GET                   | `/experiences`                       | –    | –                                   | `Experience[]`  | planned |
-| POST / PATCH / DELETE | `/experiences[/:id]`                 | ✔    | `CreateExperienceRequest` / partial | `Experience`    | planned |
-| PUT                   | `/experiences/order`                 | ✔    | `ReorderRequest`                    | –               | planned |
-| …                     | `/projects`, `/skills`, `/education` |      | same pattern as experiences         |                 | planned |
+| Method                | Path                                 | Auth | Request                             | Response       | Status  |
+| --------------------- | ------------------------------------ | ---- | ----------------------------------- | -------------- | ------- |
+| GET                   | `/profile`                           | –    | –                                   | `Profile`      | planned |
+| PUT                   | `/profile`                           | ✔    | `UpdateProfileRequest`              | `Profile`      | planned |
+| GET                   | `/experiences`                       | –    | –                                   | `Experience[]` | planned |
+| POST / PATCH / DELETE | `/experiences[/:id]`                 | ✔    | `CreateExperienceRequest` / partial | `Experience`   | planned |
+| PUT                   | `/experiences/order`                 | ✔    | `ReorderRequest`                    | –              | planned |
+| …                     | `/projects`, `/skills`, `/education` |      | same pattern as experiences         |                | planned |
 
 ## Types
 
 Each type is defined here when its feature is designed; see [spec.md](spec.md) for the fields.
 
 ```ts
-interface LoginRequest {
-  email: string;
-  password: string;
-}
-interface LoginResponse {
-  accessToken: string;
-  expiresIn: number;
-} // seconds
 interface ReorderRequest {
   ids: string[];
 }

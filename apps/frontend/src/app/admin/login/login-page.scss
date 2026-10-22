@@ -1,0 +1,13 @@
+.login {
+  max-width: 400px;
+  margin: var(--space-5) auto;
+  h2 {
+    margin: 0 0 var(--space-4);
+    font-size: 1.125rem;
+  }
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+}

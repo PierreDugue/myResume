@@ -1,4 +1,5 @@
 import { Route } from '@angular/router';
+import { authGuard, guestGuard } from './core/auth/auth.guards';
 import { Shell } from './layout/shell/shell';
 
 export const appRoutes: Route[] = [
@@ -16,6 +17,17 @@ export const appRoutes: Route[] = [
         title: 'Plain view',
         loadComponent: () =>
           import('./public/plain-resume/plain-resume-page').then((m) => m.PlainResumePage),
+      },
+      {
+        path: 'admin/login',
+        title: 'Sign in',
+        canActivate: [guestGuard],
+        loadComponent: () => import('./admin/login/login-page').then((m) => m.LoginPage),
+      },
+      {
+        path: 'admin',
+        canActivate: [authGuard],
+        loadChildren: () => import('./admin/admin.routes').then((m) => m.adminRoutes),
       },
       {
         path: '**',

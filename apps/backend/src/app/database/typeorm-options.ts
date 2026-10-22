@@ -14,6 +14,8 @@ export function buildTypeOrmOptions(env: AppEnv): TypeOrmModuleOptions {
     username: env.DATABASE_USER,
     password: env.DATABASE_PASSWORD,
     database: env.DATABASE_NAME,
+    // uuid columns default to gen_random_uuid() (built into PostgreSQL 13+), no uuid-ossp needed.
+    uuidExtension: 'pgcrypto',
     autoLoadEntities: true,
     synchronize: false,
     migrations: MIGRATIONS,

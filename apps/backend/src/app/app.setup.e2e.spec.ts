@@ -1,4 +1,4 @@
-import { Body, Controller, Get, INestApplication, Post } from '@nestjs/common';
+import { Body, Controller, Get, INestApplication, Ip, Post } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { IsString } from 'class-validator';
 import request from 'supertest';
@@ -14,6 +14,11 @@ class ProbeController {
   @Get()
   get() {
     return { ok: true };
+  }
+
+  @Get('ip')
+  ip(@Ip() ip: string) {
+    return { ip };
   }
 
   @Post()
@@ -57,5 +62,12 @@ describe('configureApp', () => {
     const res = await request(app.getHttpServer()).post('/api/probe').send({ name: 'ok' });
     expect(res.status).toBe(201);
     expect(res.body).toEqual({ isDto: true, body: { name: 'ok' } });
+  });
+
+  it('trusts X-Forwarded-For from the local proxy (nginx, dev proxy) to get the visitor IP', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/api/probe/ip')
+      .set('X-Forwarded-For', '203.0.113.7');
+    expect(res.body.ip).toBe('203.0.113.7');
   });
 });

@@ -75,7 +75,11 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
 ## Configuration and secrets
 
 - The root `.env` (gitignored) is used by Docker Compose: `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT`, `BACKEND_PORT`, `NODE_ENV`. Never commit or print secrets. Don't read `.env` files unless the user asks.
-- The backend reads config with `@nestjs/config`, validated by [env.validation.ts](apps/backend/src/app/config/env.validation.ts): `NODE_ENV`, `PORT`, `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`. Coming with auth: `JWT_SECRET`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+- The backend reads config with `@nestjs/config`, validated by [env.validation.ts](apps/backend/src/app/config/env.validation.ts): `NODE_ENV`, `PORT`, `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`, and for auth:
+  - `JWT_SECRET`: **required**, at least 32 characters (`openssl rand -base64 48`)
+  - `PASSWORD_PEPPER`: **required**, at least 32 characters, different from `JWT_SECRET`. A server-side secret mixed into every password hash (HMAC-SHA256, then bcrypt with salt); it's never stored in the database. Changing it rebuilds the admin hash from `ADMIN_PASSWORD` on the next start.
+  - `ADMIN_EMAIL` / `ADMIN_PASSWORD`: optional but set together; password at least 12 characters. On startup the admin account is created or updated to match them, which is how the password is reset.
+- All of them go in the root `.env` (used by both Docker Compose and local dev).
 - Local dev needs no extra file. The backend loads `apps/backend/.env` (optional overrides) and then the root `.env`. Missing `DATABASE_*`/`PORT` values fall back to `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` and `BACKEND_PORT`, and `DATABASE_HOST` defaults to `localhost`. Variables already set in the shell win.
 - When you add a new variable, also add it to `docker-compose.yml` and list it here.
 
@@ -86,7 +90,11 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
 - TypeORM with `@nestjs/typeorm`. **`synchronize: false`**. Every schema change needs a migration in `src/app/database/migrations/`.
 - Global HTTP setup is in [app.setup.ts](apps/backend/src/app/app.setup.ts) (`/api` prefix and `ValidationPipe({ whitelist, forbidNonWhitelisted, transform })`), shared by `main.ts` and the e2e specs. Unknown body properties get a 400.
 - Validate input with `class-validator`/`class-transformer` DTOs.
-- Public endpoints are `GET` only. Every write endpoint is protected by the JWT auth guard.
+- **Auth is global** ([auth/](apps/backend/src/app/auth/)):
+  - `AuthModule` installs two app-wide guards: rate limiting (300 requests/min per IP) and JWT. Every route needs a token unless marked `@Public()`, and public routes are `GET` only (login is the exception).
+  - Use `@CurrentUser()` to get the token claims.
+  - Tune per-route limits with `@Throttle()`.
+  - `configureApp` trusts `X-Forwarded-For` from local and private-network proxies (nginx, the dev proxy), so limits apply per visitor IP. Don't publish the backend port on a public network.
 - Return plain DTO-shaped JSON. Never return password hashes or internal fields.
 - Use Nest exceptions (`NotFoundException`, ...), not raw errors.
 - HTTP-level tests (guards, pipes, status codes) use Vitest + `supertest` against a Nest testing app, in `apps/backend/src/**/*.e2e.spec.ts`.
@@ -107,6 +115,11 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
   - `shared/` (app-only UI)
   - Reusable UI goes to a library in `libs/frontend/`.
 - Use `HttpClient` through typed services in `core/` that return `@my-resume/api-models` types. Components never call `HttpClient` directly.
+- Auth ([core/auth/](apps/frontend/src/app/core/auth/)):
+  - `AuthService` holds the session (`isAuthenticated`, `token`, `email` signals, plus `login()`, `logout()`, `me()`).
+  - `authInterceptor` adds the token to `/api` calls and handles 401.
+  - Admin routes use `authGuard` (in `admin/admin.routes.ts`, under the `admin` route), and the login page uses `guestGuard`.
+  - In tests, `fakeJwt()` from `core/auth/test-tokens.ts` makes tokens, and `$()` from `src/app/testing.ts` finds elements without `!`.
 - Use reactive forms for admin editing screens.
 - Keep component styles under the budget (4kB warning per component). Load charts only when needed (`@defer` / lazy routes).
 - Pages are lazy-loaded child routes of the `Shell` route in `app.routes.ts`, with a `title`. The title feeds the document title and the breadcrumb `h1`, so pages don't add their own `h1`.

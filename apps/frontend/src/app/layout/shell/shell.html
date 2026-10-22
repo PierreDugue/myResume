@@ -25,6 +25,15 @@
     </ul>
   </nav>
 
+  <div class="account">
+    @if (auth.isAuthenticated()) {
+      <a class="admin-link" routerLink="/admin" routerLinkActive="active">Admin</a>
+      <button class="sign-out" type="button" (click)="signOut()">Sign out</button>
+    } @else {
+      <a class="sign-in" routerLink="/admin/login">Sign in</a>
+    }
+  </div>
+
   <p class="api-status" role="status" [attr.data-status]="apiStatus()">
     <span class="dot" aria-hidden="true"></span>
     API {{ apiStatus() === 'unknown' ? 'checking…' : apiStatus() }}

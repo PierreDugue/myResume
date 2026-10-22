@@ -11,6 +11,8 @@ const env: AppEnv = {
   DATABASE_USER: 'app',
   DATABASE_PASSWORD: 'secret',
   DATABASE_NAME: 'resume',
+  JWT_SECRET: 'x'.repeat(32),
+  PASSWORD_PEPPER: 'p'.repeat(32),
 };
 
 describe('buildTypeOrmOptions', () => {
@@ -43,5 +45,9 @@ describe('buildTypeOrmOptions', () => {
   it('passes the pg driver explicitly, so the production bundle declares and ships it', () => {
     // TypeORM otherwise loads "pg" dynamically, and webpack's generated package.json omits it.
     expect(buildTypeOrmOptions(env)).toMatchObject({ driver: pg });
+  });
+
+  it('generates uuids with the built-in gen_random_uuid() (pgcrypto), not the uuid-ossp extension', () => {
+    expect(buildTypeOrmOptions(env)).toMatchObject({ uuidExtension: 'pgcrypto' });
   });
 });

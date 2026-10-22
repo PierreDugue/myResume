@@ -91,7 +91,7 @@ export class JwtAuthGuard implements CanActivate {
 ```
 
 - `@nestjs/jwt` with `JWT_SECRET` from validated config (at least 32 characters), a short expiry (1 day per the spec), and an explicit `algorithms: ['HS256']`.
-- Passwords: `bcrypt` with cost ≥ 12, and compare in constant time (bcrypt does). Login failures return a generic "Invalid credentials".
+- Passwords: use `hashPassword`/`verifyPassword` from `auth/password.ts`. They apply salt and pepper: `HMAC-SHA256(PASSWORD_PEPPER, password)`, then bcrypt (cost 12). Never call bcrypt directly, and never store or log the pepper. Login failures return a generic "Invalid credentials" and still compare against a dummy hash, so timing doesn't reveal which emails exist.
 - **Rate limiting** with `@nestjs/throttler`: strict on `POST /api/auth/login` (e.g. 5/min per IP), looser globally. Behind nginx, trust the proxy so the real IP is used (`app.set('trust proxy', 1)` on Express).
 - Health and public `GET` endpoints are `@Public()`. Write tests asserting **401 without a token** for every write route.
 

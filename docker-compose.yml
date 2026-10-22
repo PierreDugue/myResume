@@ -31,6 +31,11 @@ services:
       DATABASE_NAME: ${POSTGRES_DB}
       PORT: 3000 # internal port, nginx proxies to backend:3000; BACKEND_PORT only changes the host port
       NODE_ENV: ${NODE_ENV:-production}
+      # Auth (see CLAUDE.md, Configuration): JWT_SECRET and PASSWORD_PEPPER are required (32+ characters, different).
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -base64 48)}
+      PASSWORD_PEPPER: ${PASSWORD_PEPPER:?Set PASSWORD_PEPPER in .env (openssl rand -base64 48)}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
       - '${BACKEND_PORT:-3000}:3000'
     depends_on:
