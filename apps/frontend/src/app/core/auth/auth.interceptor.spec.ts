@@ -68,6 +68,27 @@ describe('authInterceptor', () => {
     });
   });
 
+  it('on 401 after the session already ended (no token sent): goes to the login page', async () => {
+    token.set(null);
+    const call = firstValueFrom(http.put('/api/profile', {}));
+    backend.expectOne('/api/profile').flush(null, { status: 401, statusText: 'Unauthorized' });
+
+    await expect(call).rejects.toMatchObject({ status: 401 });
+    expect(navigate).toHaveBeenCalledWith(['/admin/login'], {
+      queryParams: { returnUrl: '/admin/profile' },
+    });
+  });
+
+  it('does not redirect on a 401 from another host', async () => {
+    const call = firstValueFrom(http.get('https://example.com/api/data'));
+    backend
+      .expectOne('https://example.com/api/data')
+      .flush(null, { status: 401, statusText: 'Unauthorized' });
+    await expect(call).rejects.toMatchObject({ status: 401 });
+    expect(logout).not.toHaveBeenCalled();
+    expect(navigate).not.toHaveBeenCalled();
+  });
+
   it('does not redirect on a 401 from the login request (wrong password)', async () => {
     const call = firstValueFrom(http.post('/api/auth/login', {}));
     backend.expectOne('/api/auth/login').flush(null, { status: 401, statusText: 'Unauthorized' });

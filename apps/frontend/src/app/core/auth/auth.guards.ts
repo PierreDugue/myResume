@@ -1,9 +1,9 @@
 import { inject } from '@angular/core';
-import { CanActivateFn, Router } from '@angular/router';
+import { CanActivateChildFn, CanActivateFn, Router } from '@angular/router';
 import { AuthService } from './auth.service';
 
 /** Admin pages: signed-in admin only; visitors go to the login page and come back afterwards. */
-export const authGuard: CanActivateFn = (_route, state) =>
+export const authGuard: CanActivateFn & CanActivateChildFn = (_route, state) =>
   inject(AuthService).isAuthenticated() ||
   inject(Router).createUrlTree(['/admin/login'], { queryParams: { returnUrl: state.url } });
 

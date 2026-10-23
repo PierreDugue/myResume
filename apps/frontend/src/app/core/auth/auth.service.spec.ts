@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { Router } from '@angular/router';
 import type { AuthUser, LoginResponse } from '@my-resume/api-models';
 import { firstValueFrom } from 'rxjs';
 import { AUTH_STORAGE_KEY, AuthService } from './auth.service';
@@ -103,6 +104,27 @@ describe('AuthService', () => {
 
     vi.advanceTimersByTime(61_000);
     expect(auth.isAuthenticated()).toBe(false);
+  });
+
+  it.each([
+    ['/admin/projects/1', true],
+    ['/admin/login', false],
+    ['/traces', false],
+  ])('when the token expires on %s, goes to the login page: %s', (url, redirects) => {
+    vi.useFakeTimers();
+    const navigate = vi.fn().mockResolvedValue(true);
+    TestBed.configureTestingModule({
+      providers: [{ provide: Router, useValue: { url, navigate } }],
+    });
+    localStorage.setItem(AUTH_STORAGE_KEY, fakeJwt({ exp: inSeconds(60) }));
+    setup();
+
+    vi.advanceTimersByTime(61_000);
+    if (redirects) {
+      expect(navigate).toHaveBeenCalledWith(['/admin/login'], { queryParams: { returnUrl: url } });
+    } else {
+      expect(navigate).not.toHaveBeenCalled();
+    }
   });
 
   it('keeps working when storage is unavailable', async () => {

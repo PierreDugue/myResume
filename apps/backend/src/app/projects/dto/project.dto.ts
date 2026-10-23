@@ -19,7 +19,13 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { IsHttpUrl, IsIsoDate, IsOnOrAfter, IsSlug } from '../../common/validators';
+import {
+  IsHttpUrl,
+  IsIsoDate,
+  IsOnOrAfter,
+  IsOptionalButNotNull,
+  IsSlug,
+} from '../../common/validators';
 import type { ProjectSpanEntity } from '../entities/project-span.entity';
 import type { ProjectEntity } from '../entities/project.entity';
 import { orderedSkillIds } from '../../skills/dto/skill.dto';
@@ -57,7 +63,7 @@ export class ProjectSpanInputDto implements ProjectSpanInput {
 }
 
 export class CreateProjectDto implements CreateProjectRequest {
-  @IsOptional()
+  @IsOptionalButNotNull()
   @IsString()
   @Length(1, 80)
   @IsSlug()

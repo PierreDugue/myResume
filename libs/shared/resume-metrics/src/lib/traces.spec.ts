@@ -109,6 +109,29 @@ describe('buildTrace', () => {
     });
   });
 
+  it('ends an ongoing project that starts in the future at its start', () => {
+    const resume = resumeFixture();
+    resume.projects[0] = {
+      ...resume.projects[0],
+      startDate: '2027-01-01',
+      endDate: null,
+      spans: [],
+    };
+    const root = buildTrace(resume, 'site', TODAY)?.spans[0];
+    expect(root).toMatchObject({
+      startDate: '2027-01-01',
+      endDate: '2027-01-01',
+      ongoing: true,
+      durationDays: 1,
+      offset: 0,
+      width: 1,
+    });
+    expect(buildTraces(resume, TODAY)[0]).toMatchObject({
+      endDate: '2027-01-01',
+      durationDays: 1,
+    });
+  });
+
   it('returns null for an unknown slug or a project without dates or spans', () => {
     expect(buildTrace(resumeFixture(), 'nope', TODAY)).toBeNull();
     expect(buildTrace(resumeFixture(), 'undated', TODAY)).toBeNull();

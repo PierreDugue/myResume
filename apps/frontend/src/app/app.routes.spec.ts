@@ -7,7 +7,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import { appRoutes } from './app.routes';
 import { APP_NAME } from './core/app-name';
 import { providePageTitleStrategy } from './core/title/page-title.strategy';
-import { AUTH_STORAGE_KEY } from './core/auth/auth.service';
+import { AUTH_STORAGE_KEY, AuthService } from './core/auth/auth.service';
 import { fakeJwt, inSeconds } from './core/auth/test-tokens';
 
 describe('appRoutes', () => {
@@ -79,5 +79,15 @@ describe('appRoutes', () => {
     const root = await visit('/admin');
     expect(root.querySelector('app-shell main app-admin-home-page')).not.toBeNull();
     expect(root.querySelector('nav[aria-label="Breadcrumb"] h1')?.textContent).toContain('Admin');
+  });
+
+  it('checks the session again when moving between admin pages', async () => {
+    localStorage.setItem(AUTH_STORAGE_KEY, fakeJwt({ exp: inSeconds(3600) }));
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/admin');
+    TestBed.inject(AuthService).logout();
+
+    await harness.navigateByUrl('/admin/skills');
+    expect(TestBed.inject(Router).url).toBe('/admin/login?returnUrl=%2Fadmin%2Fskills');
   });
 });

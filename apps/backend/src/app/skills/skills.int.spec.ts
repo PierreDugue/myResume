@@ -72,6 +72,14 @@ describe('Skills API', () => {
     expect((await create(body)).status).toBe(400);
   });
 
+  it.each([['name'], ['slug'], ['category']])(
+    'returns 400 when a PATCH sets the non-nullable %s to null',
+    async (key) => {
+      const { body: skill } = await create({ name: 'NgRx', category: 'State' });
+      expect((await http.patch(`/api/skills/${skill.id}`, { [key]: null })).status).toBe(400);
+    },
+  );
+
   it('returns 404 for an unknown id and 400 for an id that is not a uuid', async () => {
     expect((await http.patch(`/api/skills/${MISSING_ID}`, { level: 1 })).status).toBe(404);
     expect((await http.delete(`/api/skills/${MISSING_ID}`)).status).toBe(404);

@@ -61,6 +61,14 @@ describe('Projects API', () => {
     expect((await create({ ...site(), ...override })).status).toBe(400);
   });
 
+  it.each([['slug'], ['title'], ['description']])(
+    'returns 400 when a PATCH sets the non-nullable %s to null',
+    async (key) => {
+      const project = (await create(site())).body as Project;
+      expect((await http.patch(`/api/projects/${project.id}`, { [key]: null })).status).toBe(400);
+    },
+  );
+
   it('updates, lists, reorders and deletes', async () => {
     const a = (await create(site())).body as Project;
     const b = (await create({ ...site(), title: 'Second project' })).body as Project;

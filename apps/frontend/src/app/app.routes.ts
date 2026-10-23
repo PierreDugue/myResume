@@ -48,7 +48,8 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'admin',
-        canActivate: [authGuard],
+        // Child check too: the session can end while the admin moves between admin pages.
+        canActivateChild: [authGuard],
         loadChildren: () => import('./admin/admin.routes').then((m) => m.adminRoutes),
       },
       {

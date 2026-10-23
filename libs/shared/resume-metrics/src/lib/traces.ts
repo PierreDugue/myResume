@@ -54,10 +54,10 @@ function traceSpans(project: Project, skills: Skill[], today: string): TraceSpan
   const start = project.startDate ?? minDate(spans.map((s) => s.startDate));
   if (!start) return null;
 
-  // An ongoing span runs until today, or its own start if that is later.
+  // An ongoing span (or project) runs until today, or its own start if that is later.
   const spanEnd = (s: { startDate: string; endDate: string | null }) =>
     s.endDate ?? maxDate([today, s.startDate]);
-  const end = project.endDate ?? maxDate([today, ...spans.map(spanEnd)]);
+  const end = project.endDate ?? maxDate([today, start, ...spans.map(spanEnd)]);
   const rootStart = dayIndex(start);
   const rootDays = dayIndex(end) - rootStart + 1;
   const tech = (ids: string[]): TraceSpanSkill[] =>

@@ -1,7 +1,7 @@
 import { PartialType } from '@nestjs/mapped-types';
 import type { CreateSkillRequest, Skill, SkillLevel } from '@my-resume/api-models';
 import { IsInt, IsOptional, IsString, Length, Max, Min } from 'class-validator';
-import { IsSlug } from '../../common/validators';
+import { IsOptionalButNotNull, IsSlug } from '../../common/validators';
 import type { SkillEntity } from '../entities/skill.entity';
 
 export class CreateSkillDto implements CreateSkillRequest {
@@ -9,7 +9,7 @@ export class CreateSkillDto implements CreateSkillRequest {
   @Length(1, 120)
   name!: string;
 
-  @IsOptional()
+  @IsOptionalButNotNull()
   @IsString()
   @Length(1, 80)
   @IsSlug()

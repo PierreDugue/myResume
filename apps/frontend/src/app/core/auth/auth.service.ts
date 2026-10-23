@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { DOCUMENT, Service, computed, inject, signal } from '@angular/core';
+import { Router } from '@angular/router';
 import type { AuthUser, LoginRequest, LoginResponse } from '@my-resume/api-models';
 import { Observable, map } from 'rxjs';
 
@@ -19,6 +20,7 @@ interface Session {
 @Service()
 export class AuthService {
   private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
   private readonly storage = inject(DOCUMENT).defaultView?.localStorage;
   private readonly session = signal<Session | null>(null);
   private expiryTimer?: ReturnType<typeof setTimeout>;
@@ -62,7 +64,16 @@ export class AuthService {
     this.session.set(session);
     clearTimeout(this.expiryTimer);
     const msLeft = Math.min(session.exp * 1000 - Date.now(), 2 ** 31 - 1);
-    this.expiryTimer = setTimeout(() => this.logout(), msLeft);
+    this.expiryTimer = setTimeout(() => this.expire(), msLeft);
+  }
+
+  /** Token expired: sign out, and leave the admin page for the login page (coming back after). */
+  private expire(): void {
+    this.logout();
+    const url = this.router.url;
+    if (url.startsWith('/admin') && !url.startsWith('/admin/login')) {
+      void this.router.navigate(['/admin/login'], { queryParams: { returnUrl: url } });
+    }
   }
 
   private read(): string | null {
