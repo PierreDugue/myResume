@@ -7,6 +7,7 @@ import type {
   HighlightLevel,
   Impact,
 } from '@my-resume/api-models';
+import { RESERVED_LABELS } from '@my-resume/resume-metrics';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
@@ -17,6 +18,7 @@ import {
   IsString,
   IsUUID,
   Length,
+  registerDecorator,
   ValidateNested,
 } from 'class-validator';
 import { IsIsoDate, IsOnOrAfter } from '../../common/validators';
@@ -25,6 +27,39 @@ import { orderedSkillIds } from '../../skills/dto/skill.dto';
 import type { HighlightEntity } from '../entities/highlight.entity';
 
 const LEVELS: HighlightLevel[] = ['achievement', 'info', 'learning', 'milestone'];
+const LABEL_KEY = /^[a-z][a-z0-9_]{0,29}$/;
+const MAX_LABELS = 10;
+
+function isHighlightLabels(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+  const entries = Object.entries(value);
+  return (
+    entries.length <= MAX_LABELS &&
+    entries.every(
+      ([key, v]) =>
+        LABEL_KEY.test(key) &&
+        !RESERVED_LABELS.includes(key) &&
+        typeof v === 'string' &&
+        v.length >= 1 &&
+        v.length <= 60,
+    )
+  );
+}
+
+/** Highlight labels: at most 10, `^[a-z][a-z0-9_]{0,29}$` keys that aren't reserved, 1..60 character values. */
+function IsHighlightLabels(): PropertyDecorator {
+  return (target, propertyName) =>
+    registerDecorator({
+      name: 'isHighlightLabels',
+      target: target.constructor,
+      propertyName: propertyName as string,
+      validator: {
+        validate: isHighlightLabels,
+        defaultMessage: () =>
+          `labels must have at most ${MAX_LABELS} entries, keys of lowercase letters, digits and "_" (not ${RESERVED_LABELS.join(', ')}), and values of 1 to 60 characters`,
+      },
+    });
+}
 
 export class ImpactDto implements Impact {
   @IsString()
@@ -71,6 +106,16 @@ export class HighlightInputDto implements HighlightInput {
   @ValidateNested()
   @Type(() => ImpactDto)
   impact?: ImpactDto | null;
+
+  @IsOptional()
+  @IsHighlightLabels()
+  labels?: Record<string, string>;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsUUID('all', { each: true })
+  skillIds?: string[];
 }
 
 export class CreateExperienceDto implements CreateExperienceRequest {
@@ -124,6 +169,8 @@ export function toHighlight(h: HighlightEntity): Highlight {
     level: h.level,
     message: h.message,
     impact: h.impact ?? null,
+    labels: h.labels ?? {},
+    skillIds: orderedSkillIds(h.skills),
     sortOrder: h.sortOrder,
   };
 }

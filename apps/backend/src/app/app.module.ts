@@ -7,6 +7,7 @@ import { DashboardModule } from './dashboard/dashboard.module';
 import { buildTypeOrmOptions } from './database/typeorm-options';
 import { HealthModule } from './health/health.module';
 import { ResumeModule } from './resume/resume.module';
+import { LogsModule } from './logs/logs.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { ResumeModule } from './resume/resume.module';
     HealthModule,
     ResumeModule,
     DashboardModule,
+    LogsModule,
   ],
 })
 export class AppModule {}

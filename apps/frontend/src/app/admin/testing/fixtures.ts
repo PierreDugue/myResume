@@ -57,6 +57,8 @@ export const kx: Experience = {
         unit: '%',
         direction: 'down-is-good',
       },
+      labels: { team: 'platform' },
+      skillIds: ['s-ngrx'],
       sortOrder: 0,
     },
     {
@@ -65,6 +67,8 @@ export const kx: Experience = {
       level: 'milestone',
       message: 'Introduced an NX monorepo.',
       impact: null,
+      labels: {},
+      skillIds: [],
       sortOrder: 1,
     },
   ],

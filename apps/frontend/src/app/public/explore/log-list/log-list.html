@@ -1,0 +1,81 @@
+@if (entries().length === 0) {
+  <p class="empty">No log lines match this query in these years.</p>
+} @else {
+  <ol>
+    @for (entry of entries(); track entry.id) {
+      <li class="line">
+        <button
+          class="summary"
+          type="button"
+          [attr.aria-expanded]="isExpanded(entry.id)"
+          [attr.aria-controls]="'log-' + entry.id"
+          (click)="toggle(entry.id)"
+        >
+          <!-- Spaces inside the spans: Angular drops whitespace between elements. -->
+          <time [attr.datetime]="entry.date">{{ entry.date }}</time>
+          <span class="level" [class]="entry.level">&#32;{{ entry.level.toUpperCase() }}</span>
+          <span class="source">&#32;[{{ entry.source }}]</span>
+          <span class="message">&#32;{{ entry.message }}</span>
+        </button>
+        @if (isExpanded(entry.id)) {
+          <div class="details" [id]="'log-' + entry.id">
+            <table>
+              <caption class="sr-only">
+                Labels of this line
+              </caption>
+              <tbody>
+                @for (label of labelsOf(entry); track label[0]) {
+                  <tr>
+                    <th scope="row">{{ label[0] }}</th>
+                    <td>{{ label[1] }}</td>
+                    <td class="actions">
+                      <button
+                        class="icon-button"
+                        type="button"
+                        [attr.aria-label]="'Filter for ' + label[0] + '=' + label[1]"
+                        [attr.title]="'Filter for ' + label[0] + '=' + label[1]"
+                        (click)="filter.emit({ label: label[0], value: label[1], op: '=' })"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                      </button>
+                      <button
+                        class="icon-button"
+                        type="button"
+                        [attr.aria-label]="'Filter out ' + label[0] + '=' + label[1]"
+                        [attr.title]="'Filter out ' + label[0] + '=' + label[1]"
+                        (click)="filter.emit({ label: label[0], value: label[1], op: '!=' })"
+                      >
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" /></svg>
+                      </button>
+                    </td>
+                  </tr>
+                }
+                @if (entry.tech.length > 0) {
+                  <tr>
+                    <th scope="row">tech</th>
+                    <td>
+                      @for (tech of entry.tech; track tech; let last = $last) {
+                        <button
+                          class="chip"
+                          type="button"
+                          [attr.aria-label]="'Filter for tech=' + tech"
+                          [attr.title]="'Filter for tech=' + tech"
+                          (click)="filter.emit({ label: 'tech', value: tech, op: '=' })"
+                        >
+                          {{ tech }}</button
+                        >{{ last ? '' : ', ' }}
+                      }
+                    </td>
+                    <td></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </li>
+    }
+  </ol>
+}

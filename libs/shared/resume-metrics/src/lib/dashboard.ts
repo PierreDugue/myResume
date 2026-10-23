@@ -153,7 +153,8 @@ export function buildDashboard({ resume, today, query }: DashboardInput): Dashbo
   };
 }
 
-function resolveRange(query: DashboardQuery, defaultFrom: number, currentYear: number) {
+/** The year range of a query, with defaults; throws a DashboardQueryError if invalid. */
+export function resolveRange(query: DashboardQuery, defaultFrom: number, currentYear: number) {
   const from = query.from ?? defaultFrom;
   const to = query.to ?? currentYear;
   for (const [name, year] of [

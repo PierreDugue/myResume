@@ -6,4 +6,7 @@ export interface NavItem {
 }
 
 /** Main navigation. Each feature adds its page here when it is built (see docs/spec.md). */
-export const NAV_ITEMS: readonly NavItem[] = [{ label: 'Career Overview', path: '/', exact: true }];
+export const NAV_ITEMS: readonly NavItem[] = [
+  { label: 'Career Overview', path: '/', exact: true },
+  { label: 'Explore', path: '/explore', exact: false },
+];

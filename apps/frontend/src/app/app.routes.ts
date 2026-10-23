@@ -13,6 +13,11 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./public/overview/overview-page').then((m) => m.OverviewPage),
       },
       {
+        path: 'explore',
+        title: 'Explore',
+        loadComponent: () => import('./public/explore/explore-page').then((m) => m.ExplorePage),
+      },
+      {
         path: 'resume',
         title: 'Plain view',
         loadComponent: () =>

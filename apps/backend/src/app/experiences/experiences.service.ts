@@ -13,7 +13,7 @@ import {
 import { ExperienceEntity } from './entities/experience.entity';
 import { HighlightEntity } from './entities/highlight.entity';
 
-const RELATIONS = { skills: true, highlights: true } as const;
+const RELATIONS = { skills: true, highlights: { skills: true } } as const;
 
 @Injectable()
 export class ExperiencesService {
@@ -119,6 +119,10 @@ export class ExperiencesService {
       keptIds.add(input.id);
     }
 
+    // One query validates every highlight's skills.
+    const skills = await this.skills.findByIdsOrFail(inputs.flatMap((i) => i.skillIds ?? []));
+    const skillById = new Map(skills.map((s) => [s.id, s]));
+
     const removed = existing.filter((h) => !keptIds.has(h.id));
     if (removed.length > 0) await tx.remove(HighlightEntity, removed);
 
@@ -132,6 +136,8 @@ export class ExperiencesService {
         level: input.level,
         message: input.message,
         impact: normalizeImpact(input.impact),
+        labels: input.labels ?? {},
+        skills: [...new Set(input.skillIds ?? [])].map((id) => skillById.get(id)),
         sortOrder: index,
       });
       await tx.save(HighlightEntity, target);

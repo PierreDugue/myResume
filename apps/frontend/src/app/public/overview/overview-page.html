@@ -171,7 +171,7 @@
       info="The newest achievements, as log lines."
       [data]="d.latestHighlights"
     >
-      <app-log-preview [lines]="d.latestHighlights" />
+      <app-log-preview [lines]="d.latestHighlights" [range]="d.range" />
     </app-panel>
   </div>
 } @else if (dashboard.error()) {

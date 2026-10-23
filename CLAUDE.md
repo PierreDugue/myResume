@@ -29,7 +29,7 @@ Libraries:
 
 - `libs/shared/api-models` (`@my-resume/api-models`): API types
 - `libs/shared/resume-metrics` (`@my-resume/resume-metrics`): pure calculations behind the dashboards (`buildDashboard`, month arithmetic). The backend calls it and the frontend reuses its helpers (e.g. `monthIndex`). Unit-test every rule here, with hand-checkable fixtures (`src/lib/fixtures.ts`).
-- Planned: `libs/shared/query-parser` (the log query parser, for the backend filter and frontend autocomplete).
+- `libs/shared/query-parser` (`@my-resume/query-parser`): the LogQL-style query language of Explore: `parseQuery` (with column-precise `QueryParseError`s), `compileQuery` (matching; regexes run with `re2js`, in linear time, because visitors' queries run on the server: never use `RegExp` on query input), `suggest`/`applySuggestion` (autocomplete) and `withLabelMatcher`. The backend filters with it and the frontend checks queries and suggests labels with it. Unit-test every rule here.
 - Angular UI stays in the app (`apps/frontend/src/app/shared/`) while only one app uses it. Nx's Angular libraries can't use the app's test runner (`vitest-angular`) unless they're separately buildable, so move UI to a library only when a second consumer appears.
 
 ## Commands (always from the repo root)

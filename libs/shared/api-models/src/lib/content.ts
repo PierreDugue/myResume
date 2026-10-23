@@ -71,8 +71,15 @@ export interface Highlight {
   level: HighlightLevel;
   message: string;
   impact: Impact | null;
+  /** Free labels shown in Explore, e.g. { team: "checkout" }; {} when none. */
+  labels: HighlightLabels;
+  /** Technologies of this achievement, in skills-list order. */
+  skillIds: string[];
   sortOrder: number;
 }
+
+/** Highlight label keys: `^[a-z][a-z0-9_]{0,29}$`, values 1..60 characters, at most 10. */
+export type HighlightLabels = Record<string, string>;
 
 export interface HighlightInput {
   /** Existing highlight of this experience, to update it. */
@@ -81,6 +88,10 @@ export interface HighlightInput {
   level: HighlightLevel;
   message: string;
   impact?: Impact | null;
+  /** Left out = {}. */
+  labels?: HighlightLabels;
+  /** Left out = []. */
+  skillIds?: string[];
 }
 
 export interface Experience {

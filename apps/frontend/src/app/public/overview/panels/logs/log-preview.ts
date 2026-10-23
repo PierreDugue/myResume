@@ -1,9 +1,11 @@
 import { Component, input } from '@angular/core';
-import type { LogLine } from '@my-resume/api-models';
+import { RouterLink } from '@angular/router';
+import type { DashboardRange, LogLine } from '@my-resume/api-models';
 
-/** The latest highlights, printed like log lines. */
+/** The latest highlights, printed like log lines, with a link to Explore for the same years. */
 @Component({
   selector: 'app-log-preview',
+  imports: [RouterLink],
   template: `
     @if (lines().length === 0) {
       <p class="empty">No highlights in this range.</p>
@@ -20,6 +22,7 @@ import type { LogLine } from '@my-resume/api-models';
         }
       </ol>
     }
+    <a class="explore" routerLink="/explore" [queryParams]="range()">Open in Explore →</a>
   `,
   styles: `
     ol {
@@ -55,8 +58,15 @@ import type { LogLine } from '@my-resume/api-models';
     .empty {
       color: var(--color-text-muted);
     }
+    .explore {
+      display: inline-block;
+      margin-top: var(--space-2);
+      font-size: 0.8125rem;
+    }
   `,
 })
 export class LogPreview {
   readonly lines = input.required<LogLine[]>();
+  /** The dashboard's years, carried over to Explore. */
+  readonly range = input<DashboardRange | null>(null);
 }

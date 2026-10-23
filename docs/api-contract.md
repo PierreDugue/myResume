@@ -130,7 +130,10 @@ interface AuthUser {
 - **Experiences** include their **highlights** (achievements, the future log lines).
   - In `POST` and `PATCH`, `highlights` is the complete, ordered list: items with an `id` are updated, items without one are created, and existing highlights missing from the list are deleted. An `id` that belongs to another experience returns `400`.
   - Deleting an experience deletes its highlights.
-- **Skills:** deleting a skill removes it from every experience and project (no error).
+- **Highlight labels and skills** (shown in Explore):
+  - `labels`: at most 10. Keys match `^[a-z][a-z0-9_]{0,29}$`, values are 1..60 characters. The keys Explore already sets are reserved and return `400`: `type`, `level`, `company`, `role`, `location`, `school`, `degree`, `project`, `tech`.
+  - `skillIds`: unknown ids return `400`, like the experience's own `skillIds`.
+- **Skills:** deleting a skill removes it from every experience, project and highlight (no error).
 
 ```ts
 type IsoDate = string; // 'YYYY-MM-DD'
@@ -184,12 +187,16 @@ interface Impact {
   unit: string | null; // e.g. "%", "s"
   direction: 'up-is-good' | 'down-is-good';
 }
+/** Free labels of a log line, e.g. { team: "checkout" }. */
+type HighlightLabels = Record<string, string>;
 interface Highlight {
   id: string;
   date: IsoDate;
   level: HighlightLevel;
   message: string;
   impact: Impact | null;
+  labels: HighlightLabels; // {} when none
+  skillIds: string[]; // the technologies of this achievement, in skills-list order
   sortOrder: number;
 }
 interface HighlightInput {
@@ -198,6 +205,8 @@ interface HighlightInput {
   level: HighlightLevel;
   message: string;
   impact?: Impact | null;
+  labels?: HighlightLabels; // left out = {} (the list replaces the highlight entirely)
+  skillIds?: string[]; // left out = []
 }
 
 interface Experience {
@@ -285,7 +294,7 @@ interface ResumeResponse {
 }
 ```
 
-**Not yet (later steps):** highlight labels and skills (step 5, Explore), project spans (step 6), status alerts (step 7), the resume PDF (step 9).
+**Not yet (later steps):** project spans (step 6), status alerts (step 7), the resume PDF (step 9).
 
 ### Dashboard (Career Overview)
 
@@ -402,6 +411,89 @@ interface DashboardResponse {
   skillUsage: SkillUsage;
   skillTotals: SkillTotalsGroup[]; // categories in skills-list order, skills by years desc
   latestHighlights: LogLine[]; // 5 newest
+}
+```
+
+### Explore (logs)
+
+| Method | Path               | Auth | Request                      | Response                 | Status |
+| ------ | ------------------ | ---- | ---------------------------- | ------------------------ | ------ |
+| GET    | `/api/logs`        | –    | query: `query`, `from`, `to` | `LogsResponse`, or `400` | done   |
+| GET    | `/api/logs/labels` | –    | –                            | `LogLabel[]`             | done   |
+
+The resume as a log stream, searched with a small LogQL-style language. The parser is shared by the backend (which filters) and the frontend (which checks the query as you type and suggests labels and values): `@my-resume/query-parser`.
+
+**Log lines.** Each line has a date, a level, a source, a message, labels and technologies:
+
+| `type`       | One line per               | Date                                 | Level         | Source  | Message                                                    | Labels                                     | `tech`                 |
+| ------------ | -------------------------- | ------------------------------------ | ------------- | ------- | ---------------------------------------------------------- | ------------------------------------------ | ---------------------- |
+| `experience` | highlight of an experience | the highlight's date                 | its own level | company | the highlight's message                                    | `company`, `role`, `location`¹, own labels | the highlight's skills |
+| `education`  | education entry            | `endDate`, or `startDate` if ongoing | `milestone`   | school  | `Graduated: <degree>[, <field>]` (`Started: …` if ongoing) | `school`, `degree`, `location`¹            | –                      |
+| `project`    | project with a `startDate` | `startDate`                          | `milestone`   | title   | `<title>: <description>`                                   | `project` (its slug)                       | the project's skills   |
+
+Every line also has the labels `type` and `level`. ¹ only when set.
+
+**Query language** (all parts optional; an empty query matches every line):
+
+```
+{company="Whoz", level=~"achievement|milestone"} |= "angular" != "legacy"
+```
+
+- **Label selector** `{…}`: comma-separated matchers `label op "value"`.
+  - `=` equals, `!=` differs, `=~` matches the regular expression (whole value), `!~` doesn't match it.
+  - Values are compared **case-insensitively**.
+  - `tech` holds several values (skill names): `{tech="Angular"}` keeps lines with Angular among their technologies, `{tech!="Angular"}` lines without it.
+  - A label a line doesn't have counts as the empty string (`{location=""}` keeps lines without a location).
+- **Line filters**, after the selector: `|= "text"` contains, `!= "text"` doesn't contain, `|~ "regex"` matches, `!~ "regex"` doesn't match. They search the printed line, `<source> <message>`, case-insensitively.
+- **Strings** use double quotes (`\"` and `\\` are escapes; any other backslash is kept, so `"\d+"` works) or backticks (raw, no escapes).
+- **Plain text**: a query that doesn't start with `{`, `|` or `!` is a text search, the same as `|= "<the text>"`.
+- **Regular expressions** use [RE2 syntax](https://github.com/google/re2/wiki/Syntax): no back-references and no lookarounds. They are matched with RE2, in time linear in the text, so no pattern can slow the server down.
+- **Limits:** at most 500 characters per query, and 100 per regular expression.
+- **Label names** are only the labels of the table above and a highlight's own labels: any other name, `constructor` included, is a missing label.
+- A query that breaks these rules returns `400` with one message giving the column, e.g. `Expected "=", "!=", "=~" or "!~" after "company" (column 10)`.
+
+**Range.** `from` and `to` are years, with the same rules as the dashboard (1950..2100, `from ≤ to`, otherwise `400`). By default they cover every line: from the year of the oldest line to the current year.
+
+**Labels.** `GET /api/logs/labels` lists every label name used by at least one line, sorted by name (`type` and `level` first), with its distinct values sorted alphabetically. The frontend uses it for autocomplete.
+
+```ts
+type LogType = 'experience' | 'education' | 'project';
+
+interface LogsQuery {
+  query?: string;
+  from?: number; // year
+  to?: number;
+}
+
+interface LogEntry {
+  id: string; // the highlight, education or project id
+  type: LogType;
+  date: IsoDate;
+  level: HighlightLevel;
+  source: string; // company, school or project title
+  message: string;
+  labels: Record<string, string>; // type, level, then the labels of the table above
+  tech: string[]; // skill names, in skills-list order
+}
+
+interface LogVolume {
+  year: number;
+  total: number;
+  levels: Record<HighlightLevel, number>; // every level present, 0 when none
+}
+
+interface LogsResponse {
+  query: string; // as received ('' when left out)
+  range: DashboardRange; // as applied
+  bounds: DashboardRange; // the default range (oldest line's year to the current year), for range pickers
+  total: number; // matching lines in the range
+  entries: LogEntry[]; // newest first
+  volume: LogVolume[]; // one bucket per year of the range, oldest first
+}
+
+interface LogLabel {
+  name: string;
+  values: string[];
 }
 ```
 

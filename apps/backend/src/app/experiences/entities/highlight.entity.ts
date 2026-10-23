@@ -4,10 +4,13 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinTable,
+  ManyToMany,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { SkillEntity } from '../../skills/entities/skill.entity';
 import { ExperienceEntity } from './experience.entity';
 
 /** An achievement of an experience; becomes a log line in Explore (build step 5). */
@@ -31,6 +34,14 @@ export class HighlightEntity {
 
   @Column({ type: 'jsonb', nullable: true })
   impact!: Impact | null;
+
+  /** Free labels shown in Explore, e.g. { team: "checkout" }. */
+  @Column({ type: 'jsonb', default: {} })
+  labels!: Record<string, string>;
+
+  @ManyToMany(() => SkillEntity)
+  @JoinTable({ name: 'highlight_skill' })
+  skills!: SkillEntity[];
 
   @Column({ type: 'int', default: 0 })
   sortOrder!: number;

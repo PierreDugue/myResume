@@ -171,6 +171,79 @@
                 </div>
               </div>
             }
+            @let extrasInvalid = hl.labels().invalid() && hl.labels().touched();
+            <details class="extras" [attr.open]="extrasInvalid || null">
+              <summary>Tech and labels ({{ extrasSummary(hl().value()) }})</summary>
+              <fieldset class="tech" [attr.aria-label]="'Achievement ' + (i + 1) + ' technologies'">
+                <legend>Technologies</legend>
+                @let options = techOptions(hl.skillIds().value());
+                @if (options.length > 0) {
+                  <app-skill-picker
+                    [skills]="options"
+                    [selected]="hl.skillIds().value()"
+                    (selectedChange)="hl.skillIds().value.set($event)"
+                  />
+                } @else {
+                  <p class="hint">Pick the job's tech stack first.</p>
+                }
+              </fieldset>
+              <fieldset class="labels">
+                <legend>Labels <span class="hint">shown and searchable in Explore</span></legend>
+                @for (label of hl.labels; track $index; let j = $index) {
+                  <div class="label-row">
+                    <div class="field">
+                      <label [for]="'hl-' + i + '-label-' + j + '-key'"
+                        ><span class="sr-only">Achievement {{ i + 1 }} label {{ j + 1 }} </span
+                        >name</label
+                      >
+                      <input
+                        [id]="'hl-' + i + '-label-' + j + '-key'"
+                        [formField]="label.key"
+                        placeholder="e.g. team"
+                        [attr.aria-invalid]="showError(label.key()) || null"
+                      />
+                      @if (showError(label.key())) {
+                        <p class="field-error">{{ label.key().errors()[0].message }}</p>
+                      }
+                    </div>
+                    <div class="field">
+                      <label [for]="'hl-' + i + '-label-' + j + '-value'"
+                        ><span class="sr-only">Achievement {{ i + 1 }} label {{ j + 1 }} </span
+                        >value</label
+                      >
+                      <input
+                        [id]="'hl-' + i + '-label-' + j + '-value'"
+                        [formField]="label.value"
+                        placeholder="e.g. checkout"
+                        [attr.aria-invalid]="showError(label.value()) || null"
+                      />
+                      @if (showError(label.value())) {
+                        <p class="field-error">{{ label.value().errors()[0].message }}</p>
+                      }
+                    </div>
+                    <button
+                      class="icon-button"
+                      type="button"
+                      [attr.aria-label]="'Remove label ' + (j + 1) + ' of achievement ' + (i + 1)"
+                      (click)="removeLabel(i, j)"
+                    >
+                      <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M6 6l12 12M18 6L6 18" />
+                      </svg>
+                    </button>
+                  </div>
+                }
+                <button
+                  class="button"
+                  type="button"
+                  [disabled]="hl.labels().value().length >= maxLabels"
+                  [attr.aria-label]="'Add a label to achievement ' + (i + 1)"
+                  (click)="addLabel(i)"
+                >
+                  Add label
+                </button>
+              </fieldset>
+            </details>
             <div class="row-actions">
               <button
                 class="icon-button"

@@ -34,6 +34,7 @@ describe('appRoutes', () => {
     ['/', 'Career Overview', 'app-overview-page'],
     ['/admin/login', 'Sign in', 'app-login-page'],
     ['/resume', 'Plain view', 'app-plain-resume-page'],
+    ['/explore', 'Explore', 'app-explore-page'],
     ['/this/does/not/exist', 'Page not found', 'app-not-found-page'],
   ])('%s renders "%s" inside the app shell', async (url, title, pageSelector) => {
     const root = await visit(url);
@@ -41,6 +42,13 @@ describe('appRoutes', () => {
     expect(root.querySelector(`app-shell main ${pageSelector}`)).not.toBeNull();
     expect(root.querySelector('nav[aria-label="Breadcrumb"] h1')?.textContent).toContain(title);
     expect(TestBed.inject(Title).getTitle()).toBe(`${title} · ${APP_NAME}`);
+  });
+
+  it('lists Explore in the main navigation', async () => {
+    const root = await visit('/explore');
+    const current = root.querySelector('nav[aria-label="Main"] a[aria-current="page"]');
+    expect(current?.textContent).toContain('Explore');
+    expect(current?.getAttribute('href')).toBe('/explore');
   });
 
   it('offers a link back to the home dashboard on the not-found page', async () => {

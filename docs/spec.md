@@ -243,7 +243,7 @@ The server checks every message the client sends, limits each connection to 20 m
   - `apps/frontend`: Angular 22, zoneless
   - `apps/backend`: NestJS 11
   - `apps/frontend-e2e`: Cypress
-  - shared libraries in `libs/`: `@my-resume/api-models` now; `query-parser` and `ui-panels` planned
+  - shared libraries in `libs/`: `@my-resume/api-models`, `resume-metrics` and `query-parser` now; `ui-panels` planned
 - **Tests:** Vitest for all unit tests (frontend, backend, libraries), Cypress for end-to-end tests, test-driven development as the rule.
 - **Charts:** Apache ECharts 6, for the time series, heatmap, state timeline, service map and live charts.
   - It's used through our own small Angular wrapper component in `libs/frontend/ui-panels`: signal inputs, resizing, a theme built from the CSS color tokens, cleanup on destroy. We don't use `ngx-echarts`.
@@ -276,7 +276,12 @@ The server checks every message the client sends, limits each connection to 20 m
    - The time range and filters are kept in the URL.
    - Not done yet: the "Export PDF" button (step 9), the refresh and Live controls (step 8).
    - The "skill levels" bar gauge shows **years of experience per skill**, because the resume gives no levels; a level shows when set in the admin.
-5. **Explore:** highlight labels and skills, the query parser (written test-first), `/logs`, the logs panel UI.
+5. **Explore:** ✅
+   - highlight labels and skills (admin form; existing highlights tagged with the skills their message names, by a migration)
+   - the query parser, matcher and autocomplete in `libs/shared/query-parser` (written test-first)
+   - `GET /api/logs` and `GET /api/logs/labels`; the log lines are built in `libs/shared/resume-metrics`
+   - the `/explore` page: query bar with autocomplete and example queries, log volume chart (with a table view), expandable lines that narrow the query; the year range is in the URL
+   - Not done yet: the live tail tab (step 8).
 6. **Traces and service map:** ProjectSpan entity and admin screen, the waterfall view, the node graph.
 7. **Alerts:** StatusAlert entity and admin screen, alerting page.
 8. **Live site metrics and streaming:**

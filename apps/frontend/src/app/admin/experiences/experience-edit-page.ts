@@ -17,7 +17,9 @@ import type {
   HighlightInput,
   HighlightLevel,
   Impact,
+  Skill,
 } from '@my-resume/api-models';
+import { RESERVED_LABELS } from '@my-resume/resume-metrics';
 import { ContentApi } from '../../core/content/content-api.service';
 import { editPage } from '../shared/edit-page';
 import { endOnOrAfterStart, showError, textOrNull } from '../shared/form-utils';
@@ -32,6 +34,15 @@ interface ImpactModel {
   direction: Impact['direction'];
 }
 
+interface LabelModel {
+  key: string;
+  value: string;
+}
+
+/** Same rules as the API: see docs/api-contract.md, highlight labels. */
+const LABEL_KEY = /^[a-z][a-z0-9_]{0,29}$/;
+const MAX_LABELS = 10;
+
 interface HighlightModel {
   /** '' for a new highlight. */
   id: string;
@@ -41,6 +52,8 @@ interface HighlightModel {
   hasImpact: boolean;
   /** Kept while `hasImpact` is off, so unticking and ticking again loses nothing. */
   impact: ImpactModel;
+  skillIds: string[];
+  labels: LabelModel[];
 }
 
 interface ExperienceModel {
@@ -78,6 +91,8 @@ function toHighlightModel(h?: Highlight): HighlightModel {
       unit: h?.impact?.unit ?? '',
       direction: h?.impact?.direction ?? 'down-is-good',
     },
+    skillIds: [...(h?.skillIds ?? [])],
+    labels: Object.entries(h?.labels ?? {}).map(([key, value]) => ({ key, value })),
   };
 }
 
@@ -109,6 +124,8 @@ function toHighlightInput(h: HighlightModel): HighlightInput {
           direction: h.impact.direction,
         }
       : null,
+    labels: Object.fromEntries(h.labels.map((l) => [l.key.trim(), l.value.trim()])),
+    skillIds: h.skillIds,
   };
 }
 
@@ -163,6 +180,28 @@ export class ExperienceEditPage {
             ? { kind: 'impactMetric', message: 'Name the metric of this impact' }
             : undefined,
         );
+        applyEach(h.labels, (label) => {
+          required(label.key, { message: 'Name is required' });
+          validate(label.key, ({ value, valueOf }) => {
+            const key = value().trim();
+            if (!key) return undefined;
+            if (!LABEL_KEY.test(key)) {
+              return {
+                kind: 'labelKey',
+                message: 'Use lowercase letters, digits and _, starting with a letter (30 at most)',
+              };
+            }
+            if (RESERVED_LABELS.includes(key)) {
+              return { kind: 'labelReserved', message: `"${key}" is set automatically` };
+            }
+            const uses = valueOf(h.labels).filter((l) => l.key.trim() === key).length;
+            return uses > 1
+              ? { kind: 'labelDuplicate', message: 'This label is already used' }
+              : undefined;
+          });
+          required(label.value, { message: 'Value is required' });
+          maxLength(label.value, 60, { message: 'Use at most 60 characters' });
+        });
       });
     },
     {
@@ -177,6 +216,31 @@ export class ExperienceEditPage {
     },
   );
   protected readonly showError = showError;
+  protected readonly maxLabels = MAX_LABELS;
+
+  /** The skills an achievement can use: the job's tech stack, plus any it already has. */
+  protected techOptions(selected: string[]): Skill[] {
+    const all = this.skills.hasValue() ? this.skills.value() : [];
+    const offered = new Set([...this.selectedSkills(), ...selected]);
+    return all.filter((s) => offered.has(s.id));
+  }
+
+  protected extrasSummary(h: HighlightModel): string {
+    const count = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
+    const tech = h.skillIds.length === 1 ? '1 technology' : `${h.skillIds.length} technologies`;
+    return `${tech}, ${count(h.labels.length, 'label')}`;
+  }
+
+  protected addLabel(index: number): void {
+    this.updateHighlight(index, (h) => ({ ...h, labels: [...h.labels, { key: '', value: '' }] }));
+  }
+
+  protected removeLabel(index: number, labelIndex: number): void {
+    this.updateHighlight(index, (h) => ({
+      ...h,
+      labels: h.labels.filter((_, i) => i !== labelIndex),
+    }));
+  }
 
   protected addHighlight(): void {
     this.updateHighlights((list) => [...list, toHighlightModel()]);
@@ -194,6 +258,10 @@ export class ExperienceEditPage {
       [next[index], next[target]] = [next[target], next[index]];
       return next;
     });
+  }
+
+  private updateHighlight(index: number, change: (h: HighlightModel) => HighlightModel): void {
+    this.updateHighlights((list) => list.map((h, i) => (i === index ? change(h) : h)));
   }
 
   private updateHighlights(change: (list: HighlightModel[]) => HighlightModel[]): void {

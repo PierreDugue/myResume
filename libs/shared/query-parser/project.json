@@ -1,0 +1,22 @@
+{
+  "name": "query-parser",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/query-parser/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project query-parser --web",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "commands": [
+          "tsc --noEmit -p libs/shared/query-parser/tsconfig.lib.json",
+          "tsc --noEmit -p libs/shared/query-parser/tsconfig.spec.json"
+        ],
+        "parallel": false
+      }
+    }
+  }
+}

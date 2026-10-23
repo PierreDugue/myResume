@@ -207,6 +207,79 @@ describe('Experiences API', () => {
     expect(after.skillIds).toEqual([angular.id]);
   });
 
+  describe('highlight labels and skills', () => {
+    const highlight = (extra: object) => ({
+      highlights: [{ date: '2025-01-01', level: 'achievement', message: 'Cut latency', ...extra }],
+    });
+
+    it('defaults to no labels and no skills', async () => {
+      const exp = (await create(kx())).body as Experience;
+      expect(exp.highlights[0]).toMatchObject({ labels: {}, skillIds: [] });
+    });
+
+    it('saves labels and skills, listing skills in skills-list order', async () => {
+      const exp = (
+        await create({
+          ...kx(),
+          ...highlight({
+            labels: { team: 'checkout', ticket_2: 'PERF-12' },
+            skillIds: [ngrx.id, angular.id],
+          }),
+        })
+      ).body as Experience;
+      expect(exp.highlights[0]).toMatchObject({
+        labels: { team: 'checkout', ticket_2: 'PERF-12' },
+        skillIds: [angular.id, ngrx.id],
+      });
+      const [listed] = (await http.get('/api/experiences')).body as Experience[];
+      expect(listed.highlights[0].skillIds).toEqual([angular.id, ngrx.id]);
+    });
+
+    it('replaces labels and skills on PATCH', async () => {
+      const exp = (
+        await create({ ...kx(), ...highlight({ labels: { team: 'a' }, skillIds: [ngrx.id] }) })
+      ).body as Experience;
+      const [h] = exp.highlights;
+      const res = await http.patch(`/api/experiences/${exp.id}`, {
+        highlights: [
+          { id: h.id, date: h.date, level: h.level, message: h.message, skillIds: [angular.id] },
+        ],
+      });
+      expect(res.body.highlights[0]).toMatchObject({
+        id: h.id,
+        labels: {},
+        skillIds: [angular.id],
+      });
+    });
+
+    it('drops a deleted skill from highlights', async () => {
+      await create({ ...kx(), ...highlight({ skillIds: [angular.id, ngrx.id] }) });
+      await http.delete(`/api/skills/${ngrx.id}`);
+      const [after] = (await http.get('/api/experiences')).body as Experience[];
+      expect(after.highlights[0].skillIds).toEqual([angular.id]);
+    });
+
+    it.each([
+      ['an unknown skill id', { skillIds: [MISSING_ID] }],
+      ['a skill id that is not a uuid', { skillIds: ['angular'] }],
+      ['a label key with capitals', { labels: { Team: 'x' } }],
+      ['a label key starting with a digit', { labels: { '2team': 'x' } }],
+      ['a label key over 30 characters', { labels: { ['k'.repeat(31)]: 'x' } }],
+      ['an empty label value', { labels: { team: '' } }],
+      ['a label value over 60 characters', { labels: { team: 'x'.repeat(61) } }],
+      ['a label value that is not a string', { labels: { team: 3 } }],
+      ['labels that are not an object', { labels: ['team'] }],
+      [
+        'more than 10 labels',
+        { labels: Object.fromEntries([...Array(11)].map((_, i) => [`k${i}`, 'v'])) },
+      ],
+      ['a reserved label key', { labels: { company: 'Fake' } }],
+      ['the reserved key tech', { labels: { tech: 'Angular' } }],
+    ])('returns 400 for %s', async (_case, extra) => {
+      expect((await create({ ...kx(), ...highlight(extra) })).status).toBe(400);
+    });
+  });
+
   it('reorders experiences (204) and validates the id list (400)', async () => {
     const a = (await create(kx())).body as Experience;
     const b = (await create({ company: 'Whoz', role: 'Engineer', startDate: '2026-05-01' }))

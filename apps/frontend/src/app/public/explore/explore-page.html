@@ -1,0 +1,99 @@
+<div class="toolbar" role="group" aria-label="Time range">
+  <div class="control">
+    <label for="explore-from">From</label>
+    <select id="explore-from" (change)="setYear('from', $any($event.target).value)">
+      @for (year of years(); track year) {
+        <option [value]="year" [selected]="year === view().from">{{ year }}</option>
+      }
+    </select>
+  </div>
+  <div class="control">
+    <label for="explore-to">To</label>
+    <select id="explore-to" (change)="setYear('to', $any($event.target).value)">
+      @for (year of years(); track year) {
+        <option [value]="year" [selected]="year === view().to">{{ year }}</option>
+      }
+    </select>
+  </div>
+  <button class="button" type="button" (click)="allYears()">All years</button>
+  @if (logs.isLoading()) {
+    <span class="muted" role="status">Loading…</span>
+  }
+</div>
+
+<section class="panel search">
+  <app-query-bar
+    [value]="query().query ?? ''"
+    [labels]="labels()"
+    [error]="queryError()"
+    (run)="runQuery($event)"
+  />
+  <div class="examples">
+    <span class="muted">Try</span>
+    @for (example of examples; track example) {
+      <button class="example" type="button" (click)="runQuery(example)">{{ example }}</button>
+    }
+  </div>
+</section>
+
+@if (!logs.error() && data(); as d) {
+  <div class="grid">
+    <app-panel
+      class="volume-panel"
+      title="Log volume"
+      info="Matching lines per year, by level."
+      [data]="d.volume"
+      [canShowTable]="true"
+      [(showTable)]="volumeTable"
+    >
+      @if (volumeTable()) {
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">
+              Matching lines per year and level
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Year</th>
+                <th scope="col">Total</th>
+                @for (l of levels; track l.level) {
+                  <th scope="col">{{ l.name }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (v of d.volume; track v.year) {
+                <tr>
+                  <th scope="row">{{ v.year }}</th>
+                  <td>{{ v.total }}</td>
+                  @for (l of levels; track l.level) {
+                    <td>{{ v.levels[l.level] }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else if (volumeOption(); as option) {
+        <app-echart [options]="option" label="Bar chart of matching log lines per year, by level" />
+      }
+    </app-panel>
+
+    <app-panel
+      class="logs-panel"
+      title="Logs"
+      info="Achievements, education and projects as log lines, newest first. Open a line to see its labels and filter by them."
+      [data]="d.entries"
+    >
+      <p class="count" role="status">{{ d.total }} {{ d.total === 1 ? 'line' : 'lines' }}</p>
+      <app-log-list [entries]="d.entries" (filter)="narrow($event)" />
+    </app-panel>
+  </div>
+} @else if (loadError()) {
+  <section class="panel empty-state">
+    <p role="alert">The logs could not be loaded.</p>
+    <button class="button retry" type="button" (click)="logs.reload()">Try again</button>
+  </section>
+} @else if (!queryError()) {
+  <p class="muted">Loading the logs…</p>
+}

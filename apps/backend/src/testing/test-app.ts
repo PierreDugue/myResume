@@ -12,6 +12,7 @@ export const TEST_ADMIN = { email: 'admin@test.local', password: 'integration-te
 const CONTENT_TABLES = [
   'experience_skill',
   'project_skill',
+  'highlight_skill',
   'highlight',
   'experience',
   'project',

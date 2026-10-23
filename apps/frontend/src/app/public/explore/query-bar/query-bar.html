@@ -1,0 +1,54 @@
+<form
+  class="query-bar"
+  role="search"
+  aria-label="Log query"
+  (submit)="$event.preventDefault(); submit()"
+>
+  <label for="query-input">Query</label>
+  <div class="row">
+    <div class="combo">
+      <input
+        #input
+        id="query-input"
+        type="text"
+        role="combobox"
+        autocomplete="off"
+        autocapitalize="off"
+        spellcheck="false"
+        aria-autocomplete="list"
+        aria-controls="query-suggestions"
+        aria-describedby="query-help"
+        placeholder='{company="KX"} |= "angular"'
+        [attr.aria-expanded]="items().length > 0"
+        [attr.aria-activedescendant]="active() >= 0 ? 'query-option-' + active() : null"
+        [attr.aria-invalid]="shownError() ? true : null"
+        (input)="onInput()"
+        (keydown)="onKeydown($event)"
+        (click)="syncFromElement()"
+        (blur)="open.set(false)"
+      />
+      <ul id="query-suggestions" role="listbox" aria-label="Suggestions">
+        @for (item of items(); track item.text; let i = $index) {
+          <li
+            role="option"
+            [id]="'query-option-' + i"
+            [attr.aria-selected]="i === active()"
+            [class.active]="i === active()"
+            (mousedown)="$event.preventDefault(); accept(item)"
+          >
+            {{ item.text }}
+          </li>
+        }
+      </ul>
+    </div>
+    <button class="button primary" type="submit">Run query</button>
+  </div>
+  <p id="query-help" class="hint">
+    Labels in <code>{{ '{' }}…{{ '}' }}</code
+    >, then <code>|= "text"</code>, <code>!= "text"</code>, <code>|~ "regex"</code>. Plain words
+    search the text. Press ↓ for suggestions.
+  </p>
+  @if (shownError(); as message) {
+    <p class="query-error" role="alert">{{ message }}</p>
+  }
+</form>

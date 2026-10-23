@@ -2,6 +2,8 @@ import type { MixedList } from 'typeorm';
 import { CreateAdminUser1792663184655 } from './1792663184655-CreateAdminUser';
 import { CreateContent1792669952176 } from './1792669952176-CreateContent';
 import { SeedResume1792669998403 } from './1792669998403-SeedResume';
+import { AddHighlightLabelsAndSkills1792736353500 } from './1792736353500-AddHighlightLabelsAndSkills';
+import { TagHighlightSkills1792736365265 } from './1792736365265-TagHighlightSkills';
 
 /**
  * Every migration of this folder, in order. The backend is bundled with webpack, so TypeORM cannot
@@ -12,4 +14,6 @@ export const MIGRATIONS: MixedList<Function | string> = [
   CreateAdminUser1792663184655,
   CreateContent1792669952176,
   SeedResume1792669998403,
+  AddHighlightLabelsAndSkills1792736353500,
+  TagHighlightSkills1792736365265,
 ];
