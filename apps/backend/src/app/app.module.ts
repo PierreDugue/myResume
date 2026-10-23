@@ -8,6 +8,8 @@ import { buildTypeOrmOptions } from './database/typeorm-options';
 import { HealthModule } from './health/health.module';
 import { ResumeModule } from './resume/resume.module';
 import { LogsModule } from './logs/logs.module';
+import { TracesModule } from './traces/traces.module';
+import { ServiceMapModule } from './service-map/service-map.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { LogsModule } from './logs/logs.module';
     ResumeModule,
     DashboardModule,
     LogsModule,
+    TracesModule,
+    ServiceMapModule,
   ],
 })
 export class AppModule {}

@@ -1,0 +1,75 @@
+<a class="back" routerLink="/traces">← All traces</a>
+
+@if (trace.hasValue()) {
+  @let t = trace.value();
+  @let root = t.spans[0];
+  <header class="summary">
+    <h2>{{ t.title }}</h2>
+    <p>{{ t.description }}</p>
+    <p class="meta">
+      {{ t.spans.length - 1 }} {{ t.spans.length === 2 ? 'span' : 'spans' }} ·
+      {{ formatDuration(root.durationDays) }} · {{ formatDate(root.startDate) }} →
+      {{ root.ongoing ? 'ongoing' : formatDate(root.endDate) }}
+      @if (t.url) {
+        · <a class="website" [href]="t.url" rel="noopener" target="_blank">Website</a>
+      }
+      @if (t.repoUrl) {
+        · <a class="repo" [href]="t.repoUrl" rel="noopener" target="_blank">Repository</a>
+      }
+    </p>
+  </header>
+
+  <app-panel
+    title="Waterfall"
+    info="The project is the root span; its phases are the spans below it. Open a span for its dates, note and technologies."
+    [data]="t"
+    [canShowTable]="true"
+    [(showTable)]="showTable"
+  >
+    @if (showTable()) {
+      <div class="table-wrap">
+        <table>
+          <caption class="sr-only">
+            Spans of the trace
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Span</th>
+              <th scope="col">Start</th>
+              <th scope="col">End</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Technologies</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (span of t.spans; track span.id) {
+              <tr>
+                <th scope="row" [style.padding-left.rem]="0.5 + span.depth">{{ span.name }}</th>
+                <td>{{ formatDate(span.startDate) }}</td>
+                <td>{{ span.ongoing ? 'ongoing' : formatDate(span.endDate) }}</td>
+                <td>{{ formatDuration(span.durationDays) }}</td>
+                <td>
+                  {{ span.tech.length ? '' : '–' }}{{ span.tech.map((s) => s.name).join(', ') }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <app-waterfall [spans]="t.spans" />
+    }
+  </app-panel>
+} @else if (notFound()) {
+  <section class="panel empty-state">
+    <p role="alert">No trace for this project.</p>
+    <a routerLink="/traces">See all traces</a>
+  </section>
+} @else if (trace.error()) {
+  <section class="panel empty-state">
+    <p role="alert">The trace could not be loaded.</p>
+    <button class="button" type="button" (click)="trace.reload()">Try again</button>
+  </section>
+} @else {
+  <p class="muted">Loading the trace…</p>
+}

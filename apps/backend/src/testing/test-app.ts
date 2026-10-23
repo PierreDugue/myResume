@@ -13,6 +13,8 @@ const CONTENT_TABLES = [
   'experience_skill',
   'project_skill',
   'highlight_skill',
+  'project_span_skill',
+  'project_span',
   'highlight',
   'experience',
   'project',

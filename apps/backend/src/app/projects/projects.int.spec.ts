@@ -1,4 +1,4 @@
-import type { Project, Skill } from '@my-resume/api-models';
+import type { Project, ProjectSpan, Skill } from '@my-resume/api-models';
 import { Api, api, createTestApp, MISSING_ID, TestApp } from '../../testing/test-app';
 
 describe('Projects API', () => {
@@ -76,6 +76,166 @@ describe('Projects API', () => {
 
     expect((await http.delete(`/api/projects/${b.id}`)).status).toBe(204);
     expect((await http.get('/api/projects')).body).toHaveLength(1);
+  });
+
+  describe('spans', () => {
+    /** An outline: Design, Build > (API, UI). */
+    const outline = () => [
+      {
+        depth: 0,
+        name: 'Design',
+        startDate: '2026-10-21',
+        endDate: '2026-10-21',
+        note: 'The spec.',
+      },
+      { depth: 0, name: 'Build', startDate: '2026-10-22', endDate: null, skillIds: [angular.id] },
+      { depth: 1, name: 'API', startDate: '2026-10-22', endDate: '2026-10-22' },
+      { depth: 1, name: 'UI', startDate: '2026-10-23', endDate: null },
+    ];
+    const withSpans = async (spans: object[] = outline()) =>
+      (await create({ ...site(), spans })).body as Project;
+    const shape = (spans: ProjectSpan[]) =>
+      spans.map((s) => [s.name, s.depth, spans.find((p) => p.id === s.parentId)?.name ?? null]);
+
+    it('defaults to no spans', async () => {
+      expect((await create(site())).body.spans).toEqual([]);
+    });
+
+    it('saves an outline, with parents worked out from the depths', async () => {
+      const project = await withSpans();
+      expect(shape(project.spans)).toEqual([
+        ['Design', 0, null],
+        ['Build', 0, null],
+        ['API', 1, 'Build'],
+        ['UI', 1, 'Build'],
+      ]);
+      expect(project.spans[0]).toMatchObject({
+        endDate: '2026-10-21',
+        note: 'The spec.',
+        skillIds: [],
+        sortOrder: 0,
+      });
+      expect(project.spans[1]).toMatchObject({ endDate: null, note: null, skillIds: [angular.id] });
+      const [listed] = (await http.get('/api/projects')).body as Project[];
+      expect(shape(listed.spans)).toEqual(shape(project.spans));
+      const resume = (await http.get('/api/resume')).body;
+      expect(resume.projects[0].spans).toHaveLength(4);
+    });
+
+    it('replaces the outline on PATCH: keeps ids it is given, moves spans, deletes the rest', async () => {
+      const project = await withSpans();
+      const [design, build, apiSpan] = project.spans;
+      const res = await http.patch(`/api/projects/${project.id}`, {
+        spans: [
+          { id: build.id, depth: 0, name: 'Build', startDate: build.startDate, endDate: null },
+          { id: design.id, depth: 1, name: 'Design again', startDate: '2026-10-22', endDate: null },
+          { depth: 2, name: 'New', startDate: '2026-10-22', endDate: '2026-10-22' },
+          { id: apiSpan.id, depth: 0, name: 'API', startDate: '2026-10-22', endDate: '2026-10-22' },
+        ],
+      });
+      expect(res.status).toBe(200);
+      const spans = (res.body as Project).spans;
+      expect(shape(spans)).toEqual([
+        ['Build', 0, null],
+        ['Design again', 1, 'Build'],
+        ['New', 2, 'Design again'],
+        ['API', 0, null],
+      ]);
+      expect(spans.map((s) => s.id).slice(0, 2)).toEqual([build.id, design.id]);
+      expect(spans[3].id).toBe(apiSpan.id);
+      const [{ count }] = await t.dataSource.query(
+        'SELECT count(*)::int AS count FROM project_span',
+      );
+      expect(count).toBe(4);
+    });
+
+    it('keeps the spans when PATCH does not mention them', async () => {
+      const project = await withSpans();
+      const res = await http.patch(`/api/projects/${project.id}`, { title: 'Renamed' });
+      expect(res.body.spans).toHaveLength(4);
+    });
+
+    it.each([
+      [
+        'a first span below the top level',
+        [{ depth: 1, name: 'A', startDate: '2026-10-21' }],
+        'must be at the top level',
+      ],
+      [
+        'a span two levels deeper than the one above',
+        [
+          { depth: 0, name: 'A', startDate: '2026-10-21' },
+          { depth: 2, name: 'B', startDate: '2026-10-21' },
+        ],
+        'one level deeper',
+      ],
+      [
+        'a span ending after its parent',
+        [
+          { depth: 0, name: 'A', startDate: '2026-10-21', endDate: '2026-10-22' },
+          { depth: 1, name: 'B', startDate: '2026-10-21', endDate: null },
+        ],
+        'can\'t end after "A"',
+      ],
+      [
+        'a span starting before the project',
+        [{ depth: 0, name: 'A', startDate: '2026-10-20' }],
+        'before the project',
+      ],
+      [
+        'a span ending before it starts',
+        [{ depth: 0, name: 'A', startDate: '2026-10-22', endDate: '2026-10-21' }],
+        '',
+      ],
+    ])('returns 400 for %s', async (_case, spans, message) => {
+      const res = await create({ ...site(), spans });
+      expect(res.status).toBe(400);
+      expect([res.body.message].flat().join(' ')).toContain(message);
+    });
+
+    it.each([
+      ['an unknown skill', { skillIds: [MISSING_ID] }],
+      ['a missing name', { name: undefined }],
+      ['a name over 120 characters', { name: 'x'.repeat(121) }],
+      ['a depth over 3', { depth: 4 }],
+      ['a depth that is not an integer', { depth: 0.5 }],
+      ['an invalid date', { startDate: '2026-13-01' }],
+    ])('returns 400 for a span with %s', async (_case, override) => {
+      const spans = [{ depth: 0, name: 'A', startDate: '2026-10-21', ...override }];
+      expect((await create({ ...site(), spans })).status).toBe(400);
+    });
+
+    it('refuses a span id that belongs to another project (400)', async () => {
+      const a = await withSpans();
+      const b = (await create({ ...site(), slug: 'other' })).body as Project;
+      const stolen = a.spans[0];
+      const res = await http.patch(`/api/projects/${b.id}`, {
+        spans: [{ id: stolen.id, depth: 0, name: 'Mine', startDate: '2026-10-21' }],
+      });
+      expect(res.status).toBe(400);
+    });
+
+    it('checks the existing spans again when the project dates change', async () => {
+      const project = await withSpans();
+      const res = await http.patch(`/api/projects/${project.id}`, { startDate: '2026-10-22' });
+      expect(res.status).toBe(400);
+      expect([res.body.message].flat().join(' ')).toContain(
+        'Span 1 "Design" can\'t start before the project',
+      );
+    });
+
+    it('drops a deleted skill from spans, and deletes spans with their project', async () => {
+      const project = await withSpans();
+      await http.delete(`/api/skills/${angular.id}`);
+      const [listed] = (await http.get('/api/projects')).body as Project[];
+      expect(listed.spans[1].skillIds).toEqual([]);
+
+      await http.delete(`/api/projects/${project.id}`);
+      const [{ count }] = await t.dataSource.query(
+        'SELECT count(*)::int AS count FROM project_span',
+      );
+      expect(count).toBe(0);
+    });
   });
 
   it('requires the admin token for writes (401)', async () => {

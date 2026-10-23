@@ -4,6 +4,8 @@ export interface ChartInstance {
   setOption(option: unknown, opts?: unknown): void;
   resize(): void;
   dispose(): void;
+  /** Chart events (e.g. 'click'). Optional, so simple fakes in tests can leave it out. */
+  on?(event: string, handler: (params: unknown) => void): void;
 }
 
 export interface EChartsLike {

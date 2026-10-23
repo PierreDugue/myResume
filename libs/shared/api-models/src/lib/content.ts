@@ -157,7 +157,39 @@ export interface Project {
   startDate: IsoDate | null;
   endDate: IsoDate | null;
   skillIds: string[];
+  /** The phases of the project's trace, in outline order. */
+  spans: ProjectSpan[];
   sortOrder: number;
+}
+
+/** A phase or component of a project: a span of its trace. */
+export interface ProjectSpan {
+  id: string;
+  /** null = a direct child of the project (the root span). */
+  parentId: string | null;
+  /** 0 for direct children, up to 3. */
+  depth: number;
+  name: string;
+  startDate: IsoDate;
+  /** null = ongoing. */
+  endDate: IsoDate | null;
+  note: string | null;
+  /** In skills-list order. */
+  skillIds: string[];
+  /** Position in the outline. */
+  sortOrder: number;
+}
+
+export interface ProjectSpanInput {
+  /** Existing span of this project, to update it. */
+  id?: string;
+  /** The parent is the nearest span above with depth - 1. */
+  depth: number;
+  name: string;
+  startDate: IsoDate;
+  endDate?: IsoDate | null;
+  note?: string | null;
+  skillIds?: string[];
 }
 
 export interface CreateProjectRequest {
@@ -171,6 +203,8 @@ export interface CreateProjectRequest {
   startDate?: IsoDate | null;
   endDate?: IsoDate | null;
   skillIds?: string[];
+  /** The complete outline (at most 100). */
+  spans?: ProjectSpanInput[];
 }
 
 export type UpdateProjectRequest = Partial<CreateProjectRequest>;

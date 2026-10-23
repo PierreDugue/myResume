@@ -1,0 +1,61 @@
+<div class="waterfall">
+  <div class="header" aria-hidden="true">
+    <span class="name-col">Span</span>
+    <span class="axis">
+      @for (tick of ticks(); track tick.offset) {
+        <span class="tick" [style.left.%]="tick.offset * 100">{{ tick.label }}</span>
+      }
+    </span>
+    <span class="duration-col">Duration</span>
+  </div>
+  <ol>
+    @for (span of spans(); track span.id) {
+      <li class="row" [attr.aria-level]="span.depth + 1">
+        <button
+          class="summary"
+          type="button"
+          [attr.aria-expanded]="isOpen(span.id)"
+          [attr.aria-controls]="'span-' + span.id"
+          (click)="toggle(span.id)"
+        >
+          <span class="name" [style.padding-left.rem]="span.depth * 1.25"
+            >{{ span.name }}
+            @if (span.ongoing) {
+              <span class="badge">&#32;ongoing</span>
+            }
+          </span>
+          <span class="track">
+            <span
+              [class]="barClass(span)"
+              [class.ongoing]="span.ongoing"
+              [style.left.%]="span.offset * 100"
+              [style.width.%]="span.width * 100"
+            ></span>
+          </span>
+          <span class="duration">{{ formatDuration(span.durationDays) }}</span>
+        </button>
+        @if (isOpen(span.id)) {
+          <div class="details" [id]="'span-' + span.id">
+            <p>
+              {{ formatDate(span.startDate) }} → {{ formatDate(span.endDate) }}
+              @if (span.ongoing) {
+                (ongoing)
+              }
+            </p>
+            @if (span.note) {
+              <p class="note">{{ span.note }}</p>
+            }
+            @if (span.tech.length > 0) {
+              <p class="tech">
+                <span class="muted">Technologies:</span>
+                @for (tech of span.tech; track tech.slug) {
+                  <a routerLink="/" [queryParams]="{ skill: tech.slug }">{{ tech.name }}</a>
+                }
+              </p>
+            }
+          </div>
+        }
+      </li>
+    }
+  </ol>
+</div>

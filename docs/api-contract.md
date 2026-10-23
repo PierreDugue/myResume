@@ -133,7 +133,12 @@ interface AuthUser {
 - **Highlight labels and skills** (shown in Explore):
   - `labels`: at most 10. Keys match `^[a-z][a-z0-9_]{0,29}$`, values are 1..60 characters. The keys Explore already sets are reserved and return `400`: `type`, `level`, `company`, `role`, `location`, `school`, `degree`, `project`, `tech`.
   - `skillIds`: unknown ids return `400`, like the experience's own `skillIds`.
-- **Skills:** deleting a skill removes it from every experience, project and highlight (no error).
+- **Projects** include their **spans** (the phases of the project's trace), as an outline: a flat list in display order where each span has a `depth`.
+  - In `POST` and `PATCH`, `spans` is the complete outline, like an experience's highlights: items with an `id` are updated, items without one are created, and spans missing from the list are deleted. An `id` that belongs to another project returns `400`.
+  - The parent of a span is the nearest span above it with `depth - 1`. The first span has depth 0, and a span can be at most one level deeper than the span above it, with a maximum depth of 3. Otherwise `400`.
+  - Dates: `endDate` (if set) can't be before `startDate`, and a span must fit in its parent: it can't start before it, and can't end after it (an ongoing span needs an ongoing parent). Spans must also fit in the project's own dates when they are set. A `PATCH` that changes the project's dates checks the existing spans again. Otherwise `400`, naming the span.
+  - Deleting a project deletes its spans.
+- **Skills:** deleting a skill removes it from every experience, project, highlight and span (no error).
 
 ```ts
 type IsoDate = string; // 'YYYY-MM-DD'
@@ -266,7 +271,29 @@ interface Project {
   startDate: IsoDate | null;
   endDate: IsoDate | null;
   skillIds: string[];
+  spans: ProjectSpan[]; // the trace's phases, in outline order
   sortOrder: number;
+}
+/** A phase or component of a project: a span of its trace. */
+interface ProjectSpan {
+  id: string;
+  parentId: string | null; // null = a direct child of the project (the root span)
+  depth: number; // 0 for direct children, up to 3
+  name: string; // 1..120
+  startDate: IsoDate;
+  endDate: IsoDate | null; // null = ongoing
+  note: string | null; // up to 2000
+  skillIds: string[]; // in skills-list order
+  sortOrder: number; // position in the outline
+}
+interface ProjectSpanInput {
+  id?: string; // existing span of this project, to update it
+  depth: number; // 0..3; the parent is the nearest span above with depth - 1
+  name: string;
+  startDate: IsoDate;
+  endDate?: IsoDate | null;
+  note?: string | null;
+  skillIds?: string[];
 }
 interface CreateProjectRequest {
   slug?: string;
@@ -278,6 +305,7 @@ interface CreateProjectRequest {
   startDate?: IsoDate | null;
   endDate?: IsoDate | null;
   skillIds?: string[];
+  spans?: ProjectSpanInput[]; // the complete outline (at most 100)
 }
 type UpdateProjectRequest = Partial<CreateProjectRequest>;
 
@@ -294,7 +322,7 @@ interface ResumeResponse {
 }
 ```
 
-**Not yet (later steps):** project spans (step 6), status alerts (step 7), the resume PDF (step 9).
+**Not yet (later steps):** status alerts (step 7), the resume PDF (step 9).
 
 ### Dashboard (Career Overview)
 
@@ -494,6 +522,100 @@ interface LogsResponse {
 interface LogLabel {
   name: string;
   values: string[];
+}
+```
+
+### Traces
+
+| Method | Path                | Auth | Request | Response          | Status |
+| ------ | ------------------- | ---- | ------- | ----------------- | ------ |
+| GET    | `/api/traces`       | –    | –       | `TraceSummary[]`  | done   |
+| GET    | `/api/traces/:slug` | –    | –       | `Trace`, or `404` | done   |
+
+Each project shown as a trace: the **root span** is the project itself, its children are the project's spans.
+
+- **Which projects are traces:** those with a `startDate` or at least one span. Others aren't listed, and `GET /api/traces/:slug` returns `404` for them (as for an unknown slug).
+- **Root span:** it starts at the project's `startDate`, or its first span's start when the project has none. It ends at the project's `endDate`; for an ongoing project (no `endDate`), at the latest of today and its spans' ends.
+- **Ongoing spans** (no `endDate`) end today (or at their start, if that is later).
+- **Durations** count calendar days, both ends included (a span from 2026-10-22 to 2026-10-22 lasts 1 day).
+- **Position:** `offset` and `width` place each span on the root's time axis, as fractions of the root's duration (0..1), so the frontend only draws.
+- The list is in the projects' order; the spans of a trace are the root, then the outline order.
+
+```ts
+interface TraceSpanSkill {
+  slug: string;
+  name: string;
+}
+
+interface TraceSpan {
+  id: string; // the project id for the root
+  parentId: string | null; // null for the root; the root's id for depth-1 spans
+  depth: number; // 0 = root, 1..4 = spans
+  name: string;
+  startDate: IsoDate;
+  endDate: IsoDate; // as drawn: today for an ongoing span
+  ongoing: boolean;
+  durationDays: number;
+  offset: number; // 0..1, where it starts on the root's axis
+  width: number; // 0..1, its length on the root's axis
+  note: string | null; // the project description for the root
+  tech: TraceSpanSkill[]; // in skills-list order; the project's skills for the root
+}
+
+interface Trace {
+  slug: string;
+  title: string;
+  description: string;
+  url: string | null;
+  repoUrl: string | null;
+  spans: TraceSpan[]; // the root first
+}
+
+interface TraceSummary {
+  slug: string;
+  title: string;
+  startDate: IsoDate;
+  endDate: IsoDate; // as drawn: today for an ongoing project
+  ongoing: boolean;
+  durationDays: number;
+  spanCount: number; // without the root
+  tech: string[]; // skill names of the project and its spans, in skills-list order
+}
+```
+
+### Service map
+
+| Method | Path               | Auth | Request | Response             | Status |
+| ------ | ------------------ | ---- | ------- | -------------------- | ------ |
+| GET    | `/api/service-map` | –    | –       | `ServiceMapResponse` | done   |
+
+A graph of the resume: technologies linked to the jobs and projects that used them.
+
+- **Nodes:** every experience (`job`), every project with a `startDate` (`project`), and every skill linked to at least one of them (`skill`). Ids are prefixed by kind (`skill:<id>`, `job:<id>`, `project:<id>`), so they never collide.
+- **Edges** go from a job or a project to each of its skills. A project's skills include its spans' skills. No duplicate edges.
+- **Size:** `years` is the experience behind a node, with one decimal: for a skill, the years of use counted as on the dashboard (every month of the jobs and projects that used it, overlaps counted once); for a job or a project, its own duration (an ongoing one runs until today).
+- Nodes are ordered jobs (in experiences order), then projects (in projects order), then skills (in skills-list order).
+
+```ts
+type ServiceMapNodeKind = 'job' | 'project' | 'skill';
+
+interface ServiceMapNode {
+  id: string; // e.g. "skill:<uuid>"
+  kind: ServiceMapNodeKind;
+  label: string; // company, project title or skill name
+  years: number;
+  slug: string | null; // skill or project slug (links to the dashboard filter or the trace)
+  category: string | null; // the skill's category
+}
+
+interface ServiceMapEdge {
+  source: string; // a job or project node id
+  target: string; // a skill node id
+}
+
+interface ServiceMapResponse {
+  nodes: ServiceMapNode[];
+  edges: ServiceMapEdge[];
 }
 ```
 

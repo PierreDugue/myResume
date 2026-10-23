@@ -1,0 +1,46 @@
+<section class="panel">
+  @if (traces.hasValue()) {
+    @if (traces.value().length === 0) {
+      <p class="empty-state">No traces yet: give a project a start date or spans in the admin.</p>
+    } @else {
+      <div class="table-wrap">
+        <table>
+          <caption class="sr-only">
+            Projects as traces
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Project</th>
+              <th scope="col">Start</th>
+              <th scope="col">Duration</th>
+              <th scope="col">Spans</th>
+              <th scope="col">Technologies</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (trace of traces.value(); track trace.slug) {
+              <tr>
+                <th scope="row">
+                  <a [routerLink]="['/traces', trace.slug]">{{ trace.title }}</a>
+                </th>
+                <td>{{ formatDate(trace.startDate) }}</td>
+                <td>
+                  {{ formatDuration(trace.durationDays) }}
+                  @if (trace.ongoing) {
+                    <span class="badge">ongoing</span>
+                  }
+                </td>
+                <td class="num">{{ trace.spanCount }}</td>
+                <td>{{ trace.tech.length ? trace.tech.join(', ') : '–' }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  } @else if (traces.error()) {
+    <p class="empty-state" role="alert">The traces could not be loaded.</p>
+  } @else {
+    <p class="muted">Loading the traces…</p>
+  }
+</section>

@@ -80,6 +80,136 @@
       @if (skills.hasValue()) {
         <app-skill-picker [skills]="skills.value()" [(selected)]="selectedSkills" />
       }
+      <h3>Trace spans</h3>
+      <p class="hint">
+        The phases or components of the project, shown as its trace. Indent a span to nest it under
+        the one above; a span moves with its sub-spans.
+      </p>
+      @if (form.spans().touched() && form.spans().errors().length > 0) {
+        <ul class="outline-errors form-error" role="alert">
+          @for (error of form.spans().errors(); track $index) {
+            <li>{{ error.message }}</li>
+          }
+        </ul>
+      }
+      <ol class="spans">
+        @for (span of form.spans; track $index; let i = $index) {
+          @let depth = span.depth().value();
+          <li class="span" [attr.aria-level]="depth + 1" [style.margin-left.rem]="depth * 1.5">
+            <div class="grid-3">
+              <div class="field">
+                <label [for]="'sp-' + i + '-name'">Span {{ i + 1 }} name</label>
+                <input
+                  [id]="'sp-' + i + '-name'"
+                  [formField]="span.name"
+                  [attr.aria-invalid]="showError(span.name()) || null"
+                />
+                @if (showError(span.name())) {
+                  <p class="field-error">{{ span.name().errors()[0].message }}</p>
+                }
+              </div>
+              <div class="field">
+                <label [for]="'sp-' + i + '-start'">Span {{ i + 1 }} start</label>
+                <input
+                  [id]="'sp-' + i + '-start'"
+                  type="date"
+                  [formField]="span.startDate"
+                  [attr.aria-invalid]="showError(span.startDate()) || null"
+                />
+                @if (showError(span.startDate())) {
+                  <p class="field-error">{{ span.startDate().errors()[0].message }}</p>
+                }
+              </div>
+              <div class="field">
+                <label [for]="'sp-' + i + '-end'">Span {{ i + 1 }} end</label>
+                <input
+                  [id]="'sp-' + i + '-end'"
+                  type="date"
+                  [formField]="span.endDate"
+                  [attr.aria-describedby]="'sp-' + i + '-end-hint'"
+                  [attr.aria-invalid]="showError(span.endDate()) || null"
+                />
+                <p class="hint" [id]="'sp-' + i + '-end-hint'">Empty = ongoing</p>
+                @if (showError(span.endDate())) {
+                  <p class="field-error">{{ span.endDate().errors()[0].message }}</p>
+                }
+              </div>
+            </div>
+            <details class="extras">
+              <summary>
+                Note and tech ({{ span.skillIds().value().length }}
+                {{ span.skillIds().value().length === 1 ? 'technology' : 'technologies' }})
+              </summary>
+              <div class="field">
+                <label [for]="'sp-' + i + '-note'">Span {{ i + 1 }} note</label>
+                <textarea [id]="'sp-' + i + '-note'" [formField]="span.note" rows="2"></textarea>
+              </div>
+              <fieldset [attr.aria-label]="'Span ' + (i + 1) + ' technologies'">
+                <legend>Technologies</legend>
+                @let options = techOptions(span.skillIds().value());
+                @if (options.length > 0) {
+                  <app-skill-picker
+                    [skills]="options"
+                    [selected]="span.skillIds().value()"
+                    (selectedChange)="span.skillIds().value.set($event)"
+                  />
+                } @else {
+                  <p class="hint">Pick the project's skills first.</p>
+                }
+              </fieldset>
+            </details>
+            <div class="row-actions">
+              <button
+                class="icon-button"
+                type="button"
+                [disabled]="depth === 0"
+                [attr.aria-label]="'Outdent span ' + (i + 1)"
+                (click)="outdent(i)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+              </button>
+              <button
+                class="icon-button"
+                type="button"
+                [disabled]="!canIndent(i)"
+                [attr.aria-label]="'Indent span ' + (i + 1)"
+                (click)="indent(i)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+              </button>
+              <button
+                class="icon-button"
+                type="button"
+                [disabled]="!canMoveUp(i)"
+                [attr.aria-label]="'Move span ' + (i + 1) + ' up'"
+                (click)="moveUp(i)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+              </button>
+              <button
+                class="icon-button"
+                type="button"
+                [disabled]="!canMoveDown(i)"
+                [attr.aria-label]="'Move span ' + (i + 1) + ' down'"
+                (click)="moveDown(i)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
+              </button>
+              <button
+                class="icon-button"
+                type="button"
+                [attr.aria-label]="'Remove span ' + (i + 1)"
+                title="Remove this span and its sub-spans"
+                (click)="removeSpan(i)"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </div>
+          </li>
+        }
+      </ol>
+      <button class="button add-span" type="button" (click)="addSpan()">Add span</button>
+
       <div class="form-actions">
         <button class="button primary" type="submit" [disabled]="form().submitting()">
           {{ page.isNew ? 'Create project' : 'Save' }}

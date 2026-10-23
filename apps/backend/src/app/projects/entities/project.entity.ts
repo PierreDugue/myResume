@@ -4,10 +4,12 @@ import {
   Entity,
   JoinTable,
   ManyToMany,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { SkillEntity } from '../../skills/entities/skill.entity';
+import { ProjectSpanEntity } from './project-span.entity';
 
 @Entity('project')
 export class ProjectEntity {
@@ -44,6 +46,9 @@ export class ProjectEntity {
   @ManyToMany(() => SkillEntity)
   @JoinTable({ name: 'project_skill' })
   skills!: SkillEntity[];
+
+  @OneToMany(() => ProjectSpanEntity, (s) => s.project)
+  spans!: ProjectSpanEntity[];
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;

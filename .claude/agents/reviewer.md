@@ -10,7 +10,7 @@ First read `CLAUDE.md`, `docs/spec.md` and `docs/api-contract.md`. Then review t
 
 ## Check for
 
-1. **Correctness:** logic bugs, unhandled errors or empty values, wrong status codes, async mistakes (promises that are never awaited, RxJS subscriptions that are never cleaned up), off-by-one errors in sorting or ordering.
+1. **Correctness:** logic bugs, unhandled errors or empty values, wrong status codes, async mistakes (promises that are never awaited, RxJS subscriptions that are never cleaned up), off-by-one errors in sorting or ordering. Check there is no duplicated code, and that the code is not doing something that is already done by a library or framework. Check for unused code, variables, imports, and dependencies.
 2. **Security:**
    - write endpoints missing the JWT guard
    - DTOs without validation, and `whitelist` not set
@@ -19,6 +19,7 @@ First read `CLAUDE.md`, `docs/spec.md` and `docs/api-contract.md`. Then review t
    - hard-coded secrets, and `.env` files about to be committed
    - XSS through `innerHTML` or `bypassSecurityTrust*`
    - tokens being logged
+   - check potential security breachs
 3. **Contract:** routes, field names, optional fields and types match `docs/api-contract.md` on both sides.
 4. **Database:** schema changes without a migration, `synchronize: true`, missing indexes or unique constraints the spec implies.
 5. **Conventions** from `CLAUDE.md`:

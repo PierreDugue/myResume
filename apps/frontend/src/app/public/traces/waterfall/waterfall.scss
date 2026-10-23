@@ -1,0 +1,131 @@
+.waterfall {
+  --name-width: minmax(140px, 32%);
+  font-size: 0.8125rem;
+}
+
+.header,
+.summary {
+  display: grid;
+  grid-template-columns: var(--name-width) 1fr 80px;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.header {
+  padding: 0 var(--space-2) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.axis {
+  position: relative;
+  height: 1.2em;
+}
+
+.tick {
+  position: absolute;
+  white-space: nowrap;
+  padding-left: 4px;
+  border-left: 1px solid var(--color-border);
+}
+
+ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.row {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.summary {
+  width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--color-surface-2);
+  }
+}
+
+.name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  margin-left: var(--space-1);
+  color: var(--color-ok);
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+}
+
+.track {
+  position: relative;
+  height: 14px;
+}
+
+.bar {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  min-width: 3px;
+  border-radius: 3px;
+  background: var(--series-1);
+  &.depth-1 {
+    background: var(--series-2);
+  }
+  &.depth-2 {
+    background: var(--series-3);
+  }
+  &.depth-3 {
+    background: var(--series-4);
+  }
+  &.depth-4 {
+    background: var(--series-5);
+  }
+  // Ongoing: the bar fades out at today, it isn't finished.
+  &.ongoing {
+    mask-image: linear-gradient(to right, #000 calc(100% - 12px), transparent);
+  }
+}
+
+.duration {
+  color: var(--color-text-muted);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.details {
+  padding: var(--space-2) var(--space-3) var(--space-3) var(--space-6, 2rem);
+  p {
+    margin: 0 0 var(--space-1);
+  }
+  .tech a {
+    margin-left: var(--space-2);
+  }
+}
+
+.muted {
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 600px) {
+  .header,
+  .summary {
+    grid-template-columns: 1fr 64px;
+  }
+  .axis,
+  .track {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}

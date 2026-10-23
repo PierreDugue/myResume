@@ -18,6 +18,23 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./public/explore/explore-page').then((m) => m.ExplorePage),
       },
       {
+        path: 'traces',
+        title: 'Traces',
+        loadComponent: () =>
+          import('./public/traces/trace-search-page').then((m) => m.TraceSearchPage),
+      },
+      {
+        path: 'traces/:slug',
+        title: 'Trace',
+        loadComponent: () => import('./public/traces/trace-page').then((m) => m.TracePage),
+      },
+      {
+        path: 'service-map',
+        title: 'Service map',
+        loadComponent: () =>
+          import('./public/service-map/service-map-page').then((m) => m.ServiceMapPage),
+      },
+      {
         path: 'resume',
         title: 'Plain view',
         loadComponent: () =>

@@ -1,0 +1,17 @@
+.map {
+  display: block;
+  height: min(72vh, 680px);
+  min-height: 440px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--color-text-muted);
+}

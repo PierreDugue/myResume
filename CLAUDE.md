@@ -28,7 +28,7 @@ Put code used by more than one app in `libs/`. Create libraries with Nx generato
 Libraries:
 
 - `libs/shared/api-models` (`@my-resume/api-models`): API types
-- `libs/shared/resume-metrics` (`@my-resume/resume-metrics`): pure calculations behind the dashboards (`buildDashboard`, month arithmetic). The backend calls it and the frontend reuses its helpers (e.g. `monthIndex`). Unit-test every rule here, with hand-checkable fixtures (`src/lib/fixtures.ts`).
+- `libs/shared/resume-metrics` (`@my-resume/resume-metrics`): pure calculations behind the public pages: `buildDashboard`, `buildLogs`, `buildTrace`/`buildTraces`, `buildServiceMap`, month arithmetic, and the span outline rules (`spanOutlineErrors`, shared with the admin form). The backend calls it and the frontend reuses its helpers (e.g. `monthIndex`). Unit-test every rule here, with hand-checkable fixtures (`src/lib/fixtures.ts`).
 - `libs/shared/query-parser` (`@my-resume/query-parser`): the LogQL-style query language of Explore: `parseQuery` (with column-precise `QueryParseError`s), `compileQuery` (matching; regexes run with `re2js`, in linear time, because visitors' queries run on the server: never use `RegExp` on query input), `suggest`/`applySuggestion` (autocomplete) and `withLabelMatcher`. The backend filters with it and the frontend checks queries and suggests labels with it. Unit-test every rule here.
 - Angular UI stays in the app (`apps/frontend/src/app/shared/`) while only one app uses it. Nx's Angular libraries can't use the app's test runner (`vitest-angular`) unless they're separately buildable, so move UI to a library only when a second consumer appears.
 
@@ -151,7 +151,7 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
   - `readChartPalette()`: chart colors from the CSS tokens, re-read when the theme changes.
 - Chart options are **pure functions** (e.g. `public/overview/charts/*-option.ts`) with unit tests. Register new ECharts chart types or components in `echarts-setup.ts` only.
 - In tests, provide `ECHARTS_LOADER` with a fake (jsdom has no canvas).
-- Timeline, stat, gauge, impact and log panels are plain HTML/CSS/SVG.
+- Timeline, stat, gauge, impact, log and trace waterfall panels are plain HTML/CSS/SVG.
 - The dashboard view (time range and filters) lives in the URL query (`?from&to&category&skill`): read it with `parseDashboardQuery`, write it with `router.navigate(..., { queryParams: toQueryParams(q) })`.
 
 ## Test-driven development (mandatory)

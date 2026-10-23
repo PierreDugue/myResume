@@ -75,11 +75,40 @@ describe('EChart', () => {
   });
 
   it('resizes with its container and disposes the chart when removed', async () => {
+    const frames: FrameRequestCallback[] = [];
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));
     const { fixture } = await render();
+    // Resizing inside the observer callback can make the browser report a "ResizeObserver
+    // loop" error: the chart resizes on the next frame instead, once however many changes.
     observed?.();
-    expect(chart.resize).toHaveBeenCalled();
+    observed?.();
+    expect(chart.resize).not.toHaveBeenCalled();
+    frames.splice(0).forEach((frame) => frame(0));
+    expect(chart.resize).toHaveBeenCalledOnce();
     fixture.componentInstance.shown.set(false);
     await fixture.whenStable();
     expect(chart.dispose).toHaveBeenCalledOnce();
+  });
+
+  it('emits chart clicks, for drill-down', async () => {
+    const handlers = new Map<string, (params: unknown) => void>();
+    const clickable = {
+      ...chart,
+      on: vi.fn((event: string, handler: (params: unknown) => void) =>
+        handlers.set(event, handler),
+      ),
+    };
+    init.mockReturnValue(clickable as ChartInstance);
+    const fixture = TestBed.createComponent(EChart);
+    fixture.componentRef.setInput('options', { series: [] });
+    fixture.componentRef.setInput('label', 'Graph');
+    const clicks = vi.fn();
+    fixture.componentInstance.chartClick.subscribe(clicks);
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+
+    handlers.get('click')?.({ dataType: 'node', data: { id: 'skill:x' } });
+    expect(clicks).toHaveBeenCalledWith({ dataType: 'node', data: { id: 'skill:x' } });
   });
 });

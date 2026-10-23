@@ -6,6 +6,7 @@ import {
   effect,
   inject,
   input,
+  output,
   signal,
   viewChild,
 } from '@angular/core';
@@ -31,6 +32,8 @@ export class EChart {
   readonly options = input.required<ChartOption>();
   /** Text alternative of the chart. */
   readonly label = input.required<string>();
+  /** ECharts click events (the clicked item is in `params.data`). */
+  readonly chartClick = output<unknown>();
 
   private readonly box = viewChild.required<ElementRef<HTMLElement>>('box');
   private readonly loader = inject(ECHARTS_LOADER);
@@ -46,8 +49,18 @@ export class EChart {
         const element = this.box().nativeElement;
         const chart = echarts.init(element, null, { renderer: 'canvas' });
         this.chart.set(chart);
+        chart.on?.('click', (params) => this.chartClick.emit(params));
         if (typeof ResizeObserver !== 'undefined') {
-          observer = new ResizeObserver(() => chart.resize());
+          // Resize on the next frame (once per frame): resizing inside the observer callback
+          // makes browsers report a "ResizeObserver loop" error.
+          let frame: number | null = null;
+          observer = new ResizeObserver(() => {
+            if (frame !== null || destroyed) return;
+            frame = requestAnimationFrame(() => {
+              frame = null;
+              if (!destroyed) chart.resize();
+            });
+          });
           observer.observe(element);
         }
       });

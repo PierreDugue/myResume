@@ -1,5 +1,5 @@
 // Only the chart types and components this app uses, to keep the ECharts chunk small.
-import { BarChart, HeatmapChart, LineChart } from 'echarts/charts';
+import { BarChart, GraphChart, HeatmapChart, LineChart } from 'echarts/charts';
 import {
   AriaComponent,
   GridComponent,
@@ -12,6 +12,7 @@ import { CanvasRenderer } from 'echarts/renderers';
 
 echarts.use([
   BarChart,
+  GraphChart,
   LineChart,
   HeatmapChart,
   AriaComponent,

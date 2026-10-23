@@ -205,7 +205,7 @@ All tables have `id` (uuid), `createdAt` and `updatedAt`. Lists use `sortOrder` 
 - `GET /dashboard/stats?from&to&tech&category`: stat panel values.
 - `GET /dashboard/skills-timeline?from&to&category`: time series data.
 - `GET /logs?query=<logql-lite>&from&to`: highlight search. The query is parsed on the server, the same way real log tools do it.
-- `GET /projects/:slug/trace`: the spans of one project.
+- `GET /traces` and `GET /traces/:slug`: projects as traces (the trace search, and one project's spans).
 - `GET /service-map`: nodes and edges.
 - `GET /site-metrics?from&to`: aggregated live metrics of the site.
 - `GET /resume-file`: download the active PDF.
@@ -282,7 +282,10 @@ The server checks every message the client sends, limits each connection to 20 m
    - `GET /api/logs` and `GET /api/logs/labels`; the log lines are built in `libs/shared/resume-metrics`
    - the `/explore` page: query bar with autocomplete and example queries, log volume chart (with a table view), expandable lines that narrow the query; the year range is in the URL
    - Not done yet: the live tail tab (step 8).
-6. **Traces and service map:** ProjectSpan entity and admin screen, the waterfall view, the node graph.
+6. **Traces and service map:** ✅
+   - project spans, edited as an outline in the project admin (indent/outdent, move with sub-spans); the spans of this site seeded from its git history
+   - `GET /api/traces`, `GET /api/traces/:slug` and `GET /api/service-map`, calculated in `libs/shared/resume-metrics`
+   - `/traces` (trace search table), `/traces/:slug` (HTML/CSS waterfall with expandable spans and a table view), `/service-map` (ECharts force graph with a table view; a node opens the filtered dashboard, the trace or the job's logs)
 7. **Alerts:** StatusAlert entity and admin screen, alerting page.
 8. **Live site metrics and streaming:**
    - Request instrumentation and `/site-metrics`.

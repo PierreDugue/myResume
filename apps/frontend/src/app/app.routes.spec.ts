@@ -35,6 +35,9 @@ describe('appRoutes', () => {
     ['/admin/login', 'Sign in', 'app-login-page'],
     ['/resume', 'Plain view', 'app-plain-resume-page'],
     ['/explore', 'Explore', 'app-explore-page'],
+    ['/traces', 'Traces', 'app-trace-search-page'],
+    ['/traces/pierre-o11y', 'Trace', 'app-trace-page'],
+    ['/service-map', 'Service map', 'app-service-map-page'],
     ['/this/does/not/exist', 'Page not found', 'app-not-found-page'],
   ])('%s renders "%s" inside the app shell', async (url, title, pageSelector) => {
     const root = await visit(url);
@@ -49,6 +52,16 @@ describe('appRoutes', () => {
     const current = root.querySelector('nav[aria-label="Main"] a[aria-current="page"]');
     expect(current?.textContent).toContain('Explore');
     expect(current?.getAttribute('href')).toBe('/explore');
+  });
+
+  it.each([
+    ['/traces', 'Traces'],
+    ['/traces/pierre-o11y', 'Traces'],
+    ['/service-map', 'Service map'],
+  ])('marks %s as "%s" in the main navigation', async (url, label) => {
+    const root = await visit(url);
+    const current = root.querySelector('nav[aria-label="Main"] a[aria-current="page"]');
+    expect(current?.textContent).toContain(label);
   });
 
   it('offers a link back to the home dashboard on the not-found page', async () => {

@@ -9,4 +9,6 @@ export interface NavItem {
 export const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Career Overview', path: '/', exact: true },
   { label: 'Explore', path: '/explore', exact: false },
+  { label: 'Traces', path: '/traces', exact: false },
+  { label: 'Service map', path: '/service-map', exact: false },
 ];
