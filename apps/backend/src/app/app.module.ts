@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
 import { AppEnv, validateEnv } from './config/env.validation';
+import { DashboardModule } from './dashboard/dashboard.module';
 import { buildTypeOrmOptions } from './database/typeorm-options';
 import { HealthModule } from './health/health.module';
 import { ResumeModule } from './resume/resume.module';
@@ -35,6 +36,7 @@ import { ResumeModule } from './resume/resume.module';
     AuthModule,
     HealthModule,
     ResumeModule,
+    DashboardModule,
   ],
 })
 export class AppModule {}

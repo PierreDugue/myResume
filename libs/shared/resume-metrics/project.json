@@ -1,0 +1,22 @@
+{
+  "name": "resume-metrics",
+  "$schema": "../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/shared/resume-metrics/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project resume-metrics --web",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "commands": [
+          "tsc --noEmit -p libs/shared/resume-metrics/tsconfig.lib.json",
+          "tsc --noEmit -p libs/shared/resume-metrics/tsconfig.spec.json"
+        ],
+        "parallel": false
+      }
+    }
+  }
+}

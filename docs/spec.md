@@ -269,7 +269,13 @@ The server checks every message the client sends, limits each connection to 20 m
    - Frontend: dev proxy, app layout (sidebar and top bar), dark and light theme, routing.
 2. **Auth:** admin seeding, login, JWT guard; login page, interceptor, admin guard.
 3. **Content:** ✅ create/read/update/delete plus admin screens for Profile, Skills, Experience (**including its achievements**, moved here from step 5), Education and Projects; the public `GET /api/resume` bundle; the plain view `/resume` (printable). The initial content is seeded from the resume PDF (no phone number, no skill levels). This is the first usable version.
-4. **Home dashboard:** `GET /resume`, the `/dashboard/*` endpoints, stat, state timeline, time series, bar gauge and heatmap panels, the time range picker and variables (stored in the URL).
+4. **Home dashboard:** ✅
+   - `GET /api/dashboard` (one call for every panel), calculated in `libs/shared/resume-metrics`
+   - the panels: profile, stats, career timeline (HTML), skills over time (line chart), experience by skill (bar gauge), impact cards, technologies per year (heatmap), latest highlights
+   - Each panel has View, Inspect data and a table alternative for charts.
+   - The time range and filters are kept in the URL.
+   - Not done yet: the "Export PDF" button (step 9), the refresh and Live controls (step 8).
+   - The "skill levels" bar gauge shows **years of experience per skill**, because the resume gives no levels; a level shows when set in the admin.
 5. **Explore:** highlight labels and skills, the query parser (written test-first), `/logs`, the logs panel UI.
 6. **Traces and service map:** ProjectSpan entity and admin screen, the waterfall view, the node graph.
 7. **Alerts:** StatusAlert entity and admin screen, alerting page.

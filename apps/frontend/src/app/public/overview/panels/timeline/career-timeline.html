@@ -1,0 +1,26 @@
+@for (lane of lanes(); track lane.title) {
+  <div class="lane">
+    <h3>{{ lane.title }}</h3>
+    <ul class="track">
+      @for (bar of lane.bars; track bar.id) {
+        <li
+          class="item"
+          [class.education]="bar.kind === 'education'"
+          [style.left.%]="bar.left"
+          [style.width.%]="bar.width"
+          [attr.title]="bar.label + (bar.sublabel ? ' · ' + bar.sublabel : '') + ' · ' + bar.period"
+        >
+          <span class="label">{{ bar.label }}</span>
+          <span class="sr-only">{{ bar.sublabel ? bar.sublabel + ', ' : '' }}{{ bar.period }}</span>
+        </li>
+      }
+    </ul>
+  </div>
+}
+<ol class="axis" aria-hidden="true">
+  @for (tick of ticks(); track tick.year) {
+    @if (tick.shown) {
+      <li class="tick" [style.left.%]="tick.left">{{ tick.year }}</li>
+    }
+  }
+</ol>

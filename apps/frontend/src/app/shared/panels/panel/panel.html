@@ -1,0 +1,49 @@
+<section class="panel" [class.fullscreen]="fullscreen()">
+  <header>
+    <h2>{{ title() }}</h2>
+    @if (info(); as text) {
+      <span class="info" tabindex="0" role="note" [attr.aria-label]="text" [attr.data-tip]="text"
+        >i</span
+      >
+    }
+    <div class="menu">
+      <button
+        class="panel-menu-toggle icon-button"
+        type="button"
+        aria-haspopup="menu"
+        [attr.aria-expanded]="menuOpen()"
+        [attr.aria-label]="title() + ' menu'"
+        (click)="menuOpen.set(!menuOpen())"
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5h.01M12 12h.01M12 19h.01" /></svg>
+      </button>
+      @if (menuOpen()) {
+        <div class="menu-items" role="menu">
+          <button role="menuitem" type="button" (click)="view()">
+            {{ fullscreen() ? 'Exit full screen' : 'View' }}
+          </button>
+          <button role="menuitem" type="button" (click)="inspect()">Inspect data</button>
+          @if (canShowTable()) {
+            <button role="menuitem" type="button" (click)="toggleTable()">
+              {{ showTable() ? 'Show chart' : 'Show as table' }}
+            </button>
+          }
+        </div>
+      }
+    </div>
+  </header>
+  <div class="body"><ng-content /></div>
+</section>
+
+@if (inspecting()) {
+  <!-- Closes with Escape or the Close button (keyboard-accessible). -->
+  <div class="overlay">
+    <div class="dialog" role="dialog" aria-modal="true" [attr.aria-label]="title() + ' data'">
+      <header>
+        <h3>{{ title() }} · data</h3>
+        <button class="button" type="button" (click)="inspecting.set(false)">Close</button>
+      </header>
+      <pre>{{ json() }}</pre>
+    </div>
+  </div>
+}

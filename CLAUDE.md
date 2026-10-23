@@ -25,10 +25,12 @@ Put code used by more than one app in `libs/`. Create libraries with Nx generato
 - `npx nx g @nx/js:library libs/shared/<name> --importPath=@my-resume/<name> --bundler=none --unitTestRunner=vitest`
 - `npx nx g @nx/angular:library libs/frontend/<name> --unitTestRunner=vitest-angular` for Angular UI libraries
 
-Planned libraries:
+Libraries:
 
-- `libs/shared/query-parser`: the log query parser, used by the backend to filter and by the frontend for autocomplete
-- `libs/frontend/ui-panels`: the dashboard panel components
+- `libs/shared/api-models` (`@my-resume/api-models`): API types
+- `libs/shared/resume-metrics` (`@my-resume/resume-metrics`): pure calculations behind the dashboards (`buildDashboard`, month arithmetic). The backend calls it and the frontend reuses its helpers (e.g. `monthIndex`). Unit-test every rule here, with hand-checkable fixtures (`src/lib/fixtures.ts`).
+- Planned: `libs/shared/query-parser` (the log query parser, for the backend filter and frontend autocomplete).
+- Angular UI stays in the app (`apps/frontend/src/app/shared/`) while only one app uses it. Nx's Angular libraries can't use the app's test runner (`vitest-angular`) unless they're separately buildable, so move UI to a library only when a second consumer appears.
 
 ## Commands (always from the repo root)
 
@@ -40,6 +42,7 @@ Planned libraries:
 - `npx nx run backend:integration`: backend integration tests (`*.int.spec.ts`). Each test file starts the real app on its **own throwaway PostgreSQL database**, created and dropped by [test-app.ts](apps/backend/src/testing/test-app.ts), with migrations, seed and guards applied. Needs `docker compose up -d postgres`; your dev data is never touched. `nx test backend` excludes them.
 - `npx nx lint <project>`, `npx nx build <project>`, `npx nx typecheck <project>`
 - `npx nx e2e frontend-e2e`: Cypress (starts the frontend and backend itself; needs the database). From a VS Code terminal, prefix with `env -u ELECTRON_RUN_AS_NODE`, because VS Code sets that variable and it stops Cypress from starting.
+- Screenshots for visual checks: Cypress's window is 1280 px wide, so use `cy.viewport(1280, …)` or smaller; a wider viewport gets cropped and looks like an overflow bug.
 - `npm run affected`: lint, test and build only the projects affected by your changes
 - `npm run format`: Prettier
 - `npx nx graph`: project dependency graph
@@ -141,7 +144,15 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
 - Keep component styles under the budget (4kB warning per component). Load charts only when needed (`@defer` / lazy routes).
 - Pages are lazy-loaded child routes of the `Shell` route in `app.routes.ts`, with a `title`. The title feeds the document title and the breadcrumb `h1`, so pages don't add their own `h1`.
 - Styling: use the CSS color tokens in `apps/frontend/src/styles.scss` (`--color-*`, `--series-*`, `--space-*`), never hard-coded colors. Dark is the default; `[data-theme='light']` switches them. Shared classes: `.panel`, `.empty-state`, `.button`, `.icon-button`.
-- Charts: Apache ECharts through our own small wrapper component (planned in `libs/frontend/ui-panels`). Stat, gauge, logs and trace panels are plain HTML/CSS/SVG.
+- Dashboard building blocks ([shared/panels/](apps/frontend/src/app/shared/panels/)):
+  - `Panel`: frame with title, info tooltip, and a menu with View (full screen), Inspect data (JSON dialog) and an optional table view via `[(showTable)]`. Every chart needs a table alternative.
+  - `EChart`: the ECharts wrapper, loading the `echarts-setup.ts` chunk on demand.
+  - `StatPanel`, `BarGauge`.
+  - `readChartPalette()`: chart colors from the CSS tokens, re-read when the theme changes.
+- Chart options are **pure functions** (e.g. `public/overview/charts/*-option.ts`) with unit tests. Register new ECharts chart types or components in `echarts-setup.ts` only.
+- In tests, provide `ECHARTS_LOADER` with a fake (jsdom has no canvas).
+- Timeline, stat, gauge, impact and log panels are plain HTML/CSS/SVG.
+- The dashboard view (time range and filters) lives in the URL query (`?from&to&category&skill`): read it with `parseDashboardQuery`, write it with `router.navigate(..., { queryParams: toQueryParams(q) })`.
 
 ## Test-driven development (mandatory)
 

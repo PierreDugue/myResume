@@ -1,0 +1,38 @@
+@if (cards().length === 0) {
+  <p class="empty">No quantified achievements in this range.</p>
+} @else {
+  <ul class="impacts">
+    @for (card of cards(); track card.item.highlightId) {
+      <li
+        class="impact"
+        [class.good]="card.f.good"
+        [class.bad]="!card.f.good"
+        [attr.title]="card.item.message"
+      >
+        <h3>{{ card.item.impact.metric }}</h3>
+        <p class="headline">
+          @if (card.f.trend !== 'flat') {
+            <svg class="arrow" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                [attr.d]="card.f.trend === 'up' ? 'M12 19V5M5 12l7-7 7 7' : 'M12 5v14M5 12l7 7 7-7'"
+              />
+            </svg>
+          }
+          {{ card.f.headline }}
+          @if (card.trendText) {
+            <span class="sr-only">{{ card.trendText }}</span>
+          }
+        </p>
+        @if (card.f.detail) {
+          <p class="detail">{{ card.f.detail }}</p>
+        }
+        @if (card.step) {
+          <svg class="step" viewBox="0 0 100 32" preserveAspectRatio="none" aria-hidden="true">
+            <path [attr.d]="card.step" />
+          </svg>
+        }
+        <p class="meta">{{ card.item.company }} · {{ card.year }}</p>
+      </li>
+    }
+  </ul>
+}

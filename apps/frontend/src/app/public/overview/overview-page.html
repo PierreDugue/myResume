@@ -1,0 +1,184 @@
+<div class="toolbar" role="group" aria-label="Dashboard view">
+  <div class="control">
+    <label for="dash-from">From</label>
+    <select id="dash-from" (change)="setYear('from', $any($event.target).value)">
+      @for (year of years(); track year) {
+        <option [value]="year" [selected]="year === view().from">{{ year }}</option>
+      }
+    </select>
+  </div>
+  <div class="control">
+    <label for="dash-to">To</label>
+    <select id="dash-to" (change)="setYear('to', $any($event.target).value)">
+      @for (year of years(); track year) {
+        <option [value]="year" [selected]="year === view().to">{{ year }}</option>
+      }
+    </select>
+  </div>
+  <div class="control">
+    <label for="dash-category">Category</label>
+    <select id="dash-category" (change)="setFilter('category', $any($event.target).value)">
+      <option value="" [selected]="!view().category">All categories</option>
+      @for (category of data()?.filters?.categories ?? []; track category) {
+        <option [value]="category" [selected]="category === view().category">{{ category }}</option>
+      }
+    </select>
+  </div>
+  <div class="control">
+    <label for="dash-skill">Skill</label>
+    <select id="dash-skill" (change)="setFilter('skill', $any($event.target).value)">
+      <option value="" [selected]="!view().skill">All skills</option>
+      @for (group of skillGroups(); track group.category) {
+        <optgroup [label]="group.category">
+          @for (skill of group.skills; track skill.slug) {
+            <option [value]="skill.slug" [selected]="skill.slug === view().skill">
+              {{ skill.name }}
+            </option>
+          }
+        </optgroup>
+      }
+    </select>
+  </div>
+  <button class="button reset" type="button" (click)="reset()">Whole career</button>
+  @if (dashboard.isLoading()) {
+    <span class="loading" role="status">Loading…</span>
+  }
+</div>
+
+@if (data(); as d) {
+  <div class="grid">
+    <app-panel class="profile" title="Profile" [data]="d.profile">
+      <app-profile-panel [profile]="d.profile" [status]="d.status" />
+    </app-panel>
+
+    <div class="stats">
+      @for (stat of d.stats; track stat.key) {
+        <app-stat-panel [label]="stat.label" [display]="stat.display" [hint]="stat.hint" />
+      }
+    </div>
+
+    <app-panel
+      class="timeline"
+      title="Career timeline"
+      info="Jobs and education over the selected years."
+      [data]="d.timeline"
+    >
+      <app-career-timeline [items]="d.timeline" [range]="d.range" [today]="today" />
+    </app-panel>
+
+    <app-panel
+      class="usage"
+      title="Skills over time"
+      info="Years of experience accumulated with each skill, counting every month of the jobs and projects that used it."
+      [data]="d.skillUsage"
+      [canShowTable]="true"
+      [(showTable)]="usageTable"
+    >
+      @if (usageTable()) {
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">
+              Years of experience at the end of each year
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Skill</th>
+                @for (year of d.skillUsage.years; track year) {
+                  <th scope="col">{{ year }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of usageSeries(); track s.skillId) {
+                <tr>
+                  <th scope="row">{{ s.name }}</th>
+                  @for (value of s.cumulativeYears; track $index) {
+                    <td>{{ value }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else if (usageOption(); as option) {
+        <app-echart
+          [options]="option"
+          label="Line chart of years of experience per skill over time"
+        />
+      }
+    </app-panel>
+
+    <app-panel
+      class="totals"
+      title="Experience by skill"
+      info="Years of use within the selected range, by category."
+      [data]="d.skillTotals"
+    >
+      <app-bar-gauge [groups]="gauge()" />
+    </app-panel>
+
+    <app-panel
+      class="impacts"
+      title="Impact"
+      info="Quantified results from the resume, newest first."
+      [data]="d.impacts"
+    >
+      <app-impact-list [items]="d.impacts" />
+    </app-panel>
+
+    <app-panel
+      class="heatmap"
+      title="Technologies per year"
+      info="Months of use per technology and year."
+      [data]="d.skillUsage"
+      [canShowTable]="true"
+      [(showTable)]="heatmapTable"
+    >
+      @if (heatmapTable()) {
+        <div class="table-wrap">
+          <table>
+            <caption class="sr-only">
+              Months of use per technology and year
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Technology</th>
+                @for (year of d.skillUsage.years; track year) {
+                  <th scope="col">{{ year }}</th>
+                }
+              </tr>
+            </thead>
+            <tbody>
+              @for (s of heatmapSeries(); track s.skillId) {
+                <tr>
+                  <th scope="row">{{ s.name }}</th>
+                  @for (months of s.monthsPerYear; track $index) {
+                    <td>{{ months }}</td>
+                  }
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      } @else if (heatmapOption(); as option) {
+        <app-echart [options]="option" label="Heatmap of months of use per technology and year" />
+      }
+    </app-panel>
+
+    <app-panel
+      class="logs"
+      title="Latest highlights"
+      info="The newest achievements, as log lines."
+      [data]="d.latestHighlights"
+    >
+      <app-log-preview [lines]="d.latestHighlights" />
+    </app-panel>
+  </div>
+} @else if (dashboard.error()) {
+  <section class="panel empty-state">
+    <p role="alert">The dashboard could not be loaded.</p>
+    <button class="button retry" type="button" (click)="dashboard.reload()">Try again</button>
+  </section>
+} @else {
+  <p class="muted">Loading the dashboard…</p>
+}

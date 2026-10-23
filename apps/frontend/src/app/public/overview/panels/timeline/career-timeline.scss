@@ -1,0 +1,69 @@
+:host {
+  display: block;
+  padding-left: 88px;
+}
+
+.lane {
+  position: relative;
+  margin-bottom: var(--space-2);
+}
+
+h3 {
+  position: absolute;
+  left: -88px;
+  top: 6px;
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.track {
+  position: relative;
+  height: 32px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: var(--radius);
+  background: var(--color-surface-2);
+}
+
+.item {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  display: flex;
+  align-items: center;
+  min-width: 3px;
+  padding: 0 6px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--series-1) 70%, transparent);
+  color: var(--color-bg);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+  &.education {
+    background: color-mix(in srgb, var(--series-4) 70%, transparent);
+  }
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.axis {
+  position: relative;
+  height: 18px;
+  margin: var(--space-1) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tick {
+  position: absolute;
+  color: var(--color-text-muted);
+  font: var(--font-mono-sm);
+  font-size: 0.6875rem;
+}

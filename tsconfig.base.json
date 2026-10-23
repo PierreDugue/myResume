@@ -15,7 +15,8 @@
     "skipDefaultLibCheck": true,
     "strict": true,
     "paths": {
-      "@my-resume/api-models": ["./libs/shared/api-models/src/index.ts"]
+      "@my-resume/api-models": ["./libs/shared/api-models/src/index.ts"],
+      "@my-resume/resume-metrics": ["./libs/shared/resume-metrics/src/index.ts"]
     }
   },
   "exclude": ["node_modules", "tmp"]

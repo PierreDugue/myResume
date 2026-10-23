@@ -287,6 +287,124 @@ interface ResumeResponse {
 
 **Not yet (later steps):** highlight labels and skills (step 5, Explore), project spans (step 6), status alerts (step 7), the resume PDF (step 9).
 
+### Dashboard (Career Overview)
+
+| Method | Path             | Auth | Request                                  | Response                      | Status |
+| ------ | ---------------- | ---- | ---------------------------------------- | ----------------------------- | ------ |
+| GET    | `/api/dashboard` | –    | query: `from`, `to`, `category`, `skill` | `DashboardResponse`, or `400` | done   |
+
+Every panel of the home dashboard in one call. The backend calculates everything from the resume content; the frontend only draws it.
+
+- **Query parameters** (all optional; the frontend keeps them in the page URL):
+  - `from`, `to`: years. The default range runs from the first job's year to the current year. They must be integers between 1950 and 2100, with `from ≤ to`; otherwise `400`.
+  - `category`: a skill category, e.g. `AI`.
+  - `skill`: a skill slug, e.g. `angular`.
+  - An unknown `category` or `skill` returns `400`.
+- **Months of use:** a skill counts for every calendar month of every experience and project linked to it (start month to end month inclusive; the current month for a current job). Overlapping jobs count a month once.
+- **The range and filters apply** to the calculated panels:
+  - jobs, technologies and achievements counts
+  - timeline items overlapping the range
+  - skill usage, skill totals and impacts
+  - the latest highlights
+
+  `skill` keeps only the jobs and projects that use it. `category` keeps only the skills of that category.
+
+- **Headline figures don't depend on the range:** years in IT and years of Angular come from the profile (entered by hand), and "uptime" counts from the first job.
+- **No gap markers:** the timeline only lists items. Periods between jobs are simply empty, as the spec requires.
+
+```ts
+interface DashboardRange {
+  from: number; // year
+  to: number;
+}
+
+interface DashboardFilters {
+  minYear: number; // earliest year with content (education included)
+  maxYear: number; // current year
+  categories: string[]; // in skills-list order
+  skills: { slug: string; name: string; category: string }[];
+}
+
+interface StatValue {
+  key: 'yearsInIt' | 'yearsOfAngular' | 'uptime' | 'jobs' | 'technologies' | 'achievements';
+  label: string; // e.g. "Years in IT"
+  value: number;
+  display: string; // formatted, e.g. "14+", "since 2011"
+  hint: string | null; // e.g. "15 years"
+}
+
+interface CareerStatus {
+  state: 'employed' | 'open-to-work'; // employed = a job without end date
+  company: string | null; // current employer
+  openToRelocation: boolean;
+}
+
+interface ImpactItem {
+  highlightId: string;
+  company: string;
+  date: IsoDate;
+  message: string;
+  impact: Impact;
+}
+
+interface TimelineItem {
+  id: string;
+  kind: 'job' | 'education';
+  label: string; // company or school
+  sublabel: string | null; // role or degree
+  startDate: IsoDate;
+  endDate: IsoDate | null; // null = ongoing
+}
+
+interface SkillUsageSeries {
+  skillId: string;
+  slug: string;
+  name: string;
+  category: string;
+  monthsPerYear: number[]; // aligned with SkillUsage.years, 0..12
+  cumulativeYears: number[]; // experience at the end of each year, all-time, 1 decimal
+  totalYears: number; // within the range, 1 decimal
+}
+
+interface SkillUsage {
+  years: number[]; // from..to
+  series: SkillUsageSeries[]; // skills used in the range, most used first
+}
+
+interface SkillTotalsGroup {
+  category: string;
+  skills: {
+    skillId: string;
+    slug: string;
+    name: string;
+    years: number;
+    level: SkillLevel | null;
+  }[];
+}
+
+interface LogLine {
+  id: string;
+  date: IsoDate;
+  level: HighlightLevel;
+  message: string;
+  company: string;
+}
+
+interface DashboardResponse {
+  range: DashboardRange; // as applied (defaults filled in)
+  applied: { category: string | null; skill: string | null };
+  filters: DashboardFilters;
+  profile: PublicProfile | null;
+  status: CareerStatus;
+  stats: StatValue[]; // in display order
+  impacts: ImpactItem[]; // newest first
+  timeline: TimelineItem[]; // jobs and education, by start date
+  skillUsage: SkillUsage;
+  skillTotals: SkillTotalsGroup[]; // categories in skills-list order, skills by years desc
+  latestHighlights: LogLine[]; // 5 newest
+}
+```
+
 ## Types
 
 Shared types are defined in each section above.
