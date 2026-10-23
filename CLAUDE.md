@@ -53,6 +53,13 @@ Database and full stack:
 - `docker compose up -d postgres`: start only the database (for local dev)
 - `docker compose up --build`: whole stack; frontend at http://localhost, API at http://localhost/api
 - Docker builds use the **repo root** as build context (`apps/*/Dockerfile`)
+- Both compose files bind the published ports to `127.0.0.1` or publish none: never expose the backend or PostgreSQL to the network.
+
+CI and deployment ([.github/workflows/ci.yml](.github/workflows/ci.yml)):
+
+- Every push and pull request runs lint, unit tests, typecheck, build and the backend integration tests (against a throwaway PostgreSQL service).
+- On `main`, CI then publishes the two images to GHCR, for `linux/amd64` and `linux/arm64`: `ghcr.io/pierredugue/my-resume-backend` and `ghcr.io/pierredugue/my-resume-frontend`, tagged `latest` and `sha-<short commit>`.
+- On a server, [docker-compose.prod.yml](docker-compose.prod.yml) runs those images (no build) with a `.env` next to it: `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`. Set `IMAGE_TAG=sha-<short commit>` to roll back. Only nginx (port 80) is published.
 
 Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/database/data-source.ts)):
 
@@ -85,7 +92,8 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
   - `ADMIN_EMAIL` / `ADMIN_PASSWORD`: optional but set together; password at least 12 characters. On startup the admin account is created or updated to match them, which is how the password is reset.
 - All of them go in the root `.env` (used by both Docker Compose and local dev).
 - Local dev needs no extra file. The backend loads `apps/backend/.env` (optional overrides) and then the root `.env`. Missing `DATABASE_*`/`PORT` values fall back to `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` and `BACKEND_PORT`, and `DATABASE_HOST` defaults to `localhost`. Variables already set in the shell win.
-- When you add a new variable, also add it to `docker-compose.yml` and list it here.
+- `IMAGE_TAG` (only used by `docker-compose.prod.yml`): the image version to run, `latest` by default.
+- When you add a new variable, also add it to `docker-compose.yml` (and `docker-compose.prod.yml` if the backend needs it in production) and list it here.
 
 ## Backend conventions (`apps/backend`)
 

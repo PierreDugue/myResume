@@ -1,0 +1,61 @@
+# Production: runs the images published by CI (.github/workflows/ci.yml) instead of building them.
+#
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Needs a .env next to this file (same variables as docker-compose.yml, see CLAUDE.md).
+# IMAGE_TAG picks the version: `latest` (default) or `sha-<short commit>` to roll back.
+# Only nginx (port 80) is published; the backend and PostgreSQL stay on the internal network.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?Set POSTGRES_DB in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    image: ghcr.io/pierredugue/my-resume-backend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_USER: ${POSTGRES_USER}
+      DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+      DATABASE_NAME: ${POSTGRES_DB}
+      PORT: 3000
+      NODE_ENV: production
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -base64 48)}
+      PASSWORD_PEPPER: ${PASSWORD_PEPPER:?Set PASSWORD_PEPPER in .env (openssl rand -base64 48)}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3000/api/health || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  frontend:
+    image: ghcr.io/pierredugue/my-resume-frontend:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - '80:80'
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:
