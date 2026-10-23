@@ -57,6 +57,8 @@ services:
       dockerfile: apps/frontend/Dockerfile
     container_name: app_frontend
     restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:3000 # where nginx sends /api (the image's default)
     ports:
       - '80:80'
     depends_on:

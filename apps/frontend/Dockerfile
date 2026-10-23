@@ -14,7 +14,12 @@ RUN npx nx build frontend --configuration=production
 # Stage 2: serve with nginx
 FROM nginx:alpine
 COPY --from=build /workspace/dist/apps/frontend/browser /usr/share/nginx/html
-COPY apps/frontend/nginx.conf /etc/nginx/conf.d/default.conf
+# The image renders templates into conf.d at startup (see nginx.conf.template).
+COPY apps/frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
+# Where /api goes. Docker Compose's default; override it on other platforms (e.g. Render).
+ENV BACKEND_URL=http://backend:3000
+# Exposes the container's DNS servers as NGINX_LOCAL_RESOLVERS for the template's `resolver`.
+ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]

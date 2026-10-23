@@ -4,6 +4,7 @@
 #   ghcr.io/pierredugue/my-resume-frontend  (apps/frontend/Dockerfile)
 #
 # Tags: `latest` and `sha-<short commit>` (to roll back, see docker-compose.prod.yml).
+# Then asks Render to deploy them, when the deploy hook secrets are set (docs/deployment.md).
 # Each image is multi-platform: linux/amd64 and linux/arm64, each built on a native runner
 # (no emulation), then combined into one image name.
 
@@ -163,3 +164,31 @@ jobs:
           IMAGE: ${{ env.IMAGE_PREFIX }}-${{ matrix.app }}
           VERSION: ${{ steps.meta.outputs.version }}
         run: docker buildx imagetools inspect "$IMAGE:$VERSION"
+
+  deploy-render:
+    name: Deploy to Render
+    needs: publish
+    runs-on: ubuntu-latest
+    steps:
+      # Render doesn't redeploy when an image is pushed: call each service's deploy hook
+      # (Render > service > Settings > Deploy Hook), stored as repository secrets.
+      # `imgURL` deploys exactly this commit's image instead of whatever `latest` is by then.
+      # Skipped (with a notice) while the secrets aren't set.
+      - name: Call the deploy hooks
+        env:
+          BACKEND_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}
+          FRONTEND_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}
+        run: |
+          tag="sha-${GITHUB_SHA::7}"
+          deploy() {
+            local app=$1 hook=$2
+            if [ -z "$hook" ]; then
+              echo "::notice::No Render deploy hook for the $app; skipped."
+              return
+            fi
+            curl -fsS -o /dev/null -G "$hook" \
+              --data-urlencode "imgURL=${IMAGE_PREFIX}-${app}:${tag}"
+            echo "Asked Render to deploy the $app at $tag."
+          }
+          deploy backend "$BACKEND_HOOK"
+          deploy frontend "$FRONTEND_HOOK"

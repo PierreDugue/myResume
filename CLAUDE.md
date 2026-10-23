@@ -60,6 +60,7 @@ CI and deployment ([.github/workflows/ci.yml](.github/workflows/ci.yml)):
 - Every push and pull request runs lint, unit tests, typecheck, build and the backend integration tests (against a throwaway PostgreSQL service).
 - On `main`, CI then publishes the two images to GHCR, for `linux/amd64` and `linux/arm64`: `ghcr.io/pierredugue/my-resume-backend` and `ghcr.io/pierredugue/my-resume-frontend`, tagged `latest` and `sha-<short commit>`.
 - On a server, [docker-compose.prod.yml](docker-compose.prod.yml) runs those images (no build) with a `.env` next to it: `docker compose -f docker-compose.prod.yml pull && docker compose -f docker-compose.prod.yml up -d`. Set `IMAGE_TAG=sha-<short commit>` to roll back. Only nginx (port 80) is published.
+- Render: see [docs/deployment.md](docs/deployment.md). After publishing, CI calls the Render deploy hooks (`RENDER_DEPLOY_HOOK_BACKEND`, `RENDER_DEPLOY_HOOK_FRONTEND` repository secrets) when they're set.
 
 Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/database/data-source.ts)):
 
@@ -71,7 +72,7 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
 ## API routing
 
 - The backend uses the **global prefix `/api`** (`apps/backend/src/main.ts`). Routes are `/api/health`, `/api/resume`, ...
-- nginx ([apps/frontend/nginx.conf](apps/frontend/nginx.conf)) forwards `/api/*` to `http://backend:3000` **unchanged**. In dev, [apps/frontend/proxy.conf.mjs](apps/frontend/proxy.conf.mjs) does the same.
+- nginx ([apps/frontend/nginx.conf.template](apps/frontend/nginx.conf.template)) forwards `/api/*` **unchanged** to `BACKEND_URL` (`http://backend:3000` in Docker Compose, the backend's public HTTPS address on Render). It's a template: the nginx image fills in the environment variables at startup. In dev, [apps/frontend/proxy.conf.mjs](apps/frontend/proxy.conf.mjs) does the same.
 - The frontend always calls relative URLs: `/api/...`.
 - WebSockets (Socket.IO, namespace `/live`):
   - The gateway is configured with `path: '/api/socket.io'`, and the browser connects to that same path.
@@ -93,6 +94,7 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
 - All of them go in the root `.env` (used by both Docker Compose and local dev).
 - Local dev needs no extra file. The backend loads `apps/backend/.env` (optional overrides) and then the root `.env`. Missing `DATABASE_*`/`PORT` values fall back to `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` and `BACKEND_PORT`, and `DATABASE_HOST` defaults to `localhost`. Variables already set in the shell win.
 - `IMAGE_TAG` (only used by `docker-compose.prod.yml`): the image version to run, `latest` by default.
+- `BACKEND_URL` (frontend container only): where nginx sends `/api`. Defaults to `http://backend:3000` in the image.
 - When you add a new variable, also add it to `docker-compose.yml` (and `docker-compose.prod.yml` if the backend needs it in production) and list it here.
 
 ## Backend conventions (`apps/backend`)
