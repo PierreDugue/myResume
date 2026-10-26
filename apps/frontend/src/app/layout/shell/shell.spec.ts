@@ -161,6 +161,45 @@ describe('Shell', () => {
     expect(status?.textContent).toMatch(/API\s+down/);
   });
 
+  describe('cold start banner', () => {
+    const banner = (root: HTMLElement) => root.querySelector('.cold-start');
+
+    it('tells visitors the backend is waking up while the API is starting', async () => {
+      apiStatus.set('starting');
+      const { root } = await render();
+
+      const alert = banner(root);
+      expect(alert?.getAttribute('role')).toBe('status');
+      expect(alert?.textContent).toContain('The backend is waking up');
+      expect(alert?.textContent).toContain('will load by itself');
+      expect(root.querySelector('.api-status')?.textContent).toMatch(/API\s+starting/);
+    });
+
+    it('sits above the page content, inside the main landmark', async () => {
+      apiStatus.set('starting');
+      const { root } = await render();
+      const main = $(root, 'main');
+      expect(main.firstElementChild?.classList).toContain('cold-start');
+      expect(main.textContent).toContain('page content');
+    });
+
+    it('goes away by itself once the API is up', async () => {
+      apiStatus.set('starting');
+      const { root, harness } = await render();
+      expect(banner(root)).not.toBeNull();
+
+      apiStatus.set('up');
+      harness.detectChanges();
+      expect(banner(root)).toBeNull();
+    });
+
+    it.each<ApiStatus>(['unknown', 'up', 'down'])('is not shown when the API is %s', async (s) => {
+      apiStatus.set(s);
+      const { root } = await render();
+      expect(banner(root)).toBeNull();
+    });
+  });
+
   describe('account links (sidebar)', () => {
     it('offers "Sign in" to visitors', async () => {
       const { root } = await render();

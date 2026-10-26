@@ -160,6 +160,10 @@ This connects to the resume's AI skills (Claude, Claude skills) and to "Generate
 - **Live data is optional:**
   - Every page works without WebSockets. If the socket can't connect, it retries with increasing delays and falls back to normal HTTP refresh.
   - Streams only run while a page that needs them is visible; they pause when the browser tab is hidden.
+- **Cold starts:** free hosting (Render) puts the backend to sleep after 15 idle minutes, and waking it takes about a minute. The frontend makes this visible instead of looking broken:
+  - The sidebar's API status (from `GET /api/health`) shows **starting** when the health check takes more than 3 seconds, or when it gets a 502, 503 or 504 that didn't come from the backend (a 503 health report from the backend itself means **down**). While starting, it checks every 5 seconds, and it reports **down** after 2 minutes without an answer.
+  - While the API is starting, a banner above the page says the backend is waking up and that the page will load by itself.
+  - Failed `GET /api/...` calls (502, 503 or 504) are retried with increasing delays for about 90 seconds, so pages fill in once the backend is up. Writes (`POST`, `PUT`, `PATCH`, `DELETE`) are never retried.
 - **First visit:** an optional short guided tour explains the concept: "This resume is an observability platform. Try changing the time range…"
 
 ## Admin area

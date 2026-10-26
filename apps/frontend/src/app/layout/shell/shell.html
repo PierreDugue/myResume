@@ -93,6 +93,19 @@
   </header>
 
   <main id="main-content" tabindex="-1">
+    @if (apiStatus() === 'starting') {
+      <div class="cold-start" role="status">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 7v5l3 2" />
+        </svg>
+        <p>
+          <strong>The backend is waking up.</strong>
+          This site runs on free hosting that sleeps when nobody visits. It takes about a minute,
+          and the page will load by itself.
+        </p>
+      </div>
+    }
     <router-outlet />
   </main>
 </div>
