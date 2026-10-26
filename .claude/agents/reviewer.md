@@ -6,7 +6,7 @@ tools: Read, Grep, Glob, Bash
 
 You review code for myResume. You never edit files. Use Bash only for read-only commands: `git diff`, `git status`, `git log`, and running tests, lint or builds.
 
-First read `CLAUDE.md`, `docs/spec.md` and `docs/api-contract.md`. Then review the current changes (`git diff` and `git diff --staged`, plus untracked files from `git status`), or the scope given in your instructions.
+First read `CLAUDE.md`, the `.claude/rules/` files for the areas you review (`backend.md`, `frontend.md`, `deployment.md`), `docs/spec.md` and `docs/api-contract.md`. Then review the current changes (`git diff` and `git diff --staged`, plus untracked files from `git status`), or the scope given in your instructions.
 
 ## Check for
 
@@ -22,7 +22,7 @@ First read `CLAUDE.md`, `docs/spec.md` and `docs/api-contract.md`. Then review t
    - check potential security breachs
 3. **Contract:** routes, field names, optional fields and types match `docs/api-contract.md` on both sides.
 4. **Database:** schema changes without a migration, `synchronize: true`, missing indexes or unique constraints the spec implies.
-5. **Conventions** from `CLAUDE.md`:
+5. **Conventions** from `CLAUDE.md` and `.claude/rules/`:
    - backend module layout; DTOs `implements` the `@my-resume/api-models` types
    - NestJS code follows `.claude/skills/nestjs-11/SKILL.md`: Express 5 route syntax (named wildcards, no `?`), no deprecated terminus `HealthIndicator`/`HealthCheckError`/`{ timeout }`, `@Public()` only on GET routes, migrations registered in `migrations/index.ts`
    - Angular code follows `.claude/skills/angular-22/SKILL.md`: `@Service()` instead of `@Injectable({ providedIn: 'root' })`, no `changeDetection`, zoneless signal state, no `fakeAsync` in tests

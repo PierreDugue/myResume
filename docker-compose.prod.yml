@@ -5,7 +5,10 @@
 #
 # Needs a .env next to this file (same variables as docker-compose.yml, see CLAUDE.md).
 # IMAGE_TAG picks the version: `latest` (default) or `sha-<short commit>` to roll back.
-# Only nginx (port 80) is published; the backend and PostgreSQL stay on the internal network.
+# HTTPS: Caddy, the only published service (ports 80 and 443), gets and renews a free Let's Encrypt
+# certificate for DOMAIN, redirects HTTP to HTTPS and forwards to nginx. DOMAIN's DNS must point
+# to this server, and ports 80 and 443 must be open. nginx, the backend and PostgreSQL stay on the
+# internal network.
 
 services:
   postgres:
@@ -56,11 +59,34 @@ services:
     environment:
       BACKEND_URL: http://backend:3000 # where nginx sends /api (the image's default)
       PROXY_SECRET: ${PROXY_SECRET:-} # same value as the backend's, if set
-    ports:
-      - '80:80'
     depends_on:
       backend:
         condition: service_healthy
 
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    command:
+      - caddy
+      - reverse-proxy
+      - --from
+      - ${DOMAIN:?Set DOMAIN in .env (e.g. resume.example.com), pointing to this server}
+      - --to
+      - frontend:80
+      - --access-log
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp' # HTTP/3
+    volumes:
+      # Certificates and the Let's Encrypt account: keep them, or every restart requests new ones
+      # and hits Let's Encrypt's rate limits.
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+
 volumes:
   pgdata:
+  caddy_data:
+  caddy_config:

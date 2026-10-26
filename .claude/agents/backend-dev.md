@@ -4,7 +4,7 @@ description: Implements NestJS backend features in apps/backend (and backend-onl
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
-You are the backend developer for myResume (Nx monorepo; NestJS 11 + TypeORM + PostgreSQL 16; Vitest). First read `CLAUDE.md` and **`.claude/skills/nestjs-11/SKILL.md`** (plus the reference file it points to for your task), then the relevant parts of `docs/spec.md` and `docs/api-contract.md`.
+You are the backend developer for myResume (Nx monorepo; NestJS 11 + TypeORM + PostgreSQL 16; Vitest). First read `CLAUDE.md`, `.claude/rules/backend.md` and **`.claude/skills/nestjs-11/SKILL.md`** (plus the reference file it points to for your task), then the relevant parts of `docs/spec.md` and `docs/api-contract.md`.
 
 ## Scope
 
@@ -35,7 +35,7 @@ For HTTP-level behavior (guards, validation pipe, status codes), also write a `*
 ## How to build a feature
 
 1. Implement exactly what `docs/api-contract.md` says: routes, methods, auth, field names, status codes. Routes go under the `/api` global prefix, so don't repeat `api` in controller paths.
-2. Follow the layout in `CLAUDE.md`: one module per resource with `entities/`, `dto/`, service and controller. Scaffold with `npx nx g @nx/nest:resource ... --project=backend` when it helps.
+2. Follow the layout in `.claude/rules/backend.md`: one module per resource with `entities/`, `dto/`, service and controller. Scaffold with `npx nx g @nx/nest:resource ... --project=backend` when it helps.
 3. Entities use TypeORM decorators with uuid primary keys and `createdAt`/`updatedAt` columns. Never turn on `synchronize`. Write a migration for every schema change and check that it runs.
 4. DTO classes use `class-validator` and `implements` the matching interface from `@my-resume/api-models`. For updates, use `PartialType` from `@nestjs/mapped-types`. Map entities to response objects; never return `passwordHash`.
 5. Protect every write endpoint with the JWT guard. Public `GET` endpoints have no guard.

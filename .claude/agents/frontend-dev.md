@@ -4,7 +4,7 @@ description: Implements Angular 22 frontend features in apps/frontend (and front
 tools: Read, Grep, Glob, Edit, Write, Bash
 ---
 
-You are the frontend developer for myResume (Nx monorepo; Angular 22 zoneless, standalone, signals; SCSS; Vitest; Cypress). First read `CLAUDE.md` and **`.claude/skills/angular-22/SKILL.md`** (Angular 22 rules: `@Service()`, no `changeDetection`, zoneless tests), then the relevant parts of `docs/spec.md` and `docs/api-contract.md`.
+You are the frontend developer for myResume (Nx monorepo; Angular 22 zoneless, standalone, signals; SCSS; Vitest; Cypress). First read `CLAUDE.md`, `.claude/rules/frontend.md` and **`.claude/skills/angular-22/SKILL.md`** (Angular 22 rules: `@Service()`, no `changeDetection`, zoneless tests), then the relevant parts of `docs/spec.md` and `docs/api-contract.md`.
 
 ## Scope
 
@@ -36,7 +36,7 @@ For a complete user journey (for example: change the time range and see the pane
    - signals and `computed`, `input()`/`output()`, `inject()`
    - `@if`/`@for`/`@defer`
    - The app is zoneless, so don't rely on zone.js.
-2. Scaffold with Nx generators (`npx nx g @nx/angular:component apps/frontend/src/app/<path>/<name>`, `:service`, ...). Follow the folder layout in `CLAUDE.md`. Reusable dashboard panels go in `libs/frontend/ui-panels`.
+2. Scaffold with Nx generators (`npx nx g @nx/angular:component apps/frontend/src/app/<path>/<name>`, `:service`, ...). Follow the folder layout in `.claude/rules/frontend.md`. Reusable dashboard panels go in `libs/frontend/ui-panels`.
 3. API access goes through typed services in `core/` that call relative `/api/...` URLs and return `@my-resume/api-models` types. Components never use `HttpClient` directly. The dev proxy already forwards `/api` and WebSockets to the backend.
 4. Dashboard state (time range, variables, live mode) is kept in the URL so views can be shared, and exposed as signals.
 5. Admin:

@@ -9,7 +9,15 @@ Both are tagged `latest` and `sha-<short commit>`.
 
 ## Any server with Docker
 
-Put a `.env` next to [docker-compose.prod.yml](../docker-compose.prod.yml). It needs the same variables as local Docker; see the configuration section of `CLAUDE.md`. Then run:
+HTTPS is handled by **Caddy**, the only service reachable from outside. It gets a free Let's Encrypt certificate and renews it, redirects `http://` to `https://`, and forwards to nginx.
+
+Before the first start:
+
+1. **A domain name** pointing to the server: an `A` record (and `AAAA` for IPv6) with the server's IP. A free subdomain (e.g. DuckDNS) works too.
+2. **Ports 80 and 443 open** in the server's firewall, and in the cloud provider's network rules (on Oracle, the VCN security list). Let's Encrypt checks the domain over port 80.
+3. **A `.env`** next to [docker-compose.prod.yml](../docker-compose.prod.yml). It needs the same variables as local Docker (see the configuration section of `CLAUDE.md`), plus `DOMAIN=resume.example.com`.
+
+Then run:
 
 ```bash
 docker compose -f docker-compose.prod.yml pull
@@ -18,7 +26,11 @@ docker compose -f docker-compose.prod.yml up -d
 
 To roll back, set `IMAGE_TAG=sha-<short commit>` and run the same commands.
 
+The certificate is stored in the `caddy_data` volume. Don't delete that volume: without it, every restart asks Let's Encrypt for a new certificate, and Let's Encrypt limits how often you can do that.
+
 ## Render (two free web services)
+
+Render provides HTTPS itself, with a free certificate on the `onrender.com` address and on custom domains, and redirects `http://` to `https://`. Caddy isn't used there.
 
 Render runs each image as its own **web service**. A free web service can't receive traffic from Render's private network. nginx therefore reaches the backend through the backend's public HTTPS address.
 

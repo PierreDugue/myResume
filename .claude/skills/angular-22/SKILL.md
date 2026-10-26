@@ -50,7 +50,7 @@ export class StatPanel {
 - Signal APIs: `input()`, `input.required()`, `output()`, `model()`, `computed()`, `linkedSignal()`, `viewChild()`, `contentChildren()`, and so on. No `@Input`/`@Output`/`@ViewChild` decorators.
 - Templates use `@if`, `@for (x of xs; track x.id)`, `@switch`, `@defer`, `@let`. No `*ngIf`/`*ngFor`/`ngClass`/`ngStyle`; use `[class.x]` and `[style.x]`.
 - Protected members for template-only state; `readonly` for signals and injected things.
-- Prefix `app-` for selectors (lint enforced). Pages are lazy-loaded with `loadComponent`, and their `title` comes from the route (see the `CLAUDE.md` frontend conventions).
+- Prefix `app-` for selectors (lint enforced). Pages are lazy-loaded with `loadComponent`, and their `title` comes from the route (see `.claude/rules/frontend.md`).
 
 ## 3. Zoneless: state lives in signals
 
