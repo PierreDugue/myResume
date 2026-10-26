@@ -61,13 +61,13 @@ describe('GET /api/health', () => {
     expect(body.details['database']?.status).toBe('down');
   });
 
-  it('pings the database under the "database" key with a short timeout', async () => {
+  it('pings the database under the "database" key, giving a sleeping database 5 s to wake up', async () => {
     pingCheck.mockReturnValue(attempt({ database: { status: 'up' } }));
 
     await request(app.getHttpServer()).get('/api/health');
 
     expect(pingCheck).toHaveBeenCalledWith('database');
-    expect(withTimeout).toHaveBeenCalledWith(1500);
+    expect(withTimeout).toHaveBeenCalledWith(5000);
   });
 
   it('is public (no auth required)', async () => {

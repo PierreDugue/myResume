@@ -32,7 +32,7 @@ Each endpoint moves from **planned** to **done** once the backend and frontend b
 
 `GET /api/health` reports whether the API and its dependencies work. It checks:
 
-- `database`: a ping to PostgreSQL, timing out after 1.5 s
+- `database`: a ping to PostgreSQL, timing out after 5 s. A hosted database that sleeps when idle (Neon's free plan) can take a few seconds to wake up, which is slow but not down.
 
 If any check fails, it returns `503` with `status: "error"`, and the failing check appears under `error` and `details`. The frontend shows this as the "API" status in the sidebar, and Docker uses it as the backend's health check.
 
