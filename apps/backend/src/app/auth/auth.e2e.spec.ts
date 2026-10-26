@@ -12,6 +12,14 @@ import { AdminUser } from './entities/admin-user.entity';
 import { hashPassword } from './password';
 import { Public } from './public.decorator';
 
+// Logins hash and compare passwords many times. bcrypt cost 12 (production) takes ~250 ms per
+// hash, enough to push these tests past Vitest's 5 s timeout on CI runners. The minimum cost (4)
+// keeps the same behavior in ~1 ms. password.spec.ts covers the production cost.
+vi.mock('bcryptjs', async (importOriginal) => {
+  const bcrypt = await importOriginal<typeof import('bcryptjs')>();
+  return { ...bcrypt, hash: (password: string) => bcrypt.hash(password, 4) };
+});
+
 const env: AppEnv = {
   NODE_ENV: 'test',
   PORT: 3000,
