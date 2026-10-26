@@ -169,6 +169,50 @@ describe('validateEnv', () => {
       );
     });
 
+    it('accepts no PROXY_SECRET (the backend is only reached through a private network)', () => {
+      expect(validateEnv(db).PROXY_SECRET).toBeUndefined();
+    });
+
+    it('returns a PROXY_SECRET of at least 32 characters', () => {
+      expect(validateEnv({ ...db, PROXY_SECRET: 's'.repeat(32) }).PROXY_SECRET).toBe(
+        's'.repeat(32),
+      );
+    });
+
+    it('rejects a PROXY_SECRET that is too short or reuses another secret', () => {
+      expect(() => validateEnv({ ...db, PROXY_SECRET: 'short' })).toThrow(
+        /PROXY_SECRET must be at least 32 characters/,
+      );
+      expect(() => validateEnv({ ...db, PROXY_SECRET: db.JWT_SECRET })).toThrow(
+        /PROXY_SECRET must be different from JWT_SECRET and PASSWORD_PEPPER/,
+      );
+      expect(() => validateEnv({ ...db, PROXY_SECRET: db.PASSWORD_PEPPER })).toThrow(
+        /PROXY_SECRET must be different from JWT_SECRET and PASSWORD_PEPPER/,
+      );
+    });
+
+    it('only accepts base64/hex characters in PROXY_SECRET (it is written into the nginx config)', () => {
+      expect(() => validateEnv({ ...db, PROXY_SECRET: `${'s'.repeat(32)}";` })).toThrow(
+        /PROXY_SECRET may only contain/,
+      );
+      expect(() => validateEnv({ ...db, PROXY_SECRET: `${'s'.repeat(32)} $x` })).toThrow(
+        /PROXY_SECRET may only contain/,
+      );
+      const base64 = 'Ab0+/='.repeat(6);
+      expect(validateEnv({ ...db, PROXY_SECRET: base64 }).PROXY_SECRET).toBe(base64);
+    });
+
+    it('never includes the proxy secret in error messages', () => {
+      let error: unknown;
+      try {
+        validateEnv({ ...db, PROXY_SECRET: 'tiny-proxy-secret' });
+      } catch (e) {
+        error = e;
+      }
+      expect(error).toBeInstanceOf(Error);
+      expect(String(error)).not.toContain('tiny-proxy-secret');
+    });
+
     it('never includes the secret or the admin password in error messages', () => {
       try {
         validateEnv({

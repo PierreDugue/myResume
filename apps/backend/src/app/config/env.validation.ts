@@ -13,6 +13,8 @@ export interface AppEnv {
   PASSWORD_PEPPER: string;
   ADMIN_EMAIL?: string;
   ADMIN_PASSWORD?: string;
+  /** Shared with nginx when it reaches the backend over a public address (see TrustedProxyGuard). */
+  PROXY_SECRET?: string;
 }
 
 /**
@@ -96,6 +98,17 @@ export function validateEnv(raw: Record<string, unknown>): AppEnv {
     errors.push('ADMIN_PASSWORD must be at least 12 characters');
   }
 
+  // Optional: only set where nginx reaches the backend through a public address (e.g. Render).
+  const proxySecret = read('PROXY_SECRET');
+  if (proxySecret !== undefined && proxySecret.length < 32) {
+    errors.push('PROXY_SECRET must be at least 32 characters (e.g. `openssl rand -base64 48`)');
+  } else if (proxySecret !== undefined && !/^[A-Za-z0-9+/=_-]+$/.test(proxySecret)) {
+    // nginx writes it into its config: no quotes, spaces, `;` or `$`.
+    errors.push('PROXY_SECRET may only contain letters, digits and + / = _ - (base64 or hex)');
+  } else if (proxySecret !== undefined && [jwtSecret, passwordPepper].includes(proxySecret)) {
+    errors.push('PROXY_SECRET must be different from JWT_SECRET and PASSWORD_PEPPER');
+  }
+
   if (errors.length > 0) {
     throw new Error(`Invalid environment configuration:\n- ${errors.join('\n- ')}`);
   }
@@ -105,5 +118,6 @@ export function validateEnv(raw: Record<string, unknown>): AppEnv {
     env.ADMIN_EMAIL = adminEmail;
     env.ADMIN_PASSWORD = adminPassword;
   }
+  if (proxySecret !== undefined) env.PROXY_SECRET = proxySecret;
   return env;
 }

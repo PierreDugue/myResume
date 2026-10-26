@@ -38,6 +38,8 @@ services:
       PASSWORD_PEPPER: ${PASSWORD_PEPPER:?Set PASSWORD_PEPPER in .env (openssl rand -base64 48)}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # Optional: only needed where nginx reaches the backend through a public address (Render).
+      PROXY_SECRET: ${PROXY_SECRET:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,6 +55,7 @@ services:
     restart: unless-stopped
     environment:
       BACKEND_URL: http://backend:3000 # where nginx sends /api (the image's default)
+      PROXY_SECRET: ${PROXY_SECRET:-} # same value as the backend's, if set
     ports:
       - '80:80'
     depends_on:

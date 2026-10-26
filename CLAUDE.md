@@ -95,6 +95,7 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
 - Local dev needs no extra file. The backend loads `apps/backend/.env` (optional overrides) and then the root `.env`. Missing `DATABASE_*`/`PORT` values fall back to `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` and `BACKEND_PORT`, and `DATABASE_HOST` defaults to `localhost`. Variables already set in the shell win.
 - `IMAGE_TAG` (only used by `docker-compose.prod.yml`): the image version to run, `latest` by default.
 - `BACKEND_URL` (frontend container only): where nginx sends `/api`. Defaults to `http://backend:3000` in the image.
+- `PROXY_SECRET`: optional, at least 32 characters, base64 or hex only (nginx writes it into its config), different from the other secrets. Same value on the backend and the frontend container. Only needed where nginx reaches the backend through a public address (Render); see the auth section below.
 - When you add a new variable, also add it to `docker-compose.yml` (and `docker-compose.prod.yml` if the backend needs it in production) and list it here.
 
 ## Backend conventions (`apps/backend`)
@@ -112,10 +113,18 @@ Database migrations (TypeORM CLI, via [data-source.ts](apps/backend/src/app/data
 - Global HTTP setup is in [app.setup.ts](apps/backend/src/app/app.setup.ts) (`/api` prefix and `ValidationPipe({ whitelist, forbidNonWhitelisted, transform })`), shared by `main.ts` and the e2e specs. Unknown body properties get a 400.
 - Validate input with `class-validator`/`class-transformer` DTOs.
 - **Auth is global** ([auth/](apps/backend/src/app/auth/)):
-  - `AuthModule` installs two app-wide guards: rate limiting (300 requests/min per IP) and JWT. Every route needs a token unless marked `@Public()`, and public routes are `GET` only (login is the exception).
+  - `AuthModule` installs three app-wide guards, in this order:
+    - `TrustedProxyGuard` ([trusted-proxy.guard.ts](apps/backend/src/app/auth/trusted-proxy.guard.ts)): only active when `PROXY_SECRET` is set.
+    - Rate limiting (`ClientIpThrottlerGuard`, 300 requests/min per visitor IP).
+    - JWT.
+  - Every route needs a token unless marked `@Public()`, and public routes are `GET` only (login is the exception).
   - Use `@CurrentUser()` to get the token claims.
   - Tune per-route limits with `@Throttle()`.
   - `configureApp` trusts `X-Forwarded-For` from local and private-network proxies (nginx, the dev proxy), so limits apply per visitor IP. Don't publish the backend port on a public network.
+  - Where the backend has a public address (Render), `PROXY_SECRET` is shared with nginx. nginx sends it in `X-Proxy-Secret`, with the visitor IP in `X-Client-IP`.
+    - Requests without the secret get `403`, except routes marked `@AllowDirectAccess()` (only `GET /api/health`, for platform health checks).
+    - With a valid secret, rate limits count per `X-Client-IP`. Without `PROXY_SECRET`, both headers are ignored.
+    - A future WebSocket gateway must apply the same check to its handshake.
 - Return plain DTO-shaped JSON. Never return password hashes or internal fields.
 - Use Nest exceptions (`NotFoundException`, ...), not raw errors.
 - HTTP-level tests (guards, pipes, status codes) use Vitest + `supertest` against a Nest testing app, in `apps/backend/src/**/*.e2e.spec.ts`.

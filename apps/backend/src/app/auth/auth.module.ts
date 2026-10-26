@@ -2,19 +2,22 @@ import { Module } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import type { AppEnv } from '../config/env.validation';
 import { AdminAccountService } from './admin-account.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { ClientIpThrottlerGuard } from './client-ip-throttler.guard';
 import { AdminUser } from './entities/admin-user.entity';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JWT_EXPIRES_IN_SECONDS } from './jwt-payload';
+import { TrustedProxyGuard } from './trusted-proxy.guard';
 
 /**
- * Login, the admin account, and the app-wide guards: rate limiting (300 requests/min per IP by
- * default) and JWT authentication on every route not marked @Public().
+ * Login, the admin account, and the app-wide guards: the proxy secret when PROXY_SECRET is set,
+ * rate limiting (300 requests/min per visitor IP by default) and JWT authentication on every route
+ * not marked @Public().
  */
 @Module({
   imports: [
@@ -33,7 +36,10 @@ import { JWT_EXPIRES_IN_SECONDS } from './jwt-payload';
   providers: [
     AuthService,
     AdminAccountService,
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Global guards run in this order: proxy secret, then rate limit (keyed by the visitor IP the
+    // proxy guard vouched for), then JWT.
+    { provide: APP_GUARD, useClass: TrustedProxyGuard },
+    { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })

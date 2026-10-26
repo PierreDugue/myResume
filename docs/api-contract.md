@@ -14,6 +14,7 @@ This file is the single source of truth for the HTTP and WebSocket API between `
   - Timestamps are ISO 8601 strings.
 - **Auth:** every endpoint needs `Authorization: Bearer <jwt>` unless it's marked public (–) in the tables. A missing, invalid or expired token returns `401`. Public endpoints are `GET` only, plus `POST /api/auth/login`.
 - **Rate limits:** too many requests return `429`. Login allows 5 attempts per minute per IP.
+- **Proxy secret (some deployments only):** when the backend is configured with `PROXY_SECRET`, requests that don't come through nginx (no valid `X-Proxy-Secret` header) return `403`, except `GET /api/health`. Browsers never see this, since they always go through nginx.
 - **Errors:** Nest's default shape, `{ "statusCode": number, "message": string | string[], "error": string }`. Validation errors return `400` with `message` as an array.
 - **Lists:** plain arrays sorted by `sortOrder` ascending (no pagination; the data sets are small).
 - **Create vs update:** `POST` creates and returns `201` with the created object. `PATCH /:id` updates only the fields sent (partial update) and returns the updated object. `DELETE /:id` returns `204`.

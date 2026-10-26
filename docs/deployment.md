@@ -47,9 +47,12 @@ Set these environment variables:
 | `JWT_SECRET`                                                                            | `openssl rand -base64 48`                                                                             |
 | `PASSWORD_PEPPER`                                                                       | another `openssl rand -base64 48`                                                                     |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`                                                         | your admin login (password at least 12 characters)                                                    |
+| `PROXY_SECRET`                                                                          | `openssl rand -base64 48`, the **same value** as on the frontend service                              |
 | `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME` | from the database, which is to be decided (Render Postgres works as is; Neon needs SSL support first) |
 
 Don't set `PORT`. Render sets it, and the backend listens on it. Migrations and the seed run on the first start.
+
+With `PROXY_SECRET` set, the backend's own `onrender.com` address answers `403` to everything except `/api/health`. Only requests that come through nginx carry the secret. This is expected: use the frontend's address.
 
 ### 3. Create the frontend service
 
@@ -61,11 +64,12 @@ Don't set `PORT`. Render sets it, and the backend listens on it. Migrations and 
 | Instance type | Free                                            |
 | Health check  | `/`                                             |
 
-Set one environment variable:
+Set these environment variables:
 
-| Variable      | Value                                                                                                         |
-| ------------- | ------------------------------------------------------------------------------------------------------------- |
-| `BACKEND_URL` | The backend's address from its Render page, e.g. `https://my-resume-backend.onrender.com` (no trailing slash) |
+| Variable       | Value                                                                                                         |
+| -------------- | ------------------------------------------------------------------------------------------------------------- |
+| `BACKEND_URL`  | The backend's address from its Render page, e.g. `https://my-resume-backend.onrender.com` (no trailing slash) |
+| `PROXY_SECRET` | The same value as on the backend                                                                              |
 
 The site is the frontend's address. Visitors only ever use that address.
 
@@ -84,5 +88,7 @@ After publishing the images, CI calls both hooks with that commit's `sha-…` im
 
 - **Cold starts.** A free service sleeps after 15 minutes without traffic. The first visit then waits about a minute for the frontend, then again for the backend.
 - **750 free hours a month,** shared by the workspace. Sleeping services don't use any.
-- **Rate limits per visitor IP don't work yet.** Requests reach the backend through Render twice, so it sees Render's address for every visitor, and all visitors share one count (including the login limit). Fixing this needs a backend change: nginx would pass the real IP with a shared secret, and the backend would reject requests that don't come through nginx.
-- **The backend's `onrender.com` address is public.** Anyone can call it directly and skip nginx and its security headers. Writes still need the admin token. The fix above would also close this.
+- **Rate limits per visitor IP depend on `PROXY_SECRET`.** The backend is reached through Render twice. On its own it would see Render's address for every visitor, so all visitors would share one count. With the secret, nginx works out the visitor's IP and vouches for it.
+  - nginx reads the visitor's IP from the right of `X-Forwarded-For` and skips private-network proxies (`set_real_ip_from` in [nginx.conf.template](../apps/frontend/nginx.conf.template)). Addresses a visitor adds themselves are ignored.
+  - **Check after the first deploy:** in the frontend's Render logs, each request line starts with the visitor's IP. Sign in and look for your own public IP there. If you see a Render address instead (probably a private `10.x` one), Render's proxies use a range nginx doesn't trust yet. Add it with another `set_real_ip_from` line.
+  - **Rotating the secret:** change it on both services, then redeploy both. Requests fail in between.

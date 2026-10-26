@@ -1,4 +1,5 @@
-# Template: at startup the nginx image fills in the BACKEND_URL and NGINX_LOCAL_RESOLVERS variables
+# Template: at startup the nginx image fills in the BACKEND_URL, PROXY_SECRET and
+# NGINX_LOCAL_RESOLVERS variables
 # (only variables defined in the environment are replaced; nginx's own $vars are left alone)
 # and writes the result to /etc/nginx/conf.d/default.conf. See apps/frontend/Dockerfile.
 
@@ -6,6 +7,18 @@ server {
     listen 80;
     server_name localhost;
     server_tokens off;
+
+    # The visitor's IP. Behind a hosting platform's proxies (Render), the connection comes from
+    # the platform and the visitor is in X-Forwarded-For: read it from the right, skipping the
+    # private-network proxies, so addresses a visitor adds themselves (on the left) are ignored.
+    # $remote_addr (access log, X-Client-IP below) is then the visitor.
+    set_real_ip_from 10.0.0.0/8;
+    set_real_ip_from 172.16.0.0/12;
+    set_real_ip_from 192.168.0.0/16;
+    set_real_ip_from 127.0.0.0/8;
+    set_real_ip_from fc00::/7;
+    real_ip_header X-Forwarded-For;
+    real_ip_recursive on;
 
     # Security headers. The admin token lives in localStorage, so the CSP is the main defense
     # against XSS: scripts only from this site (no inline scripts, see public/theme-init.js).
@@ -43,6 +56,11 @@ server {
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header X-Real-IP $remote_addr;
+        # Shared secret and visitor IP, checked by the backend's TrustedProxyGuard when it has
+        # PROXY_SECRET (Render, where the backend has a public address). Replaces any value the
+        # visitor sent. An empty PROXY_SECRET (the default) sends no secret header.
+        proxy_set_header X-Proxy-Secret "${PROXY_SECRET}";
+        proxy_set_header X-Client-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_cache_bypass $http_upgrade;
