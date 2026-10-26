@@ -30,6 +30,8 @@ services:
       DATABASE_USER: ${POSTGRES_USER}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: ${POSTGRES_DB}
+      # The bundled postgres container has no SSL. DATABASE_SSL=true is for hosted databases (Neon).
+      DATABASE_SSL: 'false'
       PORT: 3000 # internal port, nginx proxies to backend:3000; BACKEND_PORT only changes the host port
       NODE_ENV: ${NODE_ENV:-production}
       # Auth (see CLAUDE.md, Configuration): JWT_SECRET and PASSWORD_PEPPER are required (32+ characters, different).

@@ -11,6 +11,7 @@ const env: AppEnv = {
   DATABASE_USER: 'app',
   DATABASE_PASSWORD: 'secret',
   DATABASE_NAME: 'resume',
+  DATABASE_SSL: false,
   JWT_SECRET: 'x'.repeat(32),
   PASSWORD_PEPPER: 'p'.repeat(32),
 };
@@ -49,5 +50,15 @@ describe('buildTypeOrmOptions', () => {
 
   it('generates uuids with the built-in gen_random_uuid() (pgcrypto), not the uuid-ossp extension', () => {
     expect(buildTypeOrmOptions(env)).toMatchObject({ uuidExtension: 'pgcrypto' });
+  });
+
+  it('connects without SSL by default (local and Docker databases)', () => {
+    expect(buildTypeOrmOptions(env)).toMatchObject({ ssl: false });
+  });
+
+  it('connects over SSL and verifies the server certificate when DATABASE_SSL is set (Neon)', () => {
+    expect(buildTypeOrmOptions({ ...env, DATABASE_SSL: true })).toMatchObject({
+      ssl: { rejectUnauthorized: true },
+    });
   });
 });

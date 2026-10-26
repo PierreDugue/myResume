@@ -60,6 +60,7 @@ Never commit or print secrets. Don't read `.env` files unless the user asks.
 - Everything goes in the root `.env` (gitignored), used by Docker Compose and local dev. The backend also loads `apps/backend/.env` (optional overrides) first. Variables already set in the shell win.
 - The backend validates its config in [env.validation.ts](apps/backend/src/app/config/env.validation.ts):
   - `NODE_ENV`, `PORT`, `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME`. In local dev they fall back to `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `POSTGRES_PORT` and `BACKEND_PORT`, and `DATABASE_HOST` to `localhost`.
+  - `DATABASE_SSL`: optional, `true` or `false` (default). `true` connects over SSL and checks the server certificate, as hosted databases such as Neon require. The compose files set it to `false` for their bundled `postgres` container.
   - `JWT_SECRET` and `PASSWORD_PEPPER`: **required**, at least 32 characters (`openssl rand -base64 48`), different from each other. Changing the pepper rebuilds the admin hash from `ADMIN_PASSWORD` on the next start.
   - `ADMIN_EMAIL` / `ADMIN_PASSWORD`: optional, set together, password at least 12 characters. On startup the admin account is created or updated to match them, which is how the password is reset.
   - `PROXY_SECRET`: optional, at least 32 base64/hex characters, different from the other secrets. Same value on the backend and the frontend container; only needed where nginx reaches the backend through a public address (Render).

@@ -35,6 +35,8 @@ services:
       DATABASE_USER: ${POSTGRES_USER}
       DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
       DATABASE_NAME: ${POSTGRES_DB}
+      # The bundled postgres container has no SSL. DATABASE_SSL=true is for hosted databases (Neon).
+      DATABASE_SSL: 'false'
       PORT: 3000
       NODE_ENV: production
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env (openssl rand -base64 48)}

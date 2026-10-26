@@ -32,6 +32,7 @@ import { ServiceMapModule } from './service-map/service-map.module';
           DATABASE_USER: config.get('DATABASE_USER', { infer: true }),
           DATABASE_PASSWORD: config.get('DATABASE_PASSWORD', { infer: true }),
           DATABASE_NAME: config.get('DATABASE_NAME', { infer: true }),
+          DATABASE_SSL: config.get('DATABASE_SSL', { infer: true }),
           JWT_SECRET: config.get('JWT_SECRET', { infer: true }),
           PASSWORD_PEPPER: config.get('PASSWORD_PEPPER', { infer: true }),
         }),

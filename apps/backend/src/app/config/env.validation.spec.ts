@@ -20,8 +20,31 @@ describe('validateEnv', () => {
       DATABASE_USER: 'app',
       DATABASE_PASSWORD: 'secret',
       DATABASE_NAME: 'resume',
+      DATABASE_SSL: false,
       JWT_SECRET: 'x'.repeat(32),
       PASSWORD_PEPPER: 'p'.repeat(32),
+    });
+  });
+
+  describe('DATABASE_SSL', () => {
+    it('defaults to false, for the local and Docker databases', () => {
+      expect(validateEnv(db).DATABASE_SSL).toBe(false);
+      expect(validateEnv({ ...db, DATABASE_SSL: '' }).DATABASE_SSL).toBe(false);
+    });
+
+    it('is true when set to "true", for hosted databases such as Neon', () => {
+      expect(validateEnv({ ...db, DATABASE_SSL: 'true' }).DATABASE_SSL).toBe(true);
+      expect(validateEnv({ ...db, DATABASE_SSL: ' TRUE ' }).DATABASE_SSL).toBe(true);
+    });
+
+    it('is false when set to "false"', () => {
+      expect(validateEnv({ ...db, DATABASE_SSL: 'false' }).DATABASE_SSL).toBe(false);
+    });
+
+    it('rejects any other value instead of guessing', () => {
+      expect(() => validateEnv({ ...db, DATABASE_SSL: 'yes' })).toThrow(
+        'DATABASE_SSL must be "true" or "false"',
+      );
     });
   });
 

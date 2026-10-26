@@ -9,6 +9,8 @@ export interface AppEnv {
   DATABASE_USER: string;
   DATABASE_PASSWORD: string;
   DATABASE_NAME: string;
+  /** Encrypted, certificate-checked connection, for hosted databases such as Neon. */
+  DATABASE_SSL: boolean;
   JWT_SECRET: string;
   PASSWORD_PEPPER: string;
   ADMIN_EMAIL?: string;
@@ -63,9 +65,16 @@ export function validateEnv(raw: Record<string, unknown>): AppEnv {
     DATABASE_USER: required('DATABASE_USER', 'POSTGRES_USER'),
     DATABASE_PASSWORD: required('DATABASE_PASSWORD', 'POSTGRES_PASSWORD'),
     DATABASE_NAME: required('DATABASE_NAME', 'POSTGRES_DB'),
+    DATABASE_SSL: false,
     JWT_SECRET: '',
     PASSWORD_PEPPER: '',
   };
+
+  const databaseSsl = read('DATABASE_SSL')?.toLowerCase();
+  if (databaseSsl !== undefined && databaseSsl !== 'true' && databaseSsl !== 'false') {
+    errors.push('DATABASE_SSL must be "true" or "false"');
+  }
+  env.DATABASE_SSL = databaseSsl === 'true';
 
   const jwtSecret = required('JWT_SECRET');
   if (jwtSecret && jwtSecret.length < 32) {

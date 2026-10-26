@@ -60,7 +60,8 @@ Set these environment variables:
 | `PASSWORD_PEPPER`                                                                       | another `openssl rand -base64 48`                                                                     |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD`                                                         | your admin login (password at least 12 characters)                                                    |
 | `PROXY_SECRET`                                                                          | `openssl rand -base64 48`, the **same value** as on the frontend service                              |
-| `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME` | from the database, which is to be decided (Render Postgres works as is; Neon needs SSL support first) |
+| `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME` | from the database's connection string (for Neon: the **direct** one, connection pooling off)          |
+| `DATABASE_SSL`                                                                          | `true` for Neon (it only accepts SSL connections); leave unset for Render Postgres's internal address |
 
 Don't set `PORT`. Render sets it, and the backend listens on it. Migrations and the seed run on the first start.
 

@@ -20,6 +20,7 @@ const env: AppEnv = {
   DATABASE_USER: 'u',
   DATABASE_PASSWORD: 'p',
   DATABASE_NAME: 'd',
+  DATABASE_SSL: false,
   JWT_SECRET: 'test-secret-that-is-at-least-32-chars!',
   PASSWORD_PEPPER: 'test-pepper-that-is-at-least-32-chars!',
 };
