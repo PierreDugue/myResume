@@ -9,6 +9,27 @@
       name="description"
       content="Pierre Dugue — Senior Front-End Engineer. A resume presented as an observability platform."
     />
+    <!-- Link previews (LinkedIn, Slack, ...). Crawlers need absolute URLs: nginx swaps the
+         placeholder origin for https://<the site's domain> (nginx.conf.template). -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Pierre O11y" />
+    <meta
+      property="og:title"
+      content="Pierre Dugue — a resume presented as an observability platform"
+    />
+    <meta
+      property="og:description"
+      content="Senior Front-End Engineer. Career metrics, logs, traces and a service map, with a plain view for anyone who just wants the facts."
+    />
+    <meta property="og:url" content="__SITE_ORIGIN__/" />
+    <meta property="og:image" content="__SITE_ORIGIN__/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="627" />
+    <meta
+      property="og:image:alt"
+      content="The career overview dashboard of Pierre Dugue's resume"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <script src="theme-init.js"></script>
   </head>

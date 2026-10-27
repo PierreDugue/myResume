@@ -19,6 +19,7 @@ The human-facing guide is [docs/deployment.md](../../docs/deployment.md); keep i
 - nginx ([nginx.conf.template](../../apps/frontend/nginx.conf.template)) is a template: the nginx image fills in environment variables at startup (only ones that are set, so nginx's own `$vars` stay). It:
   - forwards `/api/*` unchanged to `BACKEND_URL`, with the backend's own `Host` and TLS name (Render routes by hostname) and a DNS `resolver`, so the address is looked up again;
   - gets the visitor IP from `X-Forwarded-For`, skipping the proxies listed in `apps/frontend/nginx/real-ip/<REAL_IP_PROXIES>.conf` (`private` by default, `cloudflare` on Render), and sends it as `X-Client-IP` with `X-Proxy-Secret` (see the backend rules). [test-real-ip.sh](../../apps/frontend/nginx/test-real-ip.sh) tests this against the real nginx image (in CI too); extend it when you change these files;
+  - replaces `__SITE_ORIGIN__` in `index.html` with `https://$host` (`sub_filter`), for the Open Graph tags' absolute URLs (also tested by `test-real-ip.sh`);
   - sends the security headers (CSP, HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy`). nginx drops server-level `add_header`s in a location that sets its own, so locations must not use `add_header`.
 
 ## CI ([.github/workflows/ci.yml](../../.github/workflows/ci.yml))

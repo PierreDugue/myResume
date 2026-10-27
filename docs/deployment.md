@@ -98,6 +98,10 @@ Render doesn't redeploy when a new image is pushed.
 
 After publishing the images, CI calls both hooks with that commit's `sha-…` image. Without the secrets, CI skips this step.
 
+### Link previews (LinkedIn, Slack, ...)
+
+`index.html` has Open Graph tags with the image [public/og-image.png](../apps/frontend/public/og-image.png) (1200×627, a screenshot of the overview dashboard). Crawlers need absolute URLs, so nginx replaces `__SITE_ORIGIN__` with `https://` plus the domain the request came in on: nothing to configure. Before sharing a link, open the site so it is awake (a crawler gives up long before a cold start ends), then paste the link into LinkedIn's Post Inspector (linkedin.com/post-inspector), which also refreshes a preview LinkedIn has cached.
+
 ### Known limits on Render
 
 - **Cold starts.** A free service sleeps after 15 minutes without traffic. The first visit then waits about a minute for the frontend, then again for the backend.

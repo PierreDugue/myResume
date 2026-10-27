@@ -38,6 +38,11 @@ server {
         root /usr/share/nginx/html;
         index index.html index.htm;
         try_files $uri $uri/ /index.html;
+        # Link previews: crawlers need absolute URLs in index.html's Open Graph tags. $host is the
+        # visitor-facing domain (Render and Cloudflare pass it through). Always https: the site is
+        # only public over HTTPS. Tested by nginx/test-real-ip.sh.
+        sub_filter '__SITE_ORIGIN__' 'https://$host';
+        sub_filter_once off;
     }
 
     # API and WebSockets (Socket.IO at /api/socket.io) -> NestJS at BACKEND_URL:

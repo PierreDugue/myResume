@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Tests how nginx.conf.template finds the visitor's IP (set_real_ip_from, REAL_IP_PROXIES).
+# Tests how nginx.conf.template finds the visitor's IP (set_real_ip_from, REAL_IP_PROXIES), and
+# that it fills in the site's address in the HTML's link-preview tags (__SITE_ORIGIN__).
 #
 # Runs the real nginx image with the template, plus a stand-in backend on port 8081 that answers
 # with the X-Client-IP header nginx forwarded. Requests come from the Docker host, so they reach
@@ -34,6 +35,11 @@ server {
 }
 EOF
 
+# Stand-in index.html with the link-preview placeholder.
+cat >"$WORK/index.html" <<'EOF'
+<meta property="og:image" content="__SITE_ORIGIN__/og-image.png" /><meta property="og:url" content="__SITE_ORIGIN__/" />
+EOF
+
 start() {
   [[ -n "$CONTAINER" ]] && docker rm -f "$CONTAINER" >/dev/null
   local env=(-e BACKEND_URL=http://127.0.0.1:8081 -e PROXY_SECRET=test -e NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1)
@@ -43,6 +49,7 @@ start() {
     -v "$PWD/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro" \
     -v "$PWD/nginx/real-ip:/etc/nginx/real-ip:ro" \
     -v "$WORK/echo.conf:/etc/nginx/conf.d/echo.conf:ro" \
+    -v "$WORK/index.html:/usr/share/nginx/html/index.html:ro" \
     "$IMAGE")
   for _ in $(seq 50); do
     curl -s -o /dev/null "http://127.0.0.1:$PORT/api/" && return 0
@@ -85,6 +92,22 @@ expect "still ignores addresses a visitor adds on the left" \
 echo "REAL_IP_PROXIES=private"
 start private
 expect "behaves like the default" "63.245.222.35, 162.158.111.171" "162.158.111.171"
+
+echo "Link preview: __SITE_ORIGIN__ in the HTML becomes the site's address"
+# expect_page <description> <path> <Host> <expected body>
+expect_page() {
+  local got
+  got=$(curl -s -H "Host: $3" "http://127.0.0.1:$PORT$2" | tr -d '\n')
+  if [[ "$got" == "$4" ]]; then
+    echo "  ✓ $1"
+  else
+    echo "  ✗ $1: expected '$4', got '${got}'"
+    FAILED=1
+  fi
+}
+SITE_HTML='<meta property="og:image" content="https://resume.example.com/og-image.png" /><meta property="og:url" content="https://resume.example.com/" />'
+expect_page "on the home page" / resume.example.com "$SITE_HTML"
+expect_page "on any page (the app's routes all serve index.html)" /traces/foo resume.example.com "$SITE_HTML"
 
 echo "REAL_IP_PROXIES with an unknown value"
 if start typo 2>/dev/null; then
