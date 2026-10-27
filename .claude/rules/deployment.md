@@ -18,12 +18,12 @@ The human-facing guide is [docs/deployment.md](../../docs/deployment.md); keep i
 - Never expose the backend or PostgreSQL to the network: `docker-compose.yml` (local) binds their ports to `127.0.0.1`, and `docker-compose.prod.yml` (server) publishes only Caddy.
 - nginx ([nginx.conf.template](../../apps/frontend/nginx.conf.template)) is a template: the nginx image fills in environment variables at startup (only ones that are set, so nginx's own `$vars` stay). It:
   - forwards `/api/*` unchanged to `BACKEND_URL`, with the backend's own `Host` and TLS name (Render routes by hostname) and a DNS `resolver`, so the address is looked up again;
-  - gets the visitor IP from `X-Forwarded-For` with `set_real_ip_from` (private ranges), and sends it as `X-Client-IP` with `X-Proxy-Secret` (see the backend rules);
+  - gets the visitor IP from `X-Forwarded-For`, skipping the proxies listed in `apps/frontend/nginx/real-ip/<REAL_IP_PROXIES>.conf` (`private` by default, `cloudflare` on Render), and sends it as `X-Client-IP` with `X-Proxy-Secret` (see the backend rules). [test-real-ip.sh](../../apps/frontend/nginx/test-real-ip.sh) tests this against the real nginx image (in CI too); extend it when you change these files;
   - sends the security headers (CSP, HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy`). nginx drops server-level `add_header`s in a location that sets its own, so locations must not use `add_header`.
 
 ## CI ([.github/workflows/ci.yml](../../.github/workflows/ci.yml))
 
-- Every push and pull request runs lint, unit tests, typecheck, build and the backend integration tests (against a throwaway PostgreSQL service).
+- Every push and pull request runs lint, unit tests, typecheck, build, the backend integration tests (against a throwaway PostgreSQL service) and nginx's visitor-IP test (`apps/frontend/nginx/test-real-ip.sh`).
 - On `main`, CI then publishes the two images to GHCR, `ghcr.io/pierredugue/my-resume-backend` and `-frontend`, tagged `latest` and `sha-<short commit>`. Each image is built for `linux/amd64` and `linux/arm64` on native runners, then combined.
 - Then it calls the Render deploy hooks (`RENDER_DEPLOY_HOOK_BACKEND`, `RENDER_DEPLOY_HOOK_FRONTEND` repository secrets) with that commit's image, and skips this step when they aren't set.
 - Check workflow changes with `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest`.

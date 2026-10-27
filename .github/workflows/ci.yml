@@ -62,6 +62,8 @@ jobs:
       - run: npm ci
       - run: npx nx run-many -t lint test typecheck build
       - run: npx nx run backend:integration
+      - name: Test nginx's visitor-IP config
+        run: apps/frontend/nginx/test-real-ip.sh
 
   build:
     name: Build ${{ matrix.app }} (${{ matrix.arch }})

@@ -1,4 +1,4 @@
-# Template: at startup the nginx image fills in the BACKEND_URL, PROXY_SECRET and
+# Template: at startup the nginx image fills in the BACKEND_URL, PROXY_SECRET, REAL_IP_PROXIES and
 # NGINX_LOCAL_RESOLVERS variables
 # (only variables defined in the environment are replaced; nginx's own $vars are left alone)
 # and writes the result to /etc/nginx/conf.d/default.conf. See apps/frontend/Dockerfile.
@@ -10,13 +10,11 @@ server {
 
     # The visitor's IP. Behind a hosting platform's proxies (Render), the connection comes from
     # the platform and the visitor is in X-Forwarded-For: read it from the right, skipping the
-    # private-network proxies, so addresses a visitor adds themselves (on the left) are ignored.
+    # trusted proxies, so addresses a visitor adds themselves (on the left) are ignored.
     # $remote_addr (access log, X-Client-IP below) is then the visitor.
-    set_real_ip_from 10.0.0.0/8;
-    set_real_ip_from 172.16.0.0/12;
-    set_real_ip_from 192.168.0.0/16;
-    set_real_ip_from 127.0.0.0/8;
-    set_real_ip_from fc00::/7;
+    # Trusted proxies (nginx/real-ip/): "private" (the default) or "cloudflare" (Render). An unknown
+    # value stops nginx at startup. Tested by nginx/test-real-ip.sh.
+    include /etc/nginx/real-ip/${REAL_IP_PROXIES}.conf;
     real_ip_header X-Forwarded-For;
     real_ip_recursive on;
 

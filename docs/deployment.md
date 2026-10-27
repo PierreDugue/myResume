@@ -79,10 +79,11 @@ With `PROXY_SECRET` set, the backend's own `onrender.com` address answers `403` 
 
 Set these environment variables:
 
-| Variable       | Value                                                                                                         |
-| -------------- | ------------------------------------------------------------------------------------------------------------- |
-| `BACKEND_URL`  | The backend's address from its Render page, e.g. `https://my-resume-backend.onrender.com` (no trailing slash) |
-| `PROXY_SECRET` | The same value as on the backend                                                                              |
+| Variable          | Value                                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| `BACKEND_URL`     | The backend's address from its Render page, e.g. `https://my-resume-backend.onrender.com` (no trailing slash) |
+| `REAL_IP_PROXIES` | `cloudflare`: Render sits behind Cloudflare, so nginx must skip Cloudflare's addresses to find the visitor    |
+| `PROXY_SECRET`    | The same value as on the backend                                                                              |
 
 The site is the frontend's address. Visitors only ever use that address.
 
@@ -102,6 +103,6 @@ After publishing the images, CI calls both hooks with that commit's `sha-…` im
 - **Cold starts.** A free service sleeps after 15 minutes without traffic. The first visit then waits about a minute for the frontend, then again for the backend.
 - **750 free hours a month,** shared by the workspace. Sleeping services don't use any.
 - **Rate limits per visitor IP depend on `PROXY_SECRET`.** The backend is reached through Render twice. On its own it would see Render's address for every visitor, so all visitors would share one count. With the secret, nginx works out the visitor's IP and vouches for it.
-  - nginx reads the visitor's IP from the right of `X-Forwarded-For` and skips private-network proxies (`set_real_ip_from` in [nginx.conf.template](../apps/frontend/nginx.conf.template)). Addresses a visitor adds themselves are ignored.
-  - **Check after the first deploy:** in the frontend's Render logs, each request line starts with the visitor's IP. Sign in and look for your own public IP there. If you see a Render address instead (probably a private `10.x` one), Render's proxies use a range nginx doesn't trust yet. Add it with another `set_real_ip_from` line.
+  - nginx reads the visitor's IP from the right of `X-Forwarded-For` and skips the proxies it trusts: Render's private `10.x` proxy, and Cloudflare, which is in front of every Render service. That's why the frontend needs `REAL_IP_PROXIES=cloudflare` (the ranges are in [nginx/real-ip/](../apps/frontend/nginx/real-ip/)). Addresses a visitor adds themselves are ignored.
+  - **Check after the first deploy:** in the frontend's Render logs, each request line starts with the visitor's IP. Sign in and look for your own public IP there. If you see a Cloudflare address instead (`162.158.x`, `172.64.x` to `172.71.x`, `104.16.x` to `104.27.x`, ...), `REAL_IP_PROXIES` isn't set to `cloudflare`, or Cloudflare has added ranges: update [cloudflare.conf](../apps/frontend/nginx/real-ip/cloudflare.conf) from cloudflare.com/ips.
   - **Rotating the secret:** change it on both services, then redeploy both. Requests fail in between.

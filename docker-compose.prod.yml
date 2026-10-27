@@ -61,6 +61,8 @@ services:
     environment:
       BACKEND_URL: http://backend:3000 # where nginx sends /api (the image's default)
       PROXY_SECRET: ${PROXY_SECRET:-} # same value as the backend's, if set
+      # Proxies trusted to report the visitor's IP. Only "private" here: Caddy and Docker's network.
+      REAL_IP_PROXIES: private
     depends_on:
       backend:
         condition: service_healthy

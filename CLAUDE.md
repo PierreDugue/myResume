@@ -64,7 +64,7 @@ Never commit or print secrets. Don't read `.env` files unless the user asks.
   - `JWT_SECRET` and `PASSWORD_PEPPER`: **required**, at least 32 characters (`openssl rand -base64 48`), different from each other. Changing the pepper rebuilds the admin hash from `ADMIN_PASSWORD` on the next start.
   - `ADMIN_EMAIL` / `ADMIN_PASSWORD`: optional, set together, password at least 12 characters. On startup the admin account is created or updated to match them, which is how the password is reset.
   - `PROXY_SECRET`: optional, at least 32 base64/hex characters, different from the other secrets. Same value on the backend and the frontend container; only needed where nginx reaches the backend through a public address (Render).
-- Containers only: `BACKEND_URL` (frontend: where nginx sends `/api`, default `http://backend:3000`), and for `docker-compose.prod.yml`, `IMAGE_TAG` (default `latest`) and `DOMAIN` (required: the site's domain, for Caddy's HTTPS certificate).
+- Containers only: `BACKEND_URL` (frontend: where nginx sends `/api`, default `http://backend:3000`), `REAL_IP_PROXIES` (frontend: the proxies nginx trusts to report the visitor's IP, `private` by default, `cloudflare` on Render), and for `docker-compose.prod.yml`, `IMAGE_TAG` (default `latest`) and `DOMAIN` (required: the site's domain, for Caddy's HTTPS certificate).
 - When you add a variable, add it to `docker-compose.yml` (and `docker-compose.prod.yml` if production needs it) and list it here.
 
 ## Test-driven development (mandatory)

@@ -16,10 +16,13 @@ FROM nginx:alpine
 COPY --from=build /workspace/dist/apps/frontend/browser /usr/share/nginx/html
 # The image renders templates into conf.d at startup (see nginx.conf.template).
 COPY apps/frontend/nginx.conf.template /etc/nginx/templates/default.conf.template
+COPY apps/frontend/nginx/real-ip /etc/nginx/real-ip
 # Where /api goes. Docker Compose's default; override it on other platforms (e.g. Render).
 ENV BACKEND_URL=http://backend:3000
 # Shared with the backend where it has a public address (Render); empty = not sent.
 ENV PROXY_SECRET=""
+# Proxies trusted to report the visitor's IP: "private", or "cloudflare" on Render (nginx/real-ip/).
+ENV REAL_IP_PROXIES=private
 # Exposes the container's DNS servers as NGINX_LOCAL_RESOLVERS for the template's `resolver`.
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 
