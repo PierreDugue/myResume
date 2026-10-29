@@ -93,4 +93,4 @@ When reporting a task as done, list the tests you wrote first and confirm that t
   3. Build the frontend (TDD).
   4. Review.
 - Before calling work done, run `npx nx affected -t lint test build typecheck` (or the same targets on the projects you touched) and report any failures.
-- Subagents are in `.claude/agents/`: `api-contract`, `backend-dev`, `frontend-dev`, `reviewer`.
+- Subagents are in `.claude/agents/`: `architect` (plans a feature and decides which of the others to use), `api-contract`, `backend-dev`, `frontend-dev`, `reviewer`.
