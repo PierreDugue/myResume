@@ -135,15 +135,19 @@ Shows the site's own engineering quality. The data comes from the build pipeline
 
 This backs up the resume's claims about testing and performance with live numbers.
 
-### 8. How this site was built `/about-this-site`
+### 8. How this site was built `/about-this-site` ✅
 
-A short page, in the same dashboard style, about how the site was engineered:
+A public page in the dashboard style (panels on the 12-column grid, one column on mobile), linked from the main navigation as "About this site". It explains what the site shows and how it's built, and makes clear the content is real data, not a static page. Panels:
 
-- **Architecture:** Nx monorepo (Angular 22 + NestJS + shared libraries), Docker, nginx, WebSockets, OpenTelemetry.
-- **AI-assisted development:** built with Claude Code using specialized agents (API contract, backend, frontend, reviewer), mandatory test-driven development, and a contract-first workflow. Links to `CLAUDE.md`, the agent definitions and the spec on the public repository, if it's public.
-- **Decisions:** a few short architecture decision notes, e.g. "Why Nx", "Why Socket.IO", "Why ECharts".
+- **What you're looking at:** the resume as a Grafana-inspired observability platform, with each idea linked to its page: time range → Career Overview `/`, logs → Explore `/explore`, traces → `/traces`, service map → `/service-map`, plain resume → `/resume`.
+- **Not hardcoded: where the data comes from:** the content is in PostgreSQL, served by the NestJS API, and every panel is calculated on the server by `resume-metrics` (a few of its rules also run in the browser: the timeline's month arithmetic and the admin span-outline rules). A hint points to **Inspect data** on every panel.
+- **Live from the API:** counts fetched from `GET /api/resume` when the page loads (experiences, highlights, skills, projects, project spans, education). Inspect data shows the raw response. It has a loading state, and an error state with a retry button when the call finally fails (for example during a long cold start).
+- **Why there is an admin area:** one owner account (JWT; bcrypt password, salted and peppered with a server-side secret through HMAC-SHA256), a secure-by-default API (a global guard, with only the public reads and login marked public), and the content the owner edits there. Visitors are read-only.
+- **Architecture:** the Nx monorepo (Angular 22, NestJS 11 + TypeORM, PostgreSQL 16, the three shared libraries), Docker images built by GitHub Actions and published to GHCR, nginx in front, hosting on Render or any Docker host behind Caddy, and the request flow Browser → nginx → NestJS `/api` → PostgreSQL as an accessible list.
+- **AI-assisted development:** Claude Code with specialized agents (architect, API contract, backend, frontend, reviewer), mandatory TDD and a contract-first workflow, with links to `CLAUDE.md`, the agent definitions, the spec and the public repository.
+- **Decisions:** why Nx, why ECharts with our own wrapper, why re2js, why the calculations are in a shared library.
 
-This connects to the resume's AI skills (Claude, Claude skills) and to "Generate 95% of code with Claude".
+This connects to the resume's AI skills (Claude, Claude skills) and to "Generate 95% of code with Claude". No endpoint of its own: it reuses `GET /api/resume`.
 
 ### 9. Plain view `/resume`
 
@@ -297,7 +301,9 @@ The server checks every message the client sends, limits each connection to 20 m
    - The meta dashboard in `Live` mode, the Explore live tail, and the "Visitors right now" stat.
    - `content:changed` and `alert:state` push messages.
 9. **PDF:** upload and download, the "Export PDF" button, then optionally pre-filling content from the PDF.
-10. **Quality dashboard and "How this site was built":** the build pipeline writes a quality report (tests, coverage, bundle size, Lighthouse); add the endpoint, the dashboard and the about page.
+10. **Quality dashboard and "How this site was built":**
+    - ✅ the about page `/about-this-site` (see section 8), with live content counts from `GET /api/resume`
+    - Not done yet: the build pipeline writes a quality report (tests, coverage, bundle size, Lighthouse); the endpoint and the quality dashboard `/dashboards/quality`.
 11. **Polish:** guided tour, SEO/OpenGraph tags (a preview image showing the dashboard), accessibility checks, performance budgets.
 12. **Later: "Ask my resume" AI assistant.**
     - A chat assistant styled like a monitoring tool's query assistant. It answers questions about the resume using RAG over the stored content.

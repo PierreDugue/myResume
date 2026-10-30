@@ -41,6 +41,11 @@ export const appRoutes: Route[] = [
           import('./public/plain-resume/plain-resume-page').then((m) => m.PlainResumePage),
       },
       {
+        path: 'about-this-site',
+        title: 'About this site',
+        loadComponent: () => import('./public/about/about-page').then((m) => m.AboutPage),
+      },
+      {
         path: 'admin/login',
         title: 'Sign in',
         canActivate: [guestGuard],

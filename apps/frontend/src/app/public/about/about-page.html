@@ -1,0 +1,175 @@
+<div class="grid">
+  <app-panel
+    class="half"
+    title="What you're looking at"
+    info="Grafana-inspired, not Grafana: no Grafana code, name or branding."
+  >
+    <div class="concepts">
+      <p>
+        This is my resume, presented as an observability platform. Each monitoring idea maps to a
+        part of my career:
+      </p>
+      <dl>
+        <dt>Time range</dt>
+        <dd>My career timeline, on the <a routerLink="/">Career Overview</a> dashboard.</dd>
+        <dt>Logs</dt>
+        <dd>Achievements from each job, as log lines in <a routerLink="/explore">Explore</a>.</dd>
+        <dt>Traces</dt>
+        <dd>Projects, with their phases as spans, in <a routerLink="/traces">Traces</a>.</dd>
+        <dt>Service map</dt>
+        <dd>
+          How technologies, projects and jobs connect, on the
+          <a routerLink="/service-map">Service map</a>.
+        </dd>
+        <dt>Plain resume</dt>
+        <dd>A classic one-page resume, in the <a routerLink="/resume">Plain view</a>.</dd>
+      </dl>
+    </div>
+  </app-panel>
+
+  <app-panel class="half" title="Not hardcoded: where the data comes from">
+    <p>
+      Nothing on these pages is written into the frontend. The content lives in a
+      <strong>PostgreSQL</strong> database and is served by a <strong>NestJS</strong> API. The
+      panels (stats, timeline, logs, traces, service map) are calculated on the server from that
+      data by a shared, unit-tested library, <code>resume-metrics</code>. A few of its rules are
+      reused in the browser: the timeline's month arithmetic and the span-outline rules of the admin
+      form.
+    </p>
+    <p class="hint">
+      Every panel on the site has <strong>Inspect data</strong> in its menu (⋮): it shows the raw
+      JSON the API returned for it.
+    </p>
+  </app-panel>
+
+  <app-panel
+    class="live"
+    title="Live from the API"
+    info="Fetched from GET /api/resume when this page loaded."
+    [data]="resume.hasValue() ? resume.value() : null"
+  >
+    @if (resume.hasValue()) {
+      <p class="muted">Content in the database right now. Open Inspect data for the response.</p>
+      <div class="counts">
+        @for (c of counts(); track c.label) {
+          <app-stat-panel [label]="c.label" [display]="'' + c.value" />
+        }
+      </div>
+    } @else if (resume.error()) {
+      <div role="alert">
+        <p>
+          Couldn't reach the API right now. It may be waking up from a cold start; the other pages
+          will fill in once it's up.
+        </p>
+        <button class="button retry" type="button" (click)="resume.reload()">Try again</button>
+      </div>
+    } @else {
+      <p class="muted" role="status">Loading content counts…</p>
+    }
+  </app-panel>
+
+  <app-panel class="half" title="Why there is an admin area">
+    <p>
+      The site has one owner account. I sign in with a JWT session; the password is hashed with
+      bcrypt, salted, and peppered with a server-side secret (HMAC-SHA256).
+    </p>
+    <p>
+      The API is secure by default: a global guard protects every route, and only the public read
+      routes and the login are marked public.
+    </p>
+    <p>
+      From the admin area I create, edit and reorder all the content: profile, experience and its
+      highlights, skills, education, and projects with their span outline. Visitors are read-only;
+      the
+      <em>Sign in</em> link in the sidebar is for the owner. An edit there changes what every
+      dashboard shows on the next load.
+    </p>
+  </app-panel>
+
+  <app-panel class="half" title="Architecture">
+    <ul>
+      <li>
+        <strong>Nx monorepo</strong>: Angular 22 (standalone, zoneless, signals), NestJS 11 with
+        TypeORM, PostgreSQL 16.
+      </li>
+      <li>
+        Shared libraries: <code>&#64;my-resume/api-models</code> (API types used by both apps),
+        <code>&#64;my-resume/resume-metrics</code> (dashboard, logs, traces and service-map
+        calculations), <code>&#64;my-resume/query-parser</code> (Explore's LogQL-style queries).
+      </li>
+      <li>
+        Docker images built by GitHub Actions and published to GHCR. nginx serves the frontend and
+        forwards <code>/api</code> to the backend.
+      </li>
+      <li>
+        Hosted on Render's web services.
+      </li>
+    </ul>
+    <h3 id="request-flow">Request flow</h3>
+    <ol class="flow" aria-labelledby="request-flow">
+      <li>Browser</li>
+      <li>nginx <span class="muted">(static files, forwards /api)</span></li>
+      <li>NestJS <span class="muted">/api</span></li>
+      <li>PostgreSQL</li>
+    </ol>
+  </app-panel>
+
+  <app-panel class="half" title="AI-assisted development">
+    <p>
+      Built with <strong>Claude Code</strong> and specialized agents: architect, API contract,
+      backend, frontend and reviewer. Test-driven development is mandatory (red, green, refactor),
+      and the workflow is contract-first: API contract and shared types, then backend, then
+      frontend, then review.
+    </p>
+    <p>The repository is public:</p>
+    <ul>
+      <li>
+        <a [href]="repo + '/blob/main/CLAUDE.md'" target="_blank" rel="noopener"
+          >CLAUDE.md<span class="sr-only"> (opens in a new tab)</span></a
+        >
+        (project rules)
+      </li>
+      <li>
+        <a [href]="repo + '/tree/main/.claude/agents'" target="_blank" rel="noopener">
+          Agent definitions<span class="sr-only"> (opens in a new tab)</span></a
+        >
+      </li>
+      <li>
+        <a [href]="repo + '/blob/main/docs/spec.md'" target="_blank" rel="noopener"
+          >Product spec<span class="sr-only"> (opens in a new tab)</span></a
+        >
+      </li>
+      <li>
+        <a [href]="repo" target="_blank" rel="noopener"
+          >The repository on GitHub<span class="sr-only"> (opens in a new tab)</span></a
+        >
+      </li>
+    </ul>
+  </app-panel>
+
+  <app-panel class="half" title="Decisions">
+    <dl>
+      <dt>Why Nx</dt>
+      <dd>
+        One repository with a shared, typed API contract: changing the API breaks the build on both
+        sides instead of failing at runtime. Locally, <code>nx affected</code> checks only what a
+        change touches; CI checks every project.
+      </dd>
+      <dt>Why ECharts, with our own small wrapper</dt>
+      <dd>
+        Only the chart types in use are imported, and they load lazily on the pages that need them
+        (no ngx-echarts). Stats, logs and the trace waterfall are plain HTML/CSS: lighter and more
+        accessible.
+      </dd>
+      <dt>Why re2js</dt>
+      <dd>
+        Visitors' Explore queries run on the server, so their regexes run in linear time: no ReDoS.
+      </dd>
+      <dt>Why the calculations are in a shared library</dt>
+      <dd>
+        They are pure functions, unit-tested with hand-checkable fixtures, and the admin form uses
+        the same span-outline rules as the trace view.
+      </dd>
+    </dl>
+  </app-panel>
+</div>
