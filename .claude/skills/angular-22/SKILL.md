@@ -1,6 +1,6 @@
 ---
 name: angular-22
-description: Angular 22 conventions for this project (myResume). Use whenever writing, generating, reviewing or refactoring Angular code in apps/frontend or libs/frontend — components, services, routes, tests. Covers @Service instead of @Injectable, default OnPush change detection, zoneless signals-based code, signal forms (the default for forms) and zoneless testing patterns.
+description: Angular 22 conventions for this project (myResume). Use whenever writing, generating, reviewing or refactoring Angular code in apps/frontend or libs/frontend — components, services, routes, tests. Covers @Service instead of @Injectable, default OnPush change detection, zoneless signals-based code, RxJS observables over promises for async work, signal forms (the default for forms) and zoneless testing patterns.
 ---
 
 # Angular 22 in myResume
@@ -60,6 +60,24 @@ export class StatPanel {
 - For async data, consider `resource()` / `httpResource()` instead of hand-written loading/error flags.
 - Don't use `ChangeDetectorRef.detectChanges()` or `markForCheck()` to "fix" a view that doesn't update; the state should be a signal.
 - `effect()` is for syncing with things outside Angular (DOM APIs, storage, charts). Don't use it to copy one signal into another; use `computed`/`linkedSignal`.
+
+### Async work: RxJS observables over promises
+
+Prefer observables for async work. Use a promise only when the API you call or implement is promise-based, or when cancellation and re-triggering can't matter.
+
+- **Services return `Observable<T>`**, never `Promise<T>`. `HttpClient` already returns observables, so return them as they are; don't wrap them in `firstValueFrom` inside a service.
+- **Components keep the observable**: `toSignal(...)`, `rxResource({ params, stream })` / `httpResource()` for loading data, or `.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(v => this.state.set(v))` for actions. Nothing is set on a component after it's destroyed, and the request is cancelled with it.
+- **Re-triggerable actions** (search, filters, a button clicked twice, route params changing): use `switchMap` (latest wins), `exhaustMap` (ignore clicks while busy) or `concatMap` (queue) rather than `async` handlers that can race.
+- **Errors** stay in the stream: `catchError` or the `error` callback, setting an error signal. No promise without a `catch`.
+- Don't turn an observable into a promise just to use `await` (`firstValueFrom`, `lastValueFrom`, `toPromise`) in app code, except at the promise boundaries below.
+
+Promises are fine (no need to justify) for:
+
+- APIs that return or expect a promise: `Router.navigate()`/`navigateByUrl()`, dynamic `import()` and `loadComponent`/`loadChildren`, the Clipboard API, signal forms' `submission.action` (its type is `() => Promise<...>`, so `await firstValueFrom(api.save(...))` there is correct), functional guards/resolvers may return either.
+- One-shot fire-and-forget calls whose result nobody waits on (e.g. `void this.router.navigate(...)`).
+- Tests: `await fixture.whenStable()`, `await harness.navigateByUrl()`, and `await firstValueFrom(obs)` when it reads more clearly than subscribing.
+
+Anywhere else, if you write `async`/`await` or `new Promise` in app code, say why in a short comment.
 
 ## 4. Forms: signal forms by default
 

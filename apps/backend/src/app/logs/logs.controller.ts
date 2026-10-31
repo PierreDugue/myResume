@@ -1,9 +1,11 @@
 import { Controller, Get, Query } from '@nestjs/common';
 import type { LogLabel, LogsResponse } from '@my-resume/api-models';
 import { Public } from '../auth/public.decorator';
+import { PublicPage } from '../preferences/public-page.decorator';
 import { LogsQueryDto } from './dto/logs-query.dto';
 import { LogsService } from './logs.service';
 
+@PublicPage('explore')
 @Controller('logs')
 export class LogsController {
   constructor(private readonly logs: LogsService) {}

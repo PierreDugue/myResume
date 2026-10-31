@@ -51,5 +51,6 @@ export class AdminLayout {
     { label: 'Experience', path: '/admin/experiences', exact: false },
     { label: 'Education', path: '/admin/education', exact: false },
     { label: 'Projects', path: '/admin/projects', exact: false },
+    { label: 'Preferences', path: '/admin/preferences', exact: false },
   ];
 }

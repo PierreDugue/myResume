@@ -49,7 +49,11 @@
               <p class="tech">
                 <span class="muted">Technologies:</span>
                 @for (tech of span.tech; track tech.slug) {
-                  <a routerLink="/" [queryParams]="{ skill: tech.slug }">{{ tech.name }}</a>
+                  @if (canOpenOverview()) {
+                    <a routerLink="/" [queryParams]="{ skill: tech.slug }">{{ tech.name }}</a>
+                  } @else {
+                    <span>{{ tech.name }}</span>
+                  }
                 }
               </p>
             }

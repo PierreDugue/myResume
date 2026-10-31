@@ -5,6 +5,7 @@ import type { DashboardQuery, DashboardResponse } from '@my-resume/api-models';
 import { map } from 'rxjs';
 import { DashboardApi } from '../../core/dashboard/dashboard-api.service';
 import { ThemeService } from '../../core/theme/theme.service';
+import { PageAccess } from '../../layout/page-access';
 import { BarGauge, GaugeGroup } from '../../shared/panels/bar-gauge/bar-gauge';
 import { readChartPalette } from '../../shared/panels/chart-palette';
 import { EChart } from '../../shared/panels/echart/echart';
@@ -45,6 +46,7 @@ export class OverviewPage {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly theme = inject(ThemeService);
+  protected readonly access = inject(PageAccess);
   private readonly document = inject(DOCUMENT);
 
   protected readonly query = toSignal(this.route.queryParamMap.pipe(map(parseDashboardQuery)), {

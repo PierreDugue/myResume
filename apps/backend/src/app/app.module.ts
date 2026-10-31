@@ -11,6 +11,7 @@ import { LogsModule } from './logs/logs.module';
 import { TracesModule } from './traces/traces.module';
 import { QualityModule } from './quality/quality.module';
 import { ServiceMapModule } from './service-map/service-map.module';
+import { PreferencesModule } from './preferences/preferences.module';
 
 @Module({
   imports: [
@@ -46,6 +47,7 @@ import { ServiceMapModule } from './service-map/service-map.module';
     TracesModule,
     ServiceMapModule,
     QualityModule,
+    PreferencesModule,
   ],
 })
 export class AppModule {}

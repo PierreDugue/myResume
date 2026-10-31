@@ -11,15 +11,41 @@
       </p>
       <dl>
         <dt>Time range</dt>
-        <dd>My career timeline, on the <a routerLink="/">Career Overview</a> dashboard.</dd>
+        <dd>
+          My career timeline, on the
+          @if (access.canView('overview')) {
+            <a routerLink="/">Career Overview</a>
+          } @else {
+            Career Overview
+          }
+          dashboard.
+        </dd>
         <dt>Logs</dt>
-        <dd>Achievements from each job, as log lines in <a routerLink="/explore">Explore</a>.</dd>
+        <dd>
+          Achievements from each job, as log lines in
+          @if (access.canView('explore')) {
+            <a routerLink="/explore">Explore</a>.
+          } @else {
+            Explore.
+          }
+        </dd>
         <dt>Traces</dt>
-        <dd>Projects, with their phases as spans, in <a routerLink="/traces">Traces</a>.</dd>
+        <dd>
+          Projects, with their phases as spans, in
+          @if (access.canView('traces')) {
+            <a routerLink="/traces">Traces</a>.
+          } @else {
+            Traces.
+          }
+        </dd>
         <dt>Service map</dt>
         <dd>
           How technologies, projects and jobs connect, on the
-          <a routerLink="/service-map">Service map</a>.
+          @if (access.canView('serviceMap')) {
+            <a routerLink="/service-map">Service map</a>.
+          } @else {
+            Service map.
+          }
         </dd>
         <dt>Plain resume</dt>
         <dd>A classic one-page resume, in the <a routerLink="/resume">Plain view</a>.</dd>
@@ -101,9 +127,7 @@
         Docker images built by GitHub Actions and published to GHCR. nginx serves the frontend and
         forwards <code>/api</code> to the backend.
       </li>
-      <li>
-        Hosted on Render's web services.
-      </li>
+      <li>Hosted on Render's web services.</li>
     </ul>
     <h3 id="request-flow">Request flow</h3>
     <ol class="flow" aria-labelledby="request-flow">

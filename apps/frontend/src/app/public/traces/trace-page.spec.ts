@@ -1,8 +1,9 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Observable, of, throwError } from 'rxjs';
-import type { Trace } from '@my-resume/api-models';
+import type { PublicPageId, Trace } from '@my-resume/api-models';
 import { renderRoute } from '../../admin/testing/render';
 import { TracesApi } from '../../core/traces/traces-api.service';
+import { fakePageAccess } from '../../layout/testing/fake-page-access';
 import { $ } from '../../testing';
 import { TracePage } from './trace-page';
 import { traceFixture } from './testing/traces-fixture';
@@ -10,14 +11,16 @@ import { traceFixture } from './testing/traces-fixture';
 describe('TracePage', () => {
   let respond: (slug: string) => Observable<Trace>;
   const get = vi.fn((slug: string) => respond(slug));
+  let disabled: PublicPageId[] = [];
   const render = (url = '/traces/pierre-o11y') =>
     renderRoute(
       url,
       [{ path: 'traces/:slug', component: TracePage }],
-      [{ provide: TracesApi, useValue: { get } }],
+      [{ provide: TracesApi, useValue: { get } }, fakePageAccess(disabled)],
     );
 
   beforeEach(() => {
+    disabled = [];
     respond = () => of(traceFixture());
     get.mockClear();
   });
@@ -51,5 +54,15 @@ describe('TracePage', () => {
     respond = () => throwError(() => new HttpErrorResponse({ status: 404 }));
     const { el } = await render('/traces/nope');
     expect($(el, '[role="alert"]').textContent).toContain('No trace for this project');
+  });
+
+  it('shows technologies as plain text when the dashboard is hidden from the viewer', async () => {
+    disabled = ['overview'];
+    const { el, settle } = await render();
+    $<HTMLButtonElement>(el, 'app-waterfall li.row:nth-child(3) button.summary').click();
+    await settle();
+    const tech = $(el, 'app-waterfall .tech');
+    expect(tech.querySelector('a')).toBeNull();
+    expect(tech.textContent).toContain('Angular');
   });
 });

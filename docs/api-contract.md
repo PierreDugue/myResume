@@ -327,11 +327,11 @@ interface ResumeResponse {
 
 ### Dashboard (Career Overview)
 
-| Method | Path             | Auth | Request                                  | Response                      | Status |
-| ------ | ---------------- | ---- | ---------------------------------------- | ----------------------------- | ------ |
-| GET    | `/api/dashboard` | –    | query: `from`, `to`, `category`, `skill` | `DashboardResponse`, or `400` | done   |
+| Method | Path             | Auth | Request                                  | Response                             | Status |
+| ------ | ---------------- | ---- | ---------------------------------------- | ------------------------------------ | ------ |
+| GET    | `/api/dashboard` | –    | query: `from`, `to`, `category`, `skill` | `DashboardResponse`, or `400`, `404` | done   |
 
-Every panel of the home dashboard in one call. The backend calculates everything from the resume content; the frontend only draws it.
+Every panel of the home dashboard in one call. The backend calculates everything from the resume content; the frontend only draws it. Returns `404` while the page is disabled (see Preferences).
 
 - **Query parameters** (all optional; the frontend keeps them in the page URL):
   - `from`, `to`: years. The default range runs from the first job's year to the current year. They must be integers between 1950 and 2100, with `from ≤ to`; otherwise `400`.
@@ -445,12 +445,12 @@ interface DashboardResponse {
 
 ### Explore (logs)
 
-| Method | Path               | Auth | Request                      | Response                 | Status |
-| ------ | ------------------ | ---- | ---------------------------- | ------------------------ | ------ |
-| GET    | `/api/logs`        | –    | query: `query`, `from`, `to` | `LogsResponse`, or `400` | done   |
-| GET    | `/api/logs/labels` | –    | –                            | `LogLabel[]`             | done   |
+| Method | Path               | Auth | Request                      | Response                        | Status |
+| ------ | ------------------ | ---- | ---------------------------- | ------------------------------- | ------ |
+| GET    | `/api/logs`        | –    | query: `query`, `from`, `to` | `LogsResponse`, or `400`, `404` | done   |
+| GET    | `/api/logs/labels` | –    | –                            | `LogLabel[]`, or `404`          | done   |
 
-The resume as a log stream, searched with a small LogQL-style language. The parser is shared by the backend (which filters) and the frontend (which checks the query as you type and suggests labels and values): `@my-resume/query-parser`.
+The resume as a log stream, searched with a small LogQL-style language. The parser is shared by the backend (which filters) and the frontend (which checks the query as you type and suggests labels and values): `@my-resume/query-parser`. Both endpoints return `404` while the page is disabled (see Preferences).
 
 **Log lines.** Each line has a date, a level, a source, a message, labels and technologies:
 
@@ -528,12 +528,12 @@ interface LogLabel {
 
 ### Traces
 
-| Method | Path                | Auth | Request | Response          | Status |
-| ------ | ------------------- | ---- | ------- | ----------------- | ------ |
-| GET    | `/api/traces`       | –    | –       | `TraceSummary[]`  | done   |
-| GET    | `/api/traces/:slug` | –    | –       | `Trace`, or `404` | done   |
+| Method | Path                | Auth | Request | Response                   | Status |
+| ------ | ------------------- | ---- | ------- | -------------------------- | ------ |
+| GET    | `/api/traces`       | –    | –       | `TraceSummary[]`, or `404` | done   |
+| GET    | `/api/traces/:slug` | –    | –       | `Trace`, or `404`          | done   |
 
-Each project shown as a trace: the **root span** is the project itself, its children are the project's spans.
+Each project shown as a trace: the **root span** is the project itself, its children are the project's spans. Both endpoints return `404` while the page is disabled (see Preferences).
 
 - **Which projects are traces:** those with a `startDate` or at least one span. Others aren't listed, and `GET /api/traces/:slug` returns `404` for them (as for an unknown slug).
 - **Root span:** it starts at the project's `startDate`, or its first span's start when the project has none. It ends at the project's `endDate`; for an ongoing project (no `endDate`), at the latest of today and its spans' ends.
@@ -586,11 +586,11 @@ interface TraceSummary {
 
 ### Service map
 
-| Method | Path               | Auth | Request | Response             | Status |
-| ------ | ------------------ | ---- | ------- | -------------------- | ------ |
-| GET    | `/api/service-map` | –    | –       | `ServiceMapResponse` | done   |
+| Method | Path               | Auth | Request | Response                       | Status |
+| ------ | ------------------ | ---- | ------- | ------------------------------ | ------ |
+| GET    | `/api/service-map` | –    | –       | `ServiceMapResponse`, or `404` | done   |
 
-A graph of the resume: technologies linked to the jobs and projects that used them.
+A graph of the resume: technologies linked to the jobs and projects that used them. Returns `404` while the page is disabled (see Preferences).
 
 - **Nodes:** every experience (`job`), every project with a `startDate` (`project`), and every skill linked to at least one of them (`skill`). Ids are prefixed by kind (`skill:<id>`, `job:<id>`, `project:<id>`), so they never collide.
 - **Edges** go from a job or a project to each of its skills. A project's skills include its spans' skills. No duplicate edges.
@@ -626,11 +626,11 @@ interface ServiceMapResponse {
 | ------ | -------------- | ---- | ------- | ------------------------------- | ------ |
 | GET    | `/api/quality` | –    | –       | `QualityReport` `200`, or `404` | done   |
 
-The site's own engineering quality, for the Quality dashboard (`/dashboards/quality`). The backend calculates nothing: it serves a report file as is.
+The site's own engineering quality, for the Quality dashboard (`/dashboards/quality`). The backend calculates nothing: it serves a report file as is. Returns `404` while the page is disabled (see Preferences).
 
 - **Where the data comes from:** the CI pipeline (GitHub Actions) assembles a JSON report (`QualityReport`) with the tool in `tools/quality-report`, from the unit and integration test results, the coverage summaries, the frontend build's esbuild stats, the Nx project graph and the GitHub Actions run timings. On `main`, the report is baked into the backend Docker image (`assets/quality-report.json`), so each deployed version serves the report of its own commit.
 - `200`: the report of the running build.
-- `404` `{ "statusCode": 404, "message": "No quality report in this build", "error": "Not Found" }` when the running build has none (local dev, local Docker builds). The frontend shows an empty state, not an error.
+- `404` `{ "statusCode": 404, "message": "No quality report in this build", "error": "Not Found" }` when the running build has none (local dev, local Docker builds). The frontend shows an empty state, not an error. (The other `404`, while the page is disabled, has `message: "This page is disabled"`.)
 - **Partial reports are normal.** Each section can be empty or null when the pipeline didn't measure it: Lighthouse and e2e tests aren't measured yet, and `build` is null when the report was assembled outside GitHub Actions. The frontend shows "not measured yet" for those panels.
 - **Tests:** `total` counts every suite together; `suites` lists only the suites that ran, in the order unit, integration, e2e; `projects` is ordered by suite (same order), then project name, and leaves out projects with no tests. `passRate` is `passed / (passed + failed) × 100` with one decimal (half up; for `total` and each suite it is recalculated from the summed counts), or `null` when no test ran. `skipped` includes todo tests.
 - **Coverage:** percentages 0..100 with one decimal. Ordered apps, then libraries, by project name, unit before integration. Projects without runtime code (0 statements, e.g. `api-models`) are left out. Every source file of a project counts, tested or not. A metric with nothing to cover (0 branches, say) counts as 100, like istanbul. Percentages are rounded half up.
@@ -739,6 +739,66 @@ interface ProjectGraphEdge {
 interface ProjectGraph {
   nodes: ProjectGraphNode[]; // apps, e2e projects, then libraries; by name within each
   edges: ProjectGraphEdge[]; // no duplicates, by source then target
+}
+```
+
+### Preferences
+
+| Method | Path               | Auth | Request                        | Response                                 | Status |
+| ------ | ------------------ | ---- | ------------------------------ | ---------------------------------------- | ------ |
+| GET    | `/api/preferences` | –    | –                              | `SitePreferences` `200`                  | done   |
+| PATCH  | `/api/preferences` | ✔    | `UpdateSitePreferencesRequest` | `SitePreferences` `200`, or `400`, `401` | done   |
+
+Site-wide settings, edited on `/admin/preferences`. For now there is one group, `pages`: which public pages visitors can see. More groups can be added later.
+
+- **Pages and their ids:**
+
+  | Id           | Page                          |
+  | ------------ | ----------------------------- |
+  | `overview`   | `/` (Career Overview)         |
+  | `explore`    | `/explore`                    |
+  | `traces`     | `/traces` and `/traces/:slug` |
+  | `serviceMap` | `/service-map`                |
+  | `quality`    | `/dashboards/quality`         |
+  | `about`      | `/about-this-site`            |
+
+  The plain view `/resume` is not a preference: it is always available (the spec requires a plain view one click away), and it is where visitors land when every page is disabled.
+
+- **Defaults:** every page is enabled until the admin disables it. Pages added to the site later are enabled by default. `GET` always lists every page id.
+- **`GET /api/preferences`** is public: the frontend needs it to build the menu and guard routes for visitors. (When a preference that must stay private is added one day, it gets an admin-only view, like `Profile` / `PublicProfile`.)
+- **`PATCH /api/preferences`**: partial update. Only the groups and keys sent change; leaving one out keeps it. Returns the complete `SitePreferences`.
+  - `400` for an unknown group, an unknown page id, a value that isn't a boolean, or `null`.
+  - An empty body `{}` changes nothing and returns `200`.
+  - Any combination is allowed, including every page disabled.
+- **Disabled pages are refused by the API too.** Each page's own endpoints answer `404` `{ "statusCode": 404, "message": "This page is disabled", "error": "Not Found" }` to visitors while it is disabled:
+
+  | Page         | Endpoints refused                          |
+  | ------------ | ------------------------------------------ |
+  | `overview`   | `GET /api/dashboard`                       |
+  | `explore`    | `GET /api/logs`, `GET /api/logs/labels`    |
+  | `traces`     | `GET /api/traces`, `GET /api/traces/:slug` |
+  | `serviceMap` | `GET /api/service-map`                     |
+  | `quality`    | `GET /api/quality`                         |
+  | `about`      | none                                       |
+  - `about` has no endpoint to refuse: it uses `GET /api/resume`, which the plain view needs, so `/api/resume` is never refused.
+  - A request with a valid admin token is still served, so the admin can preview a hidden page.
+  - On these public routes an invalid or expired token is ignored (the request is treated as a visitor's), never a `401`.
+
+```ts
+/** The public pages the admin can enable or disable. The plain view (/resume) is not one: it is always available. */
+type PublicPageId = 'overview' | 'explore' | 'traces' | 'serviceMap' | 'quality' | 'about';
+
+/** true = visible to visitors. Every page id is always present in responses. */
+type PagePreferences = Record<PublicPageId, boolean>;
+
+/** Site-wide preferences, edited on /admin/preferences. One group per kind of setting; more groups will be added later. */
+interface SitePreferences {
+  pages: PagePreferences;
+}
+
+/** `PATCH /api/preferences` body: every group and every key is optional; what is sent is merged into the stored preferences. */
+interface UpdateSitePreferencesRequest {
+  pages?: Partial<PagePreferences>;
 }
 ```
 

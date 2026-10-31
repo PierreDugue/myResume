@@ -22,6 +22,9 @@ export class AdminHomePage {
     { label: 'Education', path: 'education', hint: 'Degrees and schools' },
     { label: 'Projects', path: 'projects', hint: 'Side projects, this site' },
   ];
+  protected readonly siteSections = [
+    { label: 'Preferences', path: 'preferences', hint: 'Which public pages visitors see' },
+  ];
   protected readonly comingSoon = ['Status alerts', 'Resume PDF'];
 
   protected signOut(): void {

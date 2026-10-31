@@ -8,7 +8,9 @@ import request from 'supertest';
 import { configureApp } from '../app.setup';
 import type { AppEnv } from '../config/env.validation';
 import { AuthModule } from './auth.module';
+import { CurrentUser } from './current-user.decorator';
 import { AdminUser } from './entities/admin-user.entity';
+import type { JwtPayload } from './jwt-payload';
 import { hashPassword } from './password';
 import { Public } from './public.decorator';
 
@@ -40,6 +42,13 @@ class ProbeController {
   @Get('public')
   open() {
     return { ok: 'public' };
+  }
+
+  /** Public, but tells whether the request was recognized as the admin's. */
+  @Public()
+  @Get('public/whoami')
+  whoami(@CurrentUser() user?: JwtPayload) {
+    return { admin: user?.sub ?? null };
   }
 
   @Get('private')
@@ -235,6 +244,48 @@ describe('Auth (HTTP)', () => {
         .get('/api/probe/private')
         .set('Authorization', header);
       expect(res.status).toBe(401);
+    });
+  });
+
+  describe('optional token on @Public() routes', () => {
+    const jwt = new JwtService();
+    const payload = { sub: '6f1c2b8e-1d2a-4c3b-9e8f-0a1b2c3d4e5f', email: 'pierre@example.com' };
+    const whoami = () => request(app.getHttpServer()).get('/api/probe/public/whoami');
+
+    it('treats a request without a token as a visitor', async () => {
+      await whoami().expect(200, { admin: null });
+    });
+
+    it('recognizes the admin when a valid token is sent', async () => {
+      const token = await tokenFor();
+      await whoami().set('Authorization', `Bearer ${token}`).expect(200, { admin: admin.id });
+    });
+
+    it.each([
+      ['garbage', () => 'Bearer not.a.jwt'],
+      ['an empty Bearer token', () => 'Bearer '],
+      [
+        'a token signed with another secret',
+        () => `Bearer ${jwt.sign(payload, { secret: 'another-secret-another-secret-12345' })}`,
+      ],
+      [
+        'an expired token',
+        () =>
+          `Bearer ${jwt.sign(
+            { ...payload, exp: Math.floor(Date.now() / 1000) - 60 },
+            { secret: env.JWT_SECRET },
+          )}`,
+      ],
+      [
+        'an unsigned token (alg "none")',
+        () => `Bearer ${b64({ alg: 'none', typ: 'JWT' })}.${b64(payload)}.`,
+      ],
+      [
+        'a valid token without the "Bearer" scheme',
+        () => jwt.sign(payload, { secret: env.JWT_SECRET }),
+      ],
+    ])('ignores %s: 200 as a visitor, never 401', async (_case, header) => {
+      await whoami().set('Authorization', header()).expect(200, { admin: null });
     });
   });
 });

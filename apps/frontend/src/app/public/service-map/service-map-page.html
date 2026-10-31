@@ -25,9 +25,13 @@
             @for (row of rows(); track row.node.id) {
               <tr>
                 <th scope="row">
-                  <a [routerLink]="row.link.path" [queryParams]="row.link.queryParams">{{
-                    row.node.label
-                  }}</a>
+                  @if (row.linked) {
+                    <a [routerLink]="row.link.path" [queryParams]="row.link.queryParams">{{
+                      row.node.label
+                    }}</a>
+                  } @else {
+                    {{ row.node.label }}
+                  }
                 </th>
                 <td>{{ row.kind }}</td>
                 <td class="num">{{ row.node.years }}</td>

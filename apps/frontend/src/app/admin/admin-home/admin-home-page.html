@@ -27,4 +27,14 @@
       </li>
     }
   </ul>
+
+  <h2>Site</h2>
+  <ul class="sections">
+    @for (section of siteSections; track section.path) {
+      <li>
+        <a [routerLink]="section.path">{{ section.label }}</a>
+        <span class="hint">{{ section.hint }}</span>
+      </li>
+    }
+  </ul>
 </section>

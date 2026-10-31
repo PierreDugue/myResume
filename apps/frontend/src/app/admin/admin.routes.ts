@@ -60,6 +60,12 @@ export const adminRoutes: Route[] = [
         title: 'Edit project',
         loadComponent: () => import('./projects/project-edit-page').then((m) => m.ProjectEditPage),
       },
+      {
+        path: 'preferences',
+        title: 'Preferences',
+        loadComponent: () =>
+          import('./preferences/preferences-page').then((m) => m.PreferencesPage),
+      },
     ],
   },
 ];

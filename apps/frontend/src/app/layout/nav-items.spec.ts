@@ -8,3 +8,11 @@ describe('NAV_ITEMS', () => {
     expect(labels.indexOf('Code quality')).toBe(labels.indexOf('About this site') - 1);
   });
 });
+
+describe('NAV_ITEMS pages', () => {
+  it('gives every entry its own public page id', () => {
+    const pages = NAV_ITEMS.map((i) => i.page);
+    expect(new Set(pages).size).toBe(NAV_ITEMS.length);
+    expect(pages).toEqual(['overview', 'explore', 'traces', 'serviceMap', 'quality', 'about']);
+  });
+});

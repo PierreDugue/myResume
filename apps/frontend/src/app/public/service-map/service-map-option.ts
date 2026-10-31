@@ -1,4 +1,9 @@
-import type { ServiceMapNode, ServiceMapNodeKind, ServiceMapResponse } from '@my-resume/api-models';
+import type {
+  PublicPageId,
+  ServiceMapNode,
+  ServiceMapNodeKind,
+  ServiceMapResponse,
+} from '@my-resume/api-models';
 import { withLabelMatcher } from '@my-resume/query-parser';
 import type { ChartPalette } from '../../shared/panels/chart-palette';
 import type { ChartOption } from '../../shared/panels/echart/echarts-loader';
@@ -69,22 +74,28 @@ export function serviceMapOption(map: ServiceMapResponse, palette: ChartPalette)
   };
 }
 
+export interface NodeLink {
+  path: string;
+  /** The public page the link opens: the admin can hide it from visitors. */
+  page: PublicPageId;
+  queryParams: Record<string, string>;
+}
+
 /**
  * Where a node leads: a technology filters the dashboard, a project opens its trace, a job
  * searches its achievements in Explore.
  */
-export function nodeLink(node: ServiceMapNode | undefined): {
-  path: string;
-  queryParams: Record<string, string>;
-} {
-  if (node?.kind === 'skill' && node.slug) return { path: '/', queryParams: { skill: node.slug } };
+export function nodeLink(node: ServiceMapNode | undefined): NodeLink {
+  if (node?.kind === 'skill' && node.slug)
+    return { path: '/', page: 'overview', queryParams: { skill: node.slug } };
   if (node?.kind === 'project' && node.slug)
-    return { path: `/traces/${node.slug}`, queryParams: {} };
+    return { path: `/traces/${node.slug}`, page: 'traces', queryParams: {} };
   if (node?.kind === 'job') {
     return {
       path: '/explore',
+      page: 'explore',
       queryParams: { query: withLabelMatcher('', 'company', node.label) },
     };
   }
-  return { path: '/', queryParams: {} };
+  return { path: '/', page: 'overview', queryParams: {} };
 }

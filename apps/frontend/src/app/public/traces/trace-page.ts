@@ -4,6 +4,7 @@ import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { map } from 'rxjs';
 import { TracesApi } from '../../core/traces/traces-api.service';
+import { PageAccess } from '../../layout/page-access';
 import { Panel } from '../../shared/panels/panel/panel';
 import { formatDate, formatDuration } from './trace-format';
 import { Waterfall } from './waterfall/waterfall';
@@ -18,6 +19,7 @@ import { Waterfall } from './waterfall/waterfall';
 export class TracePage {
   private readonly api = inject(TracesApi);
   private readonly route = inject(ActivatedRoute);
+  protected readonly access = inject(PageAccess);
 
   private readonly slug = toSignal(this.route.paramMap.pipe(map((p) => p.get('slug') ?? '')), {
     initialValue: this.route.snapshot.paramMap.get('slug') ?? '',

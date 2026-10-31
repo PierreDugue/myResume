@@ -57,7 +57,7 @@
         </table>
       </div>
     } @else {
-      <app-waterfall [spans]="t.spans" />
+      <app-waterfall [spans]="t.spans" [canOpenOverview]="access.canView('overview')" />
     }
   </app-panel>
 } @else if (notFound()) {

@@ -16,6 +16,8 @@ import { formatDate, formatDuration, timeTicks } from '../trace-format';
 })
 export class Waterfall {
   readonly spans = input.required<TraceSpan[]>();
+  /** False when the dashboard is hidden from the viewer: technologies are plain text. */
+  readonly canOpenOverview = input(true);
 
   private readonly open = signal<ReadonlySet<string>>(new Set());
   protected readonly ticks = computed(() => {

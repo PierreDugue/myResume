@@ -4,6 +4,8 @@ import type { ResumeResponse } from '@my-resume/api-models';
 import { Observable, of, Subject, throwError } from 'rxjs';
 import { kx, resume, site, skills } from '../../admin/testing/fixtures';
 import { ContentApi } from '../../core/content/content-api.service';
+import { fakePageAccess } from '../../layout/testing/fake-page-access';
+import type { PublicPageId } from '@my-resume/api-models';
 import { $ } from '../../testing';
 import { AboutPage } from './about-page';
 
@@ -29,10 +31,14 @@ function content(): ResumeResponse {
 describe('AboutPage', () => {
   let load: () => Observable<ResumeResponse>;
 
-  async function render({ settle = true } = {}) {
+  async function render({ settle = true, disabled = [] as PublicPageId[] } = {}) {
     TestBed.configureTestingModule({
       imports: [AboutPage],
-      providers: [provideRouter([]), { provide: ContentApi, useValue: { resume: () => load() } }],
+      providers: [
+        provideRouter([]),
+        { provide: ContentApi, useValue: { resume: () => load() } },
+        fakePageAccess(disabled),
+      ],
     });
     const fixture = TestBed.createComponent(AboutPage);
     // whenStable() waits for pending resources, so it can't be used while the call is in flight.
@@ -126,6 +132,24 @@ describe('AboutPage', () => {
     const { el } = await render();
     const hrefs = [...el.querySelectorAll('.concepts a')].map((a) => a.getAttribute('href'));
     expect(hrefs).toEqual(['/', '/explore', '/traces', '/service-map', '/resume']);
+  });
+
+  it('shows the name of a page the viewer cannot see, without a link', async () => {
+    const { el } = await render({ disabled: ['overview', 'traces'] });
+    const hrefs = [...el.querySelectorAll('.concepts a')].map((a) => a.getAttribute('href'));
+    expect(hrefs).toEqual(['/explore', '/service-map', '/resume']);
+    const concepts = (el.querySelector('.concepts')?.textContent ?? '').replace(/\s+/g, ' ');
+    expect(concepts).toContain('on the Career Overview dashboard.');
+    expect(concepts).toContain('in Traces.');
+    expect(concepts).toContain('log lines in Explore.');
+  });
+
+  it('keeps the link to the plain view when every page is disabled', async () => {
+    const { el } = await render({
+      disabled: ['overview', 'explore', 'traces', 'serviceMap', 'quality', 'about'],
+    });
+    const hrefs = [...el.querySelectorAll('.concepts a')].map((a) => a.getAttribute('href'));
+    expect(hrefs).toEqual(['/resume']);
   });
 
   it('links to the public repository files in a new tab', async () => {

@@ -3,8 +3,10 @@ import { join } from 'node:path';
 import { QUALITY_REPORT_FILE } from './quality.constants';
 import { QualityController } from './quality.controller';
 import { QualityService } from './quality.service';
+import { PreferencesModule } from '../preferences/preferences.module';
 
 @Module({
+  imports: [PreferencesModule],
   controllers: [QualityController],
   providers: [
     QualityService,

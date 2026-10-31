@@ -181,6 +181,10 @@ This connects to the resume's AI skills (Claude, Claude skills) and to "Generate
   - Skills
   - Projects and their spans
   - Alerts/status
+- `/admin/preferences` ("Preferences"): which public pages visitors see (Career Overview, Explore, Traces, Service map, Quality, About this site).
+  - Every page is enabled by default. A disabled page is hidden from the menu, its route redirects visitors, and its API endpoints answer `404`. The admin still sees it, to preview it.
+  - The plain view `/resume` can't be disabled; visitors land there when every page is disabled.
+  - Built so more site preferences can be added later (one group per kind of setting).
 - **Resume PDF:** upload a PDF file; the latest one is offered as "Export PDF" on the public site.
 - **Import from PDF (later):** read text out of the uploaded PDF to pre-fill content, which the owner then checks and edits. The first content will be entered by hand or with a seed script based on the owner's PDF.
 
@@ -217,6 +221,7 @@ All tables have `id` (uuid), `createdAt` and `updatedAt`. Lists use `sortOrder` 
 - `GET /service-map`: nodes and edges.
 - `GET /site-metrics?from&to`: aggregated live metrics of the site.
 - `GET /resume-file`: download the active PDF.
+- `GET /preferences` (public) and `PATCH /preferences` (admin): the site preferences, such as which public pages are enabled.
 - Admin create/update/delete for every entity, plus `POST /resume-file` (PDF upload), all protected by JWT.
 
 ### Real-time (WebSocket)
@@ -305,6 +310,9 @@ The server checks every message the client sends, limits each connection to 20 m
     - ✅ the about page `/about-this-site` (see section 8), with live content counts from `GET /api/resume`
     - ✅ the quality report built by CI (unit and integration tests, coverage, bundle size vs budget, CI timings, Nx project graph), baked into the backend image and served by `GET /api/quality`, and the dashboard `/dashboards/quality`
     - Not done yet: Lighthouse scores and e2e test results in the report (the panels show "not measured yet").
+
+10b. **Admin preferences:** page visibility (`/admin/preferences`, `GET`/`PATCH /api/preferences`)
+
 11. **Polish:** guided tour, SEO/OpenGraph tags (a preview image showing the dashboard), accessibility checks, performance budgets.
 12. **Later: "Ask my resume" AI assistant.**
     - A chat assistant styled like a monitoring tool's query assistant. It answers questions about the resume using RAG over the stored content.
