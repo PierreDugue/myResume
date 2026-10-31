@@ -1,0 +1,13 @@
+<ul>
+  @for (item of items(); track item.name) {
+    <li [attr.data-band]="item.band.key">
+      <span class="score">{{ item.score }}</span>
+      <span class="name">{{ item.name }}</span>
+      <span class="band">{{ item.band.label }}</span>
+    </li>
+  }
+</ul>
+<p class="url">
+  Measured on <a [href]="scores().url">{{ scores().url }}</a>
+</p>
+<p class="legend">Bands: 0-49 poor, 50-89 needs improvement, 90-100 good.</p>

@@ -1,0 +1,33 @@
+@let v = view();
+<p class="status" [class]="v.verdict">{{ v.status }}</p>
+
+<div class="meter" aria-hidden="true">
+  <span class="fill" [class]="v.verdict" [style.width]="v.fill"></span>
+  @if (v.warning; as w) {
+    <span class="marker warning" [style.left]="w.left"></span>
+  }
+  @if (v.error; as e) {
+    <span class="marker error" [style.left]="e.left"></span>
+  }
+</div>
+
+<dl>
+  <div>
+    <dt>Initial</dt>
+    <dd>{{ v.initial }}</dd>
+  </div>
+  @if (v.warning; as w) {
+    <div>
+      <dt>Warning budget</dt>
+      <dd>{{ w.text }}</dd>
+    </div>
+  }
+  @if (v.error; as e) {
+    <div>
+      <dt>Error budget</dt>
+      <dd>{{ e.text }}</dd>
+    </div>
+  }
+</dl>
+
+<p class="lazy">Lazy-loaded chunks: {{ v.lazy }} in total, loaded on demand.</p>

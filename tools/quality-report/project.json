@@ -1,0 +1,29 @@
+{
+  "name": "quality-report",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/quality-report/src",
+  "projectType": "library",
+  "tags": [],
+  "// targets": "to see all targets run: nx show project quality-report --web",
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "commands": [
+          "tsc --noEmit -p tools/quality-report/tsconfig.lib.json",
+          "tsc --noEmit -p tools/quality-report/tsconfig.spec.json"
+        ],
+        "parallel": false
+      }
+    },
+    "assemble": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/quality-report/src/cli.ts"
+      }
+    }
+  }
+}

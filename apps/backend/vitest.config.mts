@@ -1,6 +1,6 @@
 import { defineConfig } from 'vitest/config';
 
-export default defineConfig(() => ({
+export default defineConfig({
   root: import.meta.dirname,
   cacheDir: '../../node_modules/.vite/apps/backend',
   resolve: { tsconfigPaths: true },
@@ -13,10 +13,15 @@ export default defineConfig(() => ({
     // Integration specs need PostgreSQL: they run with `nx run backend:integration`.
     exclude: ['**/node_modules/**', '**/*.int.spec.ts'],
     passWithNoTests: true,
-    reporters: ['default'],
+    // test-results.json and (with --coverage) coverage-summary.json feed the Quality report (tools/quality-report).
+    reporters: ['default', ['json', { outputFile: '../../coverage/backend/test-results.json' }]],
     coverage: {
-      reportsDirectory: '../../coverage/apps/backend',
+      reportsDirectory: '../../coverage/backend',
       provider: 'v8' as const,
+      reporter: ['text-summary', 'json-summary', 'html'],
+      // Every source file counts, tested or not; tests and test helpers don't.
+      include: ['src/**/*.ts'],
+      exclude: ['src/**/*.spec.ts', 'src/testing/**'],
     },
   },
-}));
+});

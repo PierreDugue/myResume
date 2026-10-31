@@ -620,6 +620,128 @@ interface ServiceMapResponse {
 }
 ```
 
+### Quality
+
+| Method | Path           | Auth | Request | Response                        | Status |
+| ------ | -------------- | ---- | ------- | ------------------------------- | ------ |
+| GET    | `/api/quality` | –    | –       | `QualityReport` `200`, or `404` | done   |
+
+The site's own engineering quality, for the Quality dashboard (`/dashboards/quality`). The backend calculates nothing: it serves a report file as is.
+
+- **Where the data comes from:** the CI pipeline (GitHub Actions) assembles a JSON report (`QualityReport`) with the tool in `tools/quality-report`, from the unit and integration test results, the coverage summaries, the frontend build's esbuild stats, the Nx project graph and the GitHub Actions run timings. On `main`, the report is baked into the backend Docker image (`assets/quality-report.json`), so each deployed version serves the report of its own commit.
+- `200`: the report of the running build.
+- `404` `{ "statusCode": 404, "message": "No quality report in this build", "error": "Not Found" }` when the running build has none (local dev, local Docker builds). The frontend shows an empty state, not an error.
+- **Partial reports are normal.** Each section can be empty or null when the pipeline didn't measure it: Lighthouse and e2e tests aren't measured yet, and `build` is null when the report was assembled outside GitHub Actions. The frontend shows "not measured yet" for those panels.
+- **Tests:** `total` counts every suite together; `suites` lists only the suites that ran, in the order unit, integration, e2e; `projects` is ordered by suite (same order), then project name, and leaves out projects with no tests. `passRate` is `passed / (passed + failed) × 100` with one decimal (half up; for `total` and each suite it is recalculated from the summed counts), or `null` when no test ran. `skipped` includes todo tests.
+- **Coverage:** percentages 0..100 with one decimal. Ordered apps, then libraries, by project name, unit before integration. Projects without runtime code (0 statements, e.g. `api-models`) are left out. Every source file of a project counts, tested or not. A metric with nothing to cover (0 branches, say) counts as 100, like istanbul. Percentages are rounded half up.
+- **Bundle:** sizes are raw bytes. `initialBytes` is what Angular's "initial" budget measures; the budgets come from `apps/frontend/project.json` (1 kB = 1000 bytes, as Angular counts).
+- **Project graph:** `nodes` are apps, e2e projects, then libraries, by name within each; `edges` have no duplicates and are ordered by source then target. An edge means `source` depends on `target` (an import, or an implicit dependency such as e2e → app).
+- **Build:** `durationSeconds` runs from the start of the run until the report was assembled (the checks run in parallel). `jobs` are the completed jobs of the run, in start order. `generatedAt` is shown as "last deploy".
+
+```ts
+/** `GET /api/quality`: the build pipeline's report for the running version. */
+interface QualityReport {
+  schemaVersion: 1;
+  generatedAt: string; // ISO timestamp: when CI assembled the report, just before this version was published and deployed
+  build: QualityBuild | null; // null when assembled outside GitHub Actions
+  tests: QualityTests;
+  coverage: ProjectCoverage[]; // [] when coverage wasn't measured
+  bundle: BundleSize | null; // null when the frontend build stats weren't available
+  lighthouse: LighthouseScores | null; // null until the pipeline measures it
+  projectGraph: ProjectGraph;
+}
+
+interface QualityBuild {
+  commit: string; // full git sha
+  commitUrl: string; // e.g. https://github.com/<owner>/<repo>/commit/<sha>
+  branch: string | null; // e.g. "main"
+  runUrl: string; // the GitHub Actions run
+  startedAt: string; // ISO, when the run started
+  durationSeconds: number; // from the run's start until the report was assembled
+  jobs: PipelineJob[]; // completed jobs of the run, in start order
+}
+
+interface PipelineJob {
+  name: string; // e.g. "Unit tests"
+  durationSeconds: number;
+}
+
+type TestSuiteKind = 'unit' | 'integration' | 'e2e';
+
+interface TestCounts {
+  total: number; // passed + failed + skipped
+  passed: number;
+  failed: number;
+  skipped: number; // skipped and todo tests
+  passRate: number | null; // passed / (passed + failed) × 100, 1 decimal; null when no test ran
+}
+
+interface SuiteTestResult extends TestCounts {
+  suite: TestSuiteKind;
+}
+
+interface ProjectTestResult extends TestCounts {
+  project: string; // Nx project name, e.g. "backend"
+  suite: TestSuiteKind;
+}
+
+interface QualityTests {
+  total: TestCounts; // every suite together
+  suites: SuiteTestResult[]; // only the suites that ran, in the order unit, integration, e2e
+  projects: ProjectTestResult[]; // by suite (same order), then project name; projects with no tests are left out
+}
+
+/** Percentages 0..100, 1 decimal. */
+interface CoverageMetrics {
+  lines: number;
+  statements: number;
+  functions: number;
+  branches: number;
+}
+
+interface ProjectCoverage {
+  project: string; // Nx project name
+  kind: 'app' | 'lib';
+  suite: TestSuiteKind; // the tests that measured it ("unit", or "integration" for the backend's integration tests)
+  metrics: CoverageMetrics;
+}
+
+interface BundleSize {
+  initialBytes: number; // raw size of the JS and CSS loaded on the first visit
+  lazyBytes: number; // raw size of all the lazy-loaded chunks together
+  budgetWarningBytes: number | null; // the "initial" budget in apps/frontend/project.json
+  budgetErrorBytes: number | null;
+}
+
+/** Lighthouse category scores, 0..100. */
+interface LighthouseScores {
+  url: string; // the page measured
+  performance: number;
+  accessibility: number;
+  bestPractices: number;
+  seo: number;
+}
+
+type ProjectGraphNodeKind = 'app' | 'lib' | 'e2e';
+
+interface ProjectGraphNode {
+  name: string; // Nx project name
+  kind: ProjectGraphNodeKind;
+  root: string; // e.g. "libs/shared/api-models"
+}
+
+/** `source` depends on `target` (imports it, or an implicit dependency such as e2e → app). */
+interface ProjectGraphEdge {
+  source: string;
+  target: string;
+}
+
+interface ProjectGraph {
+  nodes: ProjectGraphNode[]; // apps, e2e projects, then libraries; by name within each
+  edges: ProjectGraphEdge[]; // no duplicates, by source then target
+}
+```
+
 ## Types
 
 Shared types are defined in each section above.

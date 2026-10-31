@@ -122,7 +122,7 @@ A grid of panels. Each panel has a title, an info tooltip, and a menu with **Vie
 - Only aggregated counts, the HTTP method, the route pattern (e.g. `/projects/:slug/trace`, not query strings), the status code, the response time and (optionally) a coarse country are kept.
 - Admin routes and `/auth/*` are never shown in the live streams.
 
-### 7. Quality dashboard `/dashboards/quality` ("This codebase, observed")
+### 7. Quality dashboard `/dashboards/quality` ("This codebase, observed") ✅
 
 Shows the site's own engineering quality. The data comes from the build pipeline, which writes a JSON report that the backend serves. Panels:
 
@@ -303,7 +303,8 @@ The server checks every message the client sends, limits each connection to 20 m
 9. **PDF:** upload and download, the "Export PDF" button, then optionally pre-filling content from the PDF.
 10. **Quality dashboard and "How this site was built":**
     - ✅ the about page `/about-this-site` (see section 8), with live content counts from `GET /api/resume`
-    - Not done yet: the build pipeline writes a quality report (tests, coverage, bundle size, Lighthouse); the endpoint and the quality dashboard `/dashboards/quality`.
+    - ✅ the quality report built by CI (unit and integration tests, coverage, bundle size vs budget, CI timings, Nx project graph), baked into the backend image and served by `GET /api/quality`, and the dashboard `/dashboards/quality`
+    - Not done yet: Lighthouse scores and e2e test results in the report (the panels show "not measured yet").
 11. **Polish:** guided tour, SEO/OpenGraph tags (a preview image showing the dashboard), accessibility checks, performance budgets.
 12. **Later: "Ask my resume" AI assistant.**
     - A chat assistant styled like a monitoring tool's query assistant. It answers questions about the resume using RAG over the stored content.

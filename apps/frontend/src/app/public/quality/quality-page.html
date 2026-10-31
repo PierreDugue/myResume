@@ -1,0 +1,189 @@
+@if (report.hasValue()) {
+  @if (view(); as v) {
+    <div class="grid">
+      <div class="stats">
+        @for (stat of v.stats; track stat.label) {
+          <app-stat-panel [label]="stat.label" [display]="stat.display" [hint]="stat.hint" />
+        }
+      </div>
+
+      <app-panel
+        class="tests"
+        title="Tests"
+        info="Test counts from the unit and integration runs of the pipeline, per suite and per project. Skipped tests are not counted in the pass rate."
+        [data]="v.report.tests"
+      >
+        <app-test-results [tests]="v.report.tests" />
+      </app-panel>
+
+      <app-panel
+        class="coverage"
+        title="Code coverage"
+        info="Lines covered by the tests, per project. Every source file counts, tested or not. The table adds statements, functions and branches."
+        [data]="v.report.coverage"
+        [canShowTable]="v.coverageRows.length > 0"
+        [(showTable)]="showCoverageTable"
+      >
+        @if (v.coverageRows.length === 0) {
+          <div class="not-measured">
+            <p class="what">Not measured yet</p>
+            <p class="why">Coverage was not collected for this build.</p>
+          </div>
+        } @else if (showCoverageTable()) {
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only">
+                Code coverage by project
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Project</th>
+                  <th scope="col">Kind</th>
+                  <th scope="col">Lines</th>
+                  <th scope="col">Statements</th>
+                  <th scope="col">Functions</th>
+                  <th scope="col">Branches</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of v.coverageRows; track row.name) {
+                  <tr>
+                    <th scope="row">{{ row.name }}</th>
+                    <td>{{ row.kind }}</td>
+                    <td class="num">{{ row.lines }}</td>
+                    <td class="num">{{ row.statements }}</td>
+                    <td class="num">{{ row.functions }}</td>
+                    <td class="num">{{ row.branches }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <app-bar-gauge [groups]="v.coverage" [max]="100" />
+        }
+      </app-panel>
+
+      <app-panel
+        class="bundle"
+        title="Bundle vs budget"
+        info="Size of the JavaScript and CSS loaded on the first visit, against the warning and error budgets of the build (1 kB = 1000 bytes)."
+        [data]="v.report.bundle"
+      >
+        @if (v.report.bundle; as bundle) {
+          <app-bundle-budget [bundle]="bundle" />
+        } @else {
+          <div class="not-measured">
+            <p class="what">Not measured yet</p>
+            <p class="why">The frontend build statistics were not available for this report.</p>
+          </div>
+        }
+      </app-panel>
+
+      <app-panel
+        class="lighthouse"
+        title="Lighthouse"
+        info="Lighthouse scores (0 to 100) of the deployed home page: performance, accessibility, best practices and SEO."
+        [data]="v.report.lighthouse"
+      >
+        @if (v.report.lighthouse; as scores) {
+          <app-lighthouse-scores [scores]="scores" />
+        } @else {
+          <div class="not-measured">
+            <p class="what">Not measured yet</p>
+            <p class="why">The pipeline does not run Lighthouse yet.</p>
+          </div>
+        }
+      </app-panel>
+
+      <app-panel
+        class="jobs"
+        title="CI jobs"
+        info="How long each job of the GitHub Actions run took. The jobs run in parallel, so the run is shorter than their sum."
+        [data]="v.report.build"
+      >
+        @if (v.jobs.length === 0) {
+          <div class="not-measured">
+            <p class="what">Not measured yet</p>
+            <p class="why">This report was assembled outside GitHub Actions, so it has no jobs.</p>
+          </div>
+        } @else {
+          <app-bar-gauge [groups]="v.jobs" />
+        }
+      </app-panel>
+
+      <app-panel
+        class="graph"
+        title="Nx project graph"
+        info="The apps, end-to-end projects and libraries of the monorepo. An arrow goes from a project to each project it depends on; bigger nodes are used by more projects."
+        [data]="v.report.projectGraph"
+        [canShowTable]="v.graphRows.length > 0"
+        [(showTable)]="showGraphTable"
+      >
+        @if (v.graphRows.length === 0) {
+          <div class="not-measured">
+            <p class="what">Not measured yet</p>
+            <p class="why">The Nx project graph was not available for this report.</p>
+          </div>
+        } @else if (showGraphTable()) {
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only">
+                Projects of the monorepo and what they depend on
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Project</th>
+                  <th scope="col">Kind</th>
+                  <th scope="col">Root</th>
+                  <th scope="col">Depends on</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of v.graphRows; track row.name) {
+                  <tr>
+                    <th scope="row">{{ row.name }}</th>
+                    <td>{{ row.kind }}</td>
+                    <td class="mono">{{ row.root }}</td>
+                    <td>{{ row.dependsOn }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <app-echart
+            [options]="v.graphOption"
+            label="Graph of the monorepo's projects, with an arrow from each project to its dependencies"
+          />
+        }
+      </app-panel>
+    </div>
+
+    @if (v.report.build; as build) {
+      <p class="source">
+        Built from commit
+        <a [href]="build.commitUrl" rel="noopener">{{ build.commit.slice(0, 7) }}</a>
+        @if (build.branch) {
+          on {{ build.branch }}
+        }
+        &middot; <a [href]="build.runUrl" rel="noopener">CI run</a>
+      </p>
+    }
+  } @else {
+    <section class="panel empty-state">
+      <h2>No quality report for this build</h2>
+      <p>
+        The report is produced by the CI pipeline when the site is built and deployed. This build
+        has no quality report, which is normal for a local or manual build.
+      </p>
+    </section>
+  }
+} @else if (report.error()) {
+  <section class="panel empty-state">
+    <p role="alert">The quality report could not be loaded.</p>
+    <button class="button" type="button" (click)="report.reload()">Try again</button>
+  </section>
+} @else {
+  <p class="muted">Loading the quality report…</p>
+}

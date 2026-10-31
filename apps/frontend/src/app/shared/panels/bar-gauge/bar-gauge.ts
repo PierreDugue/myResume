@@ -100,12 +100,15 @@ export interface GaugeGroup {
 export class BarGauge {
   readonly groups = input.required<GaugeGroup[]>();
 
-  private readonly max = computed(() =>
-    Math.max(0, ...this.groups().flatMap((g) => g.items.map((i) => i.value))),
+  /** Value of a full bar; by default the largest value shown (use 100 for percentages). */
+  readonly max = input<number | null>(null);
+
+  private readonly scale = computed(
+    () => this.max() ?? Math.max(0, ...this.groups().flatMap((g) => g.items.map((i) => i.value))),
   );
 
   protected width(value: number): string {
-    const max = this.max();
-    return `${max > 0 ? +((value / max) * 100).toFixed(1) : 0}%`;
+    const scale = this.scale();
+    return `${scale > 0 ? +Math.min(100, (value / scale) * 100).toFixed(1) : 0}%`;
   }
 }

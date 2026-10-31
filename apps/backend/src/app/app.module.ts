@@ -9,6 +9,7 @@ import { HealthModule } from './health/health.module';
 import { ResumeModule } from './resume/resume.module';
 import { LogsModule } from './logs/logs.module';
 import { TracesModule } from './traces/traces.module';
+import { QualityModule } from './quality/quality.module';
 import { ServiceMapModule } from './service-map/service-map.module';
 
 @Module({
@@ -44,6 +45,7 @@ import { ServiceMapModule } from './service-map/service-map.module';
     LogsModule,
     TracesModule,
     ServiceMapModule,
+    QualityModule,
   ],
 })
 export class AppModule {}
