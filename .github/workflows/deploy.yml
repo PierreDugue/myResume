@@ -1,0 +1,63 @@
+# Deploys the published images to Render.
+#
+# - Called by ci.yml after publishing: deploys that commit's `sha-<short commit>` images.
+# - Run by hand (Actions > Deploy to Render > Run workflow) to redeploy or roll back: give an
+#   image tag such as `sha-1a2b3c4`, or leave it empty for the selected branch's latest commit.
+#
+# Render doesn't redeploy when an image is pushed: this calls each service's deploy hook
+# (Render > service > Settings > Deploy Hook), stored as the repository secrets
+# RENDER_DEPLOY_HOOK_BACKEND and RENDER_DEPLOY_HOOK_FRONTEND. Skipped (with a notice) while
+# they aren't set.
+
+name: Deploy to Render
+
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Image tag to deploy (default sha-<short commit>)
+        type: string
+        default: ''
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to deploy, e.g. sha-1a2b3c4 (default sha-<short commit> of the selected branch)
+        type: string
+        default: ''
+
+# One deploy at a time; a newer one waits instead of interrupting.
+concurrency:
+  group: deploy-render
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  IMAGE_PREFIX: ghcr.io/pierredugue/my-resume
+
+jobs:
+  deploy:
+    name: Call the Render deploy hooks
+    runs-on: ubuntu-latest
+    steps:
+      # `imgURL` deploys exactly this image instead of whatever `latest` is by then.
+      - name: Call the deploy hooks
+        env:
+          TAG: ${{ inputs.tag }}
+          BACKEND_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_BACKEND }}
+          FRONTEND_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_FRONTEND }}
+        run: |
+          tag="${TAG:-sha-${GITHUB_SHA::7}}"
+          deploy() {
+            local app=$1 hook=$2
+            if [ -z "$hook" ]; then
+              echo "::notice::No Render deploy hook for the $app; skipped."
+              return
+            fi
+            curl -fsS -o /dev/null -G "$hook" \
+              --data-urlencode "imgURL=${IMAGE_PREFIX}-${app}:${tag}"
+            echo "Asked Render to deploy the $app at $tag."
+          }
+          deploy backend "$BACKEND_HOOK"
+          deploy frontend "$FRONTEND_HOOK"

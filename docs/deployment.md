@@ -1,6 +1,6 @@
 # Deployment
 
-CI ([.github/workflows/ci.yml](../.github/workflows/ci.yml)) publishes two images on every push to `main`:
+CI ([.github/workflows/ci.yml](../.github/workflows/ci.yml)) runs lint, tests and builds as parallel jobs. On every push to `main`, once they all pass, it publishes two images ([publish.yml](../.github/workflows/publish.yml)), then deploys them to Render ([deploy.yml](../.github/workflows/deploy.yml)):
 
 - `ghcr.io/pierredugue/my-resume-backend`
 - `ghcr.io/pierredugue/my-resume-frontend`
@@ -97,6 +97,8 @@ Render doesn't redeploy when a new image is pushed.
    - `RENDER_DEPLOY_HOOK_FRONTEND`
 
 After publishing the images, CI calls both hooks with that commit's `sha-…` image. Without the secrets, CI skips this step.
+
+To redeploy or roll back by hand: **Actions → Deploy to Render → Run workflow**, with an image tag such as `sha-1a2b3c4` (empty: the selected branch's latest commit).
 
 ### Link previews (LinkedIn, Slack, ...)
 

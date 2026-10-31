@@ -22,11 +22,12 @@ The human-facing guide is [docs/deployment.md](../../docs/deployment.md); keep i
   - replaces `__SITE_ORIGIN__` in `index.html` with `https://$host` (`sub_filter`), for the Open Graph tags' absolute URLs (also tested by `test-real-ip.sh`);
   - sends the security headers (CSP, HSTS, `nosniff`, `X-Frame-Options`, `Referrer-Policy`). nginx drops server-level `add_header`s in a location that sets its own, so locations must not use `add_header`.
 
-## CI ([.github/workflows/ci.yml](../../.github/workflows/ci.yml))
+## CI (`.github/workflows/`)
 
-- Every push and pull request runs lint, unit tests, typecheck, build, the backend integration tests (against a throwaway PostgreSQL service) and nginx's visitor-IP test (`apps/frontend/nginx/test-real-ip.sh`).
-- On `main`, CI then publishes the two images to GHCR, `ghcr.io/pierredugue/my-resume-backend` and `-frontend`, tagged `latest` and `sha-<short commit>`. Each image is built for `linux/amd64` and `linux/arm64` on native runners, then combined.
-- Then it calls the Render deploy hooks (`RENDER_DEPLOY_HOOK_BACKEND`, `RENDER_DEPLOY_HOOK_FRONTEND` repository secrets) with that commit's image, and skips this step when they aren't set.
+- [ci.yml](../../.github/workflows/ci.yml) is the entry point. Every push and pull request runs these jobs in parallel: lint + typecheck, unit tests, the backend integration tests (against a throwaway PostgreSQL service), nginx's visitor-IP test (`apps/frontend/nginx/test-real-ip.sh`), build backend, build frontend. Node jobs share the [setup](../../.github/actions/setup/action.yml) composite action (Node 24 + `npm ci`).
+- On `main`, once every check passes, it calls [publish.yml](../../.github/workflows/publish.yml) (reusable): the two images go to GHCR, `ghcr.io/pierredugue/my-resume-backend` and `-frontend`, tagged `latest` and `sha-<short commit>`. Each image is built for `linux/amd64` and `linux/arm64` on native runners, then combined.
+- Then it calls [deploy.yml](../../.github/workflows/deploy.yml) (reusable, `secrets: inherit`): the Render deploy hooks (`RENDER_DEPLOY_HOOK_BACKEND`, `RENDER_DEPLOY_HOOK_FRONTEND` repository secrets) with that commit's image, skipped when they aren't set. It can also be run by hand with a `tag` input to redeploy or roll back.
+- Called workflows must not reuse the caller's concurrency group (it deadlocks); deploy.yml uses its own `deploy-render` group.
 - Check workflow changes with `docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:latest`.
 
 ## Deploying

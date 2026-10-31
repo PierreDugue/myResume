@@ -1,0 +1,14 @@
+name: Set up Node
+description: Installs Node and the npm dependencies (cached). Run actions/checkout first.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version: 24
+        cache: npm
+    - run: npm ci
+      shell: bash
+      env:
+        CYPRESS_INSTALL_BINARY: 0
