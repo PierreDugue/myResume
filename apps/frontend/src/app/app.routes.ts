@@ -35,6 +35,11 @@ export const appRoutes: Route[] = [
           import('./public/service-map/service-map-page').then((m) => m.ServiceMapPage),
       },
       {
+        path: 'dashboards/quality',
+        title: 'This codebase, observed',
+        loadComponent: () => import('./public/quality/quality-page').then((m) => m.QualityPage),
+      },
+      {
         path: 'resume',
         title: 'Plain view',
         loadComponent: () =>

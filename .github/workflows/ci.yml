@@ -1,13 +1,17 @@
 # CI: checks every push and pull request; on main, then publishes the Docker images and deploys them.
 #
-#   lint ─────────────┐
-#   unit tests ───────┤
-#   integration tests ┤
-#   nginx test ───────┼─> publish (publish.yml) ─> deploy (deploy.yml)
-#   build backend ────┤      main only               main only
-#   build frontend ───┘
+#   lint ───────────────┐
+#   unit tests ─────────┤
+#   integration tests ──┼─> quality report ─> publish (publish.yml) ─> deploy (deploy.yml)
+#   nginx test ─────────┤                        main only               main only
+#   build backend ──────┤
+#   build frontend ─────┘
 #
-# The checks run in parallel; publishing waits for all of them.
+# The checks run in parallel; the quality job waits for all of them (so the report's CI jobs panel and
+# durations are the same from one run to the next), and publishing waits for it. The unit tests,
+# integration tests and frontend build save their raw outputs (test results, coverage summaries, esbuild
+# stats) as artifacts; the quality job assembles them into the Quality report (tools/quality-report),
+# which publish.yml bakes into the backend image (GET /api/quality).
 
 name: CI
 
@@ -42,7 +46,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - run: npx nx run-many -t test
+      - run: npx nx run-many -t test --coverage
+      # coverage/<project>/{test-results,coverage-summary}.json; the artifact's root is coverage/.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: unit-test-results
+          path: |
+            coverage/**/test-results.json
+            coverage/**/coverage-summary.json
+          if-no-files-found: error
+          retention-days: 7
 
   integration:
     name: Backend integration tests
@@ -70,7 +83,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - run: npx nx run backend:integration
+      - run: npx nx run backend:integration --coverage
+      # coverage/integration/backend/{test-results,coverage-summary}.json; the artifact's root is coverage/integration/.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: integration-test-results
+          path: |
+            coverage/integration/**/test-results.json
+            coverage/integration/**/coverage-summary.json
+          if-no-files-found: error
+          retention-days: 7
 
   nginx:
     name: nginx visitor-IP test
@@ -93,11 +115,79 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      - run: npx nx build frontend
+      - run: npx nx build frontend --stats-json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: frontend-stats
+          path: dist/apps/frontend/stats.json
+          if-no-files-found: error
+          retention-days: 7
+
+  quality:
+    name: Quality report
+    needs: [lint, test, integration, nginx, build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read # the run's job timings
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      # Back to the paths they were uploaded from.
+      - uses: actions/download-artifact@v8
+        with:
+          name: unit-test-results
+          path: coverage
+      - uses: actions/download-artifact@v8
+        with:
+          name: integration-test-results
+          path: coverage/integration
+      - uses: actions/download-artifact@v8
+        with:
+          name: frontend-stats
+          path: dist/apps/frontend
+      - name: Project graph
+        run: npx nx graph --file=dist/quality-report/nx-graph.json
+      - name: Pipeline timings
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID" > dist/quality-report/ci-run.json
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUN_ID/attempts/$RUN_ATTEMPT/jobs?per_page=100" > dist/quality-report/ci-jobs.json
+      - name: Assemble the report
+        run: >-
+          npx nx run quality-report:assemble
+          --nx-graph=dist/quality-report/nx-graph.json
+          --ci-run=dist/quality-report/ci-run.json
+          --ci-jobs=dist/quality-report/ci-jobs.json
+          --out=dist/quality-report/quality-report.json
+      - uses: actions/upload-artifact@v7
+        with:
+          name: quality-report
+          path: dist/quality-report/quality-report.json
+          if-no-files-found: error
+          retention-days: 30
+      - name: Summary
+        run: |
+          # shellcheck disable=SC2016 # JavaScript template literals, not shell expansions
+          node -e '
+            const r = require("./dist/quality-report/quality-report.json");
+            const t = r.tests.total;
+            const lines = [
+              "### Quality report",
+              "",
+              `- Tests: ${t.passed} passed, ${t.failed} failed, ${t.skipped} skipped (pass rate ${t.passRate === null ? "n/a" : t.passRate + "%"})`,
+              ...r.coverage.map((c) => `- Coverage ${c.project} (${c.suite}): ${c.metrics.lines}% lines`),
+              r.bundle ? `- Initial bundle: ${r.bundle.initialBytes} bytes (budget ${r.bundle.budgetWarningBytes ?? "none"})` : "- Bundle: not measured",
+            ];
+            console.log(lines.join("\n"));
+          ' >> "$GITHUB_STEP_SUMMARY"
 
   publish:
     name: Publish
-    needs: [lint, test, integration, nginx, build-backend, build-frontend]
+    needs: [lint, test, integration, nginx, build-backend, build-frontend, quality]
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     permissions:
       contents: read

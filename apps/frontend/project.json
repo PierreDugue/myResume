@@ -73,8 +73,18 @@
     },
     "test": {
       "executor": "@angular/build:unit-test",
+      "outputs": ["{workspaceRoot}/coverage/frontend"],
       "options": {
-        "watch": false
+        "watch": false,
+        "reporters": ["default", ["json", { "outputFile": "coverage/frontend/test-results.json" }]],
+        "coverageReporters": ["text-summary", "json-summary", "html"],
+        "coverageInclude": ["apps/frontend/src/**/*.ts"],
+        "coverageExclude": [
+          "apps/frontend/src/**/*.spec.ts",
+          "apps/frontend/src/**/testing/**",
+          "apps/frontend/src/app/testing.ts",
+          "apps/frontend/src/app/core/auth/test-tokens.ts"
+        ]
       }
     },
     "serve-static": {

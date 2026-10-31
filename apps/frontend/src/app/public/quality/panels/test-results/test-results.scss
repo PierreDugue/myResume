@@ -1,0 +1,54 @@
+:host {
+  display: block;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  & + .table-wrap {
+    margin-top: var(--space-4);
+  }
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--font-mono-sm);
+}
+
+caption {
+  padding-bottom: var(--space-1);
+  color: var(--color-text-muted);
+  font: 600 0.75rem var(--font-sans);
+  letter-spacing: 0.06em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+th,
+td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+th[scope='row'],
+thead th:first-child {
+  text-align: left;
+}
+
+thead th {
+  color: var(--color-text-muted);
+  font-weight: 500;
+}
+
+.failed {
+  color: var(--color-error);
+  font-weight: 700;
+}
+
+.not-run {
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  text-align: left;
+}

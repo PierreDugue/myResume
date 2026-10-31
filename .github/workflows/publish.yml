@@ -4,6 +4,7 @@
 #   ghcr.io/pierredugue/my-resume-frontend  (apps/frontend/Dockerfile)
 #
 # Tags: `latest` and `sha-<short commit>` (to roll back, see docker-compose.prod.yml or deploy.yml).
+# The backend image contains this commit's Quality report (artifact `quality-report` from ci.yml).
 # Each image is multi-platform: linux/amd64 and linux/arm64, each built on a native runner
 # (no emulation), then combined into one image name.
 
@@ -40,6 +41,14 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.IMAGE_PREFIX }}-${{ matrix.app }}
+      # The backend serves assets/quality-report.json (GET /api/quality): this commit's Quality report,
+      # assembled by ci.yml's quality job, goes into apps/backend/src/assets/, which webpack copies.
+      - name: Add the quality report
+        if: matrix.app == 'backend'
+        uses: actions/download-artifact@v8
+        with:
+          name: quality-report
+          path: apps/backend/src/assets
       - uses: docker/setup-buildx-action@v4
       - uses: docker/login-action@v4
         with:

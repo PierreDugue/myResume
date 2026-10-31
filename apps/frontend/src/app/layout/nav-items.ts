@@ -11,5 +11,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Explore', path: '/explore', exact: false },
   { label: 'Traces', path: '/traces', exact: false },
   { label: 'Service map', path: '/service-map', exact: false },
+  { label: 'Code quality', path: '/dashboards/quality', exact: false },
   { label: 'About this site', path: '/about-this-site', exact: false },
 ];

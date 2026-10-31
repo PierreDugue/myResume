@@ -7,6 +7,31 @@ CI ([.github/workflows/ci.yml](../.github/workflows/ci.yml)) runs lint, tests an
 
 Both are tagged `latest` and `sha-<short commit>`.
 
+## Quality report
+
+The Quality dashboard (`/dashboards/quality`, `GET /api/quality`) shows a report that CI assembles; the backend calculates nothing.
+
+- **What CI produces:** on every push and pull request, the unit tests (`nx run-many -t test --coverage`), the integration tests (`nx run backend:integration --coverage`) and the frontend build (`nx build frontend --stats-json`) upload their raw outputs as short-lived artifacts. The **Quality report** job, which waits for every other check so that the job timings are complete and stable, then downloads them, adds the Nx project graph and the run's job timings (GitHub API), and assembles `quality-report.json` with [tools/quality-report](../tools/quality-report/), uploaded as the `quality-report` artifact. Its summary appears on the run page.
+- **Raw outputs:** each project's unit tests write `coverage/<project>/test-results.json` (Vitest JSON reporter, on every run) and, with `--coverage`, `coverage/<project>/coverage-summary.json`. The backend integration tests write the same files to `coverage/integration/backend/`. Coverage counts every source file, tested or not, except tests and test helpers.
+- **How it reaches the backend image:** on `main`, [publish.yml](../.github/workflows/publish.yml) downloads the report into `apps/backend/src/assets/` before building the backend image; webpack copies it to `assets/quality-report.json` next to `main.js`. Each deployed image serves the report of its own commit. Local and Docker builds have none, and `GET /api/quality` answers `404` (the page shows an empty state).
+
+To generate one locally and see it in dev (the build and job timings stay empty outside GitHub Actions):
+
+```bash
+docker compose up -d postgres                       # for the integration tests
+npx nx run-many -t test --coverage
+npx nx run backend:integration --coverage
+npx nx build frontend --stats-json
+npx nx graph --file=dist/quality-report/nx-graph.json
+npx nx run quality-report:assemble --nx-graph=dist/quality-report/nx-graph.json   # writes dist/quality-report/quality-report.json
+cp dist/quality-report/quality-report.json apps/backend/src/assets/quality-report.json
+npx nx serve backend --skip-nx-cache    # or npm start; Nx ignores the gitignored report when caching builds
+```
+
+The JSON reporter overwrites `coverage/<project>/test-results.json` on every run, filtered ones included (for example `npx vitest run <file>`). Run the full suites right before `assemble`, or the report counts only the last run's tests.
+
+Delete `apps/backend/src/assets/quality-report.json` afterwards (it is gitignored) to get back to the `404`.
+
 ## Any server with Docker
 
 HTTPS is handled by **Caddy**, the only service reachable from outside. It gets a free Let's Encrypt certificate and renews it, redirects `http://` to `https://`, and forwards to nginx.

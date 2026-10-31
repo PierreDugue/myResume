@@ -38,6 +38,7 @@ describe('appRoutes', () => {
     ['/traces', 'Traces', 'app-trace-search-page'],
     ['/traces/pierre-o11y', 'Trace', 'app-trace-page'],
     ['/service-map', 'Service map', 'app-service-map-page'],
+    ['/dashboards/quality', 'This codebase, observed', 'app-quality-page'],
     ['/about-this-site', 'About this site', 'app-about-page'],
     ['/this/does/not/exist', 'Page not found', 'app-not-found-page'],
   ])('%s renders "%s" inside the app shell', async (url, title, pageSelector) => {
@@ -59,6 +60,7 @@ describe('appRoutes', () => {
     ['/traces', 'Traces'],
     ['/traces/pierre-o11y', 'Traces'],
     ['/service-map', 'Service map'],
+    ['/dashboards/quality', 'Code quality'],
     ['/about-this-site', 'About this site'],
   ])('marks %s as "%s" in the main navigation', async (url, label) => {
     const root = await visit(url);

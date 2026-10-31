@@ -1,0 +1,57 @@
+<ng-template #table let-caption="caption" let-first="first" let-rows="rows">
+  <div class="table-wrap">
+    <table>
+      <caption>
+        {{
+          caption
+        }}
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">{{ first }}</th>
+          <th scope="col">Total</th>
+          <th scope="col">Passed</th>
+          <th scope="col">Failed</th>
+          <th scope="col">Skipped</th>
+          <th scope="col">Pass rate</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows; track row.name) {
+          <tr>
+            <th scope="row">{{ row.name }}</th>
+            @if (row.counts; as c) {
+              <td>{{ c.total }}</td>
+              <td>{{ c.passed }}</td>
+              <td [class.failed]="c.failed > 0">
+                {{ c.failed }}
+                @if (c.failed > 0) {
+                  <span class="sr-only">failing</span>
+                }
+              </td>
+              <td>{{ c.skipped }}</td>
+              <td>{{ passRate(c.passRate) }}</td>
+            } @else {
+              <td class="not-run" colspan="5">not run in CI yet</td>
+            }
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</ng-template>
+
+<ng-container
+  *ngTemplateOutlet="
+    table;
+    context: { caption: 'Test results by suite', first: 'Suite', rows: suites() }
+  "
+/>
+@if (projects().length > 0) {
+  <ng-container
+    *ngTemplateOutlet="
+      table;
+      context: { caption: 'Test results by project', first: 'Project', rows: projects() }
+    "
+  />
+}

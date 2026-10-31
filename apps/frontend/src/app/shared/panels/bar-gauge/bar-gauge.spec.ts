@@ -14,9 +14,10 @@ describe('BarGauge', () => {
     },
   ];
 
-  async function render(value = groups) {
+  async function render(value = groups, max?: number) {
     const fixture = TestBed.createComponent(BarGauge);
     fixture.componentRef.setInput('groups', value);
+    if (max !== undefined) fixture.componentRef.setInput('max', max);
     await fixture.whenStable();
     return fixture.nativeElement as HTMLElement;
   }
@@ -34,6 +35,18 @@ describe('BarGauge', () => {
     const el = await render();
     const widths = [...el.querySelectorAll<HTMLElement>('.fill')].map((f) => f.style.width);
     expect(widths).toEqual(['100%', '50%', '25%']);
+  });
+
+  it('sizes bars against a fixed maximum when one is given (e.g. 100 for percentages)', async () => {
+    const el = await render(groups, 16);
+    const widths = [...el.querySelectorAll<HTMLElement>('.fill')].map((f) => f.style.width);
+    expect(widths).toEqual(['50%', '25%', '12.5%']);
+  });
+
+  it('never draws a bar wider than its track', async () => {
+    const el = await render(groups, 4);
+    const widths = [...el.querySelectorAll<HTMLElement>('.fill')].map((f) => f.style.width);
+    expect(widths).toEqual(['100%', '100%', '50%']);
   });
 
   it('describes each bar in text (not only with its length)', async () => {
