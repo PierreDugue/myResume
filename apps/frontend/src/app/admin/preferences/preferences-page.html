@@ -1,0 +1,57 @@
+<section class="panel edit">
+  <h2>Preferences</h2>
+  @if (loaded.hasValue()) {
+    <form [formRoot]="form" novalidate>
+      @if (error(); as message) {
+        <p class="form-error" role="alert">{{ message }}</p>
+      }
+      <fieldset>
+        <legend>Pages</legend>
+        <p class="hint">
+          Pages that are unchecked are hidden from visitors: they leave the menu, their address
+          redirects, and their data is refused. You still see them, marked "Hidden", to preview
+          them.
+        </p>
+        <ul>
+          @for (item of pages; track item.page) {
+            <li>
+              <label class="check" [for]="'pref-page-' + item.page">
+                <input
+                  type="checkbox"
+                  [id]="'pref-page-' + item.page"
+                  [formField]="form.pages[item.page]"
+                />
+                {{ item.label }}
+                <code class="path">{{ item.path }}</code>
+              </label>
+            </li>
+          }
+        </ul>
+        <p class="hint">The plain view (/resume) is always available.</p>
+        <div aria-live="polite">
+          @if (nothingVisible()) {
+            <p class="warning">
+              Every page is unchecked, so visitors will only see the plain view.
+            </p>
+          }
+        </div>
+      </fieldset>
+
+      <div class="form-actions">
+        <button class="button primary" type="submit" [disabled]="form().submitting()">
+          Save preferences
+        </button>
+        @if (saved()) {
+          <p class="saved" role="status">Preferences saved</p>
+        }
+      </div>
+    </form>
+  } @else if (loaded.error()) {
+    <div role="alert">
+      <p>Something went wrong while loading the preferences.</p>
+      <button class="button retry" type="button" (click)="loaded.reload()">Try again</button>
+    </div>
+  } @else {
+    <p class="muted" role="status">Loading…</p>
+  }
+</section>

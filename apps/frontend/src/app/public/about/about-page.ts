@@ -3,6 +3,7 @@ import { rxResource } from '@angular/core/rxjs-interop';
 import { RouterLink } from '@angular/router';
 import type { ResumeResponse } from '@my-resume/api-models';
 import { ContentApi } from '../../core/content/content-api.service';
+import { PageAccess } from '../../layout/page-access';
 import { Panel } from '../../shared/panels/panel/panel';
 import { StatPanel } from '../../shared/panels/stat/stat-panel';
 
@@ -32,6 +33,8 @@ export function contentCounts(r: ResumeResponse): ContentCount[] {
 })
 export class AboutPage {
   private readonly api = inject(ContentApi);
+  /** Pages the viewer can't see are named, not linked. */
+  protected readonly access = inject(PageAccess);
 
   protected readonly repo = 'https://github.com/PierreDugue/myResume';
   protected readonly resume = rxResource({ stream: () => this.api.resume() });

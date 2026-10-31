@@ -34,7 +34,7 @@ First read `CLAUDE.md`, the `.claude/rules/` files for the areas you review (`ba
 6. **Conventions** from `CLAUDE.md` and `.claude/rules/`:
    - backend module layout; DTOs `implements` the `@my-resume/api-models` types
    - NestJS code follows `.claude/skills/nestjs-11/SKILL.md`: Express 5 route syntax (named wildcards, no `?`), no deprecated terminus `HealthIndicator`/`HealthCheckError`/`{ timeout }`, `@Public()` only on GET routes, migrations registered in `migrations/index.ts`
-   - Angular code follows `.claude/skills/angular-22/SKILL.md`: `@Service()` instead of `@Injectable({ providedIn: 'root' })`, no `changeDetection`, zoneless signal state, no `fakeAsync` in tests
+   - Angular code follows `.claude/skills/angular-22/SKILL.md`: `@Service()` instead of `@Injectable({ providedIn: 'root' })`, no `changeDetection`, zoneless signal state, RxJS observables rather than promises for async work (promises only at promise-based APIs such as router navigation or signal forms' `submission.action`), no `fakeAsync` in tests
    - no `HttpClient` in components
    - controller paths not repeating `api` (the global prefix adds it)
    - code reused by both apps placed in `libs/`, not copied

@@ -109,7 +109,8 @@ ol {
   p {
     margin: 0 0 var(--space-1);
   }
-  .tech a {
+  .tech a,
+  .tech > span:not(.muted) {
     margin-left: var(--space-2);
   }
 }

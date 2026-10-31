@@ -3,9 +3,10 @@ import { CLOCK, systemClock } from '../common/clock';
 import { ResumeModule } from '../resume/resume.module';
 import { TracesController } from './traces.controller';
 import { TracesService } from './traces.service';
+import { PreferencesModule } from '../preferences/preferences.module';
 
 @Module({
-  imports: [ResumeModule],
+  imports: [ResumeModule, PreferencesModule],
   controllers: [TracesController],
   providers: [TracesService, { provide: CLOCK, useValue: systemClock }],
 })

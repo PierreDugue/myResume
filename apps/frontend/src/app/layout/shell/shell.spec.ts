@@ -7,6 +7,8 @@ import { APP_NAME } from '../../core/app-name';
 import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { providePageTitleStrategy } from '../../core/title/page-title.strategy';
+import { SitePreferencesStore } from '../../core/preferences/site-preferences.store';
+import type { PublicPageId, SitePreferences } from '@my-resume/api-models';
 import { NAV_ITEMS } from '../nav-items';
 import { Shell } from './shell';
 import { $ } from '../../testing';
@@ -19,6 +21,10 @@ describe('Shell', () => {
   const startPolling = vi.fn();
   const isAuthenticated = signal(false);
   const logout = vi.fn();
+  const preferences = signal<SitePreferences | null>(null);
+  const withDisabled = (...off: PublicPageId[]): SitePreferences => ({
+    pages: Object.fromEntries(NAV_ITEMS.map((i) => [i.page, !off.includes(i.page)])) as never,
+  });
 
   async function render(url = '/') {
     TestBed.configureTestingModule({
@@ -40,6 +46,7 @@ describe('Shell', () => {
           provide: AuthService,
           useValue: { isAuthenticated: isAuthenticated.asReadonly(), logout },
         },
+        { provide: SitePreferencesStore, useValue: { preferences: preferences.asReadonly() } },
       ],
     });
     const harness = await RouterTestingHarness.create();
@@ -53,6 +60,7 @@ describe('Shell', () => {
     apiStatus.set('up');
     startPolling.mockReset();
     isAuthenticated.set(false);
+    preferences.set(null);
     logout.mockReset();
   });
 
@@ -197,6 +205,65 @@ describe('Shell', () => {
       apiStatus.set(s);
       const { root } = await render();
       expect(banner(root)).toBeNull();
+    });
+  });
+
+  describe('pages disabled by the admin', () => {
+    const menu = (root: HTMLElement) =>
+      [...root.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Main"] a')].map((a) =>
+        a.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+
+    it('hides them from the menu of visitors', async () => {
+      preferences.set(withDisabled('explore', 'quality'));
+      const { root } = await render();
+      expect(menu(root)).toEqual(['Career Overview', 'Traces', 'Service map', 'About this site']);
+    });
+
+    it('shows them to the admin, marked "Hidden" with text', async () => {
+      isAuthenticated.set(true);
+      preferences.set(withDisabled('explore'));
+      const { root } = await render();
+      expect(menu(root)).toEqual([
+        'Career Overview',
+        'Explore Hidden',
+        'Traces',
+        'Service map',
+        'Code quality',
+        'About this site',
+      ]);
+      const badge = $(root, 'nav[aria-label="Main"] .tag');
+      expect(badge.textContent?.trim()).toBe('Hidden');
+      expect(badge.getAttribute('title')).toBe('Hidden from visitors');
+    });
+
+    it('updates the menu when the preferences or the session change', async () => {
+      preferences.set(withDisabled('explore'));
+      const { root, harness } = await render();
+      expect(menu(root)).not.toContain('Explore');
+
+      isAuthenticated.set(true);
+      harness.detectChanges();
+      expect(menu(root)).toContain('Explore Hidden');
+
+      preferences.set(withDisabled());
+      harness.detectChanges();
+      expect(menu(root)).toContain('Explore');
+    });
+
+    it('points the app name and "Home" to the first page the viewer can see', async () => {
+      preferences.set(withDisabled('overview', 'explore'));
+      const { root } = await render('/resume');
+      expect($(root, 'a.brand').getAttribute('href')).toBe('/traces');
+      expect($(root, 'nav[aria-label="Breadcrumb"] a').getAttribute('href')).toBe('/traces');
+    });
+
+    it('points them to the plain view when every page is disabled', async () => {
+      preferences.set(withDisabled(...NAV_ITEMS.map((i) => i.page)));
+      const { root } = await render('/resume');
+      expect($(root, 'a.brand').getAttribute('href')).toBe('/resume');
+      expect($(root, 'nav[aria-label="Breadcrumb"] a').getAttribute('href')).toBe('/resume');
+      expect(menu(root)).toEqual([]);
     });
   });
 

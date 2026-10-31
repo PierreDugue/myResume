@@ -29,6 +29,7 @@ describe('AdminLayout', () => {
       ['Experience', '/admin/experiences'],
       ['Education', '/admin/education'],
       ['Projects', '/admin/projects'],
+      ['Preferences', '/admin/preferences'],
     ]);
     expect(tabs.find((a) => a.getAttribute('aria-current') === 'page')?.textContent?.trim()).toBe(
       'Skills',

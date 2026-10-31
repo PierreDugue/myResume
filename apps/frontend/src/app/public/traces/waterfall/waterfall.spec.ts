@@ -6,10 +6,12 @@ import { traceFixture } from '../testing/traces-fixture';
 import { Waterfall } from './waterfall';
 
 describe('Waterfall', () => {
-  async function render(spans: TraceSpan[] = traceFixture().spans) {
+  async function render(spans: TraceSpan[] = traceFixture().spans, canOpenOverview?: boolean) {
     TestBed.configureTestingModule({ providers: [provideRouter([])] });
     const fixture = TestBed.createComponent(Waterfall);
     fixture.componentRef.setInput('spans', spans);
+    if (canOpenOverview !== undefined)
+      fixture.componentRef.setInput('canOpenOverview', canOpenOverview);
     await fixture.whenStable();
     return { el: fixture.nativeElement as HTMLElement, stable: () => fixture.whenStable() };
   }
@@ -72,5 +74,14 @@ describe('Waterfall', () => {
     $<HTMLButtonElement>(rows(el)[1], 'button.summary').click();
     await stable();
     expect(text($(rows(el)[1], '.details'))).toContain('The spec.');
+  });
+
+  it('shows technologies as plain text when the dashboard is not available to the viewer', async () => {
+    const { el, stable } = await render(undefined, false);
+    $<HTMLButtonElement>(rows(el)[2], 'button.summary').click();
+    await stable();
+    const tech = $(rows(el)[2], '.tech');
+    expect(tech.querySelector('a')).toBeNull();
+    expect([...tech.querySelectorAll('span:not(.muted)')].map(text)).toEqual(['Angular', 'NestJS']);
   });
 });

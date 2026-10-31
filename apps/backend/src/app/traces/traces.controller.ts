@@ -1,8 +1,10 @@
 import { Controller, Get, Param } from '@nestjs/common';
 import type { Trace, TraceSummary } from '@my-resume/api-models';
 import { Public } from '../auth/public.decorator';
+import { PublicPage } from '../preferences/public-page.decorator';
 import { TracesService } from './traces.service';
 
+@PublicPage('traces')
 @Controller('traces')
 export class TracesController {
   constructor(private readonly traces: TracesService) {}

@@ -19,6 +19,7 @@ Load the `angular-22` skill ([.claude/skills/angular-22/SKILL.md](../skills/angu
   - `shared/`: app-only UI. Reusable UI goes to a library in `libs/frontend/` once a second app needs it.
 - Pages are lazy-loaded child routes of the `Shell` route in `app.routes.ts`, with a `title`. The title feeds the document title and the breadcrumb `h1`, so pages don't add their own `h1`.
 - Use `HttpClient` only through typed services in `core/` that return `@my-resume/api-models` types. Components never call `HttpClient` directly.
+- Async work uses RxJS observables, not promises: services return `Observable<T>`, components end in a signal (`toSignal`, `rxResource`, or `subscribe` + `takeUntilDestroyed`). Promises only where the API is promise-based (router navigation, signal forms' `submission.action`, dynamic imports, test helpers). Details in the `angular-22` skill, "Async work".
 
 ## Auth ([core/auth/](../../apps/frontend/src/app/core/auth/))
 

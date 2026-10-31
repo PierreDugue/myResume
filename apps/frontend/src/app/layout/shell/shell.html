@@ -1,7 +1,7 @@
 <a class="skip-link" href="#main-content">Skip to content</a>
 
 <aside id="sidebar" class="sidebar" [class.open]="sidebarOpen()">
-  <a class="brand" routerLink="/">
+  <a class="brand" [routerLink]="access.landingPath()">
     <svg class="logo" viewBox="0 0 24 24" aria-hidden="true">
       <path d="M3 17l5-6 4 3 4-7 5 5" />
     </svg>
@@ -10,7 +10,7 @@
 
   <nav aria-label="Main">
     <ul>
-      @for (item of navItems; track item.path) {
+      @for (item of navItems(); track item.path) {
         <li>
           <a
             [routerLink]="item.path"
@@ -19,6 +19,9 @@
             ariaCurrentWhenActive="page"
           >
             {{ item.label }}
+            @if (access.isHidden(item.page)) {
+              <span class="tag" title="Hidden from visitors">Hidden</span>
+            }
           </a>
         </li>
       }
@@ -59,7 +62,7 @@
 
     <nav aria-label="Breadcrumb" class="breadcrumb">
       <ol>
-        <li><a routerLink="/">Home</a></li>
+        <li><a [routerLink]="access.landingPath()">Home</a></li>
         <li aria-current="page">
           <h1>{{ pageTitle() }}</h1>
         </li>

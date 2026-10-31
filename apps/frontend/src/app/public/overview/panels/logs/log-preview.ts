@@ -22,7 +22,9 @@ import type { DashboardRange, LogLine } from '@my-resume/api-models';
         }
       </ol>
     }
-    <a class="explore" routerLink="/explore" [queryParams]="range()">Open in Explore →</a>
+    @if (canOpenExplore()) {
+      <a class="explore" routerLink="/explore" [queryParams]="range()">Open in Explore →</a>
+    }
   `,
   styles: `
     ol {
@@ -69,4 +71,6 @@ export class LogPreview {
   readonly lines = input.required<LogLine[]>();
   /** The dashboard's years, carried over to Explore. */
   readonly range = input<DashboardRange | null>(null);
+  /** False when Explore is hidden from the viewer: the link is left out. */
+  readonly canOpenExplore = input(true);
 }

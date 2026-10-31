@@ -7,7 +7,13 @@ import { Public } from './public.decorator';
 
 export type AuthenticatedRequest = Request & { user?: JwtPayload };
 
-/** Global guard: every route needs a valid Bearer token unless it is marked @Public(). */
+/**
+ * Global guard: every route needs a valid Bearer token unless it is marked @Public().
+ *
+ * On a @Public() route the token is optional: a valid one sets `request.user` (so the admin can,
+ * for example, preview a disabled page), and a missing, malformed, invalid or expired one is
+ * ignored: the request goes on as a visitor's. A public route never answers 401.
+ */
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
@@ -20,17 +26,21 @@ export class JwtAuthGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    if (isPublic) return true;
-
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const [scheme, token] = request.headers.authorization?.split(' ') ?? [];
-    if (scheme !== 'Bearer' || !token) throw new UnauthorizedException();
+    const user = await this.verify(request);
+    if (user) request.user = user;
+    if (isPublic || user) return true;
+    throw new UnauthorizedException();
+  }
 
+  /** The claims of a valid `Authorization: Bearer <token>`, or null. */
+  private async verify(request: AuthenticatedRequest): Promise<JwtPayload | null> {
+    const [scheme, token] = request.headers.authorization?.split(' ') ?? [];
+    if (scheme !== 'Bearer' || !token) return null;
     try {
-      request.user = await this.jwt.verifyAsync<JwtPayload>(token, { algorithms: ['HS256'] });
-      return true;
+      return await this.jwt.verifyAsync<JwtPayload>(token, { algorithms: ['HS256'] });
     } catch {
-      throw new UnauthorizedException();
+      return null;
     }
   }
 }

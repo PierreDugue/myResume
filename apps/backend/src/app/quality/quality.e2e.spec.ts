@@ -11,6 +11,7 @@ import { configureApp } from '../app.setup';
 import { AuthModule } from '../auth/auth.module';
 import { AdminUser } from '../auth/entities/admin-user.entity';
 import type { AppEnv } from '../config/env.validation';
+import { SitePreferencesEntity } from '../preferences/entities/site-preferences.entity';
 import { QUALITY_REPORT_FILE } from './quality.constants';
 import { QualityModule } from './quality.module';
 
@@ -31,7 +32,7 @@ describe('GET /api/quality', () => {
   let app: INestApplication;
   let dir: string;
 
-  /** Starts the app with the global auth guards (AuthModule) and the report at `file`. */
+  /** Starts the app with the global auth guards (AuthModule), no stored preferences, and the report at `file`. */
   async function start(file: string) {
     const moduleRef = await Test.createTestingModule({
       imports: [
@@ -47,6 +48,9 @@ describe('GET /api/quality', () => {
         create: vi.fn(),
         save: vi.fn(),
       })
+      // No preferences row: every page, Quality included, is enabled.
+      .overrideProvider(getRepositoryToken(SitePreferencesEntity))
+      .useValue({ find: vi.fn().mockResolvedValue([]) })
       .overrideProvider(QUALITY_REPORT_FILE)
       .useValue(file)
       .compile();

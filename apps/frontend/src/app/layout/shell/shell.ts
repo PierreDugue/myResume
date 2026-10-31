@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
@@ -8,6 +8,7 @@ import { AuthService } from '../../core/auth/auth.service';
 import { ThemeService } from '../../core/theme/theme.service';
 import { PageTitleStrategy } from '../../core/title/page-title.strategy';
 import { NAV_ITEMS } from '../nav-items';
+import { PageAccess } from '../page-access';
 
 const API_STATUS_POLL_MS = 30_000;
 
@@ -20,10 +21,14 @@ const API_STATUS_POLL_MS = 30_000;
 })
 export class Shell {
   protected readonly appName = APP_NAME;
-  protected readonly navItems = NAV_ITEMS;
   protected readonly theme = inject(ThemeService);
   protected readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  protected readonly access = inject(PageAccess);
+  /** The pages this viewer may open: visitors don't see the ones the admin disabled. */
+  protected readonly navItems = computed(() =>
+    NAV_ITEMS.filter((item) => this.access.canView(item.page)),
+  );
   protected readonly pageTitle = inject(PageTitleStrategy).pageTitle;
   protected readonly apiStatus = inject(ApiStatusService).status;
   protected readonly sidebarOpen = signal(false);

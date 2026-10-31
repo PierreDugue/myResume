@@ -51,6 +51,7 @@ describe('nodeLink', () => {
   it('filters the dashboard by a technology', () => {
     expect(nodeLink(node('skill:sk-angular'))).toEqual({
       path: '/',
+      page: 'overview',
       queryParams: { skill: 'angular' },
     });
   });
@@ -58,6 +59,7 @@ describe('nodeLink', () => {
   it("opens a project's trace", () => {
     expect(nodeLink(node('project:p-site'))).toEqual({
       path: '/traces/pierre-o11y',
+      page: 'traces',
       queryParams: {},
     });
   });
@@ -65,6 +67,7 @@ describe('nodeLink', () => {
   it("searches a job's achievements in Explore", () => {
     expect(nodeLink(node('job:e-kx'))).toEqual({
       path: '/explore',
+      page: 'explore',
       queryParams: { query: '{company="KX"}' },
     });
     expect(
@@ -77,5 +80,9 @@ describe('nodeLink', () => {
         category: null,
       }).queryParams,
     ).toEqual({ query: '{company="Say \\"Hi\\""}' });
+  });
+
+  it('falls back to the dashboard for an unknown node', () => {
+    expect(nodeLink(undefined)).toEqual({ path: '/', page: 'overview', queryParams: {} });
   });
 });

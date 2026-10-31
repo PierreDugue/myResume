@@ -41,6 +41,17 @@ describe('AdminHomePage', () => {
     }
   });
 
+  it('links to the site preferences under their own "Site" heading', async () => {
+    const { el } = await render();
+    const headings = [...el.querySelectorAll('h2')].map((h) => h.textContent?.trim());
+    expect(headings).toEqual(['Content', 'Site']);
+    const link = [...el.querySelectorAll<HTMLAnchorElement>('a')].find(
+      (a) => a.textContent?.trim() === 'Preferences',
+    );
+    expect(link?.getAttribute('href')).toBe('/preferences');
+    expect(link?.parentElement?.textContent).toContain('Which public pages visitors see');
+  });
+
   it('signs out and returns to the home dashboard', async () => {
     const { el, navigate } = await render();
     $<HTMLButtonElement>(el, 'button.sign-out').click();

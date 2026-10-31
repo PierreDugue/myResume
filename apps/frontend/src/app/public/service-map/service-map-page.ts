@@ -4,6 +4,7 @@ import { Router, RouterLink } from '@angular/router';
 import type { ServiceMapNode } from '@my-resume/api-models';
 import { ServiceMapApi } from '../../core/service-map/service-map-api.service';
 import { ThemeService } from '../../core/theme/theme.service';
+import { PageAccess } from '../../layout/page-access';
 import { readChartPalette } from '../../shared/panels/chart-palette';
 import { EChart } from '../../shared/panels/echart/echart';
 import { Panel } from '../../shared/panels/panel/panel';
@@ -22,6 +23,7 @@ import { NODE_KINDS, nodeLink, serviceMapOption } from './service-map-option';
 export class ServiceMapPage {
   private readonly api = inject(ServiceMapApi);
   private readonly router = inject(Router);
+  private readonly access = inject(PageAccess);
   private readonly theme = inject(ThemeService);
   private readonly document = inject(DOCUMENT);
 
@@ -46,10 +48,13 @@ export class ServiceMapPage {
           e.source === node.id ? [e.target] : e.target === node.id ? [e.source] : [],
         ),
       );
+      const link = nodeLink(node);
       return {
         node,
         kind: NODE_KINDS.find((k) => k.kind === node.kind)?.single ?? node.kind,
-        link: nodeLink(node),
+        link,
+        // Not a link when the page it leads to is hidden from the viewer.
+        linked: this.access.canView(link.page),
         connected: nodes
           .filter((n) => neighbours.has(n.id))
           .map((n) => n.label)
@@ -63,7 +68,8 @@ export class ServiceMapPage {
     if (dataType !== 'node' || !this.map.hasValue()) return;
     const node: ServiceMapNode | undefined = this.map.value().nodes.find((n) => n.id === data?.id);
     if (!node) return;
-    const { path, queryParams } = nodeLink(node);
+    const { path, page, queryParams } = nodeLink(node);
+    if (!this.access.canView(page)) return;
     void this.router.navigate([path], { queryParams });
   }
 }

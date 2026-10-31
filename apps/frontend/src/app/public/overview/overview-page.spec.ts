@@ -2,6 +2,8 @@ import type { DashboardQuery, DashboardResponse } from '@my-resume/api-models';
 import { Observable, of, throwError } from 'rxjs';
 import { renderRoute, type } from '../../admin/testing/render';
 import { DashboardApi } from '../../core/dashboard/dashboard-api.service';
+import { fakePageAccess } from '../../layout/testing/fake-page-access';
+import type { PublicPageId } from '@my-resume/api-models';
 import { $ } from '../../testing';
 import { ECHARTS_LOADER } from '../../shared/panels/echart/echarts-loader';
 import { OverviewPage } from './overview-page';
@@ -12,6 +14,7 @@ describe('OverviewPage (Career Overview)', () => {
   const get = vi.fn((q: DashboardQuery) => respond(q));
   const chart = { setOption: vi.fn(), resize: vi.fn(), dispose: vi.fn() };
 
+  let disabled: PublicPageId[] = [];
   const render = (url = '/') =>
     renderRoute(
       url,
@@ -19,10 +22,12 @@ describe('OverviewPage (Career Overview)', () => {
       [
         { provide: DashboardApi, useValue: { get } },
         { provide: ECHARTS_LOADER, useValue: () => Promise.resolve({ init: () => chart }) },
+        fakePageAccess(disabled),
       ],
     );
 
   beforeEach(() => {
+    disabled = [];
     respond = () => of(dashboardFixture());
     get.mockClear();
   });
@@ -116,5 +121,17 @@ describe('OverviewPage (Career Overview)', () => {
     $<HTMLButtonElement>(el, 'button.retry').click();
     await settle();
     expect(el.textContent).toContain('Pierre Dugue');
+  });
+
+  it('links the latest highlights to Explore, unless the viewer cannot see Explore', async () => {
+    const { el } = await render();
+    expect(el.querySelector('app-log-preview a.explore')).not.toBeNull();
+  });
+
+  it('leaves out the Explore link when Explore is hidden from the viewer', async () => {
+    disabled = ['explore'];
+    const { el } = await render();
+    expect(el.querySelectorAll('app-log-preview li')).toHaveLength(2);
+    expect(el.querySelector('app-log-preview a.explore')).toBeNull();
   });
 });
