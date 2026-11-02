@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { SkillsModule } from '../skills/skills.module';
 import { SitePreferencesEntity } from './entities/site-preferences.entity';
 import { PageEnabledGuard } from './page-enabled.guard';
 import { PreferencesController } from './preferences.controller';
@@ -10,7 +11,7 @@ import { PreferencesService } from './preferences.service';
  * controller-scoped PageEnabledGuard.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([SitePreferencesEntity])],
+  imports: [TypeOrmModule.forFeature([SitePreferencesEntity]), SkillsModule],
   controllers: [PreferencesController],
   providers: [PreferencesService, PageEnabledGuard],
   exports: [PreferencesService],

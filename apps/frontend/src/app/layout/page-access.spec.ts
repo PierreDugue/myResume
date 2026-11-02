@@ -14,6 +14,7 @@ const pages = (off: (keyof PagePreferences)[] = []): SitePreferences => ({
     quality: !off.includes('quality'),
     about: !off.includes('about'),
   },
+  overview: { skillsOverTime: [] },
 });
 const ALL: (keyof PagePreferences)[] = [
   'overview',

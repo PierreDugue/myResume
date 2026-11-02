@@ -21,6 +21,7 @@ function preferences(off: PageId[] = []): SitePreferences {
       quality: !off.includes('quality'),
       about: !off.includes('about'),
     },
+    overview: { skillsOverTime: [] },
   };
 }
 const EVERY_PAGE: PageId[] = ['overview', 'explore', 'traces', 'serviceMap', 'quality', 'about'];

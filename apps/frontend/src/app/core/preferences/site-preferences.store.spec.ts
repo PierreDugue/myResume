@@ -13,6 +13,7 @@ const prefs = (explore = true): SitePreferences => ({
     quality: true,
     about: true,
   },
+  overview: { skillsOverTime: [] },
 });
 
 describe('SitePreferencesStore', () => {

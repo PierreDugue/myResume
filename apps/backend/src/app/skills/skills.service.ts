@@ -63,6 +63,18 @@ export class SkillsService {
     return found;
   }
 
+  /** The ids of the existing skills among `ids`, in skills-list order (sortOrder, createdAt). */
+  async existingIds(ids: string[]): Promise<string[]> {
+    const unique = [...new Set(ids)];
+    if (unique.length === 0) return [];
+    const rows = await this.skills.find({
+      select: { id: true },
+      where: { id: In(unique) },
+      order: { sortOrder: 'ASC', createdAt: 'ASC' },
+    });
+    return rows.map((row) => row.id);
+  }
+
   private async findOrFail(id: string): Promise<SkillEntity> {
     const entity = await this.skills.findOneBy({ id });
     if (!entity) throw new NotFoundException(`Skill ${id} not found`);

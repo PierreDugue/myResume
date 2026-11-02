@@ -347,6 +347,12 @@ Every panel of the home dashboard in one call. The backend calculates everything
 
   `skill` keeps only the jobs and projects that use it. `category` keeps only the skills of that category.
 
+- **Skills over time:** `skillsOverTime` holds the lines of the home page's line chart. The backend picks them, so the frontend only draws them.
+  - `skillsOverTime.years` equals `skillUsage.years`. `series` is a subset of `skillUsage.series`, in the same order (most used in the range first), with at most 8 items.
+  - If at least one of the admin's selected skills (Preferences, `overview.skillsOverTime`) is in `skillUsage.series` (that is: used in the range, and kept by the `category` and `skill` filters), `series` is exactly those selected skills and `mode` is `'selected'`.
+  - Otherwise (no selection, or none of the selected skills match the view) `series` is the first 8 of `skillUsage.series` and `mode` is `'auto'`. So the chart is empty only when `skillUsage.series` is empty.
+  - The selection is not a query parameter: visitors can't change it, it comes from the preferences.
+  - `skillUsage` itself is unchanged and still lists every skill used in the range (the heatmap, stats and totals use it).
 - **Headline figures don't depend on the range:** years in IT and years of Angular come from the profile (entered by hand), and "uptime" counts from the first job.
 - **No gap markers:** the timeline only lists items. Periods between jobs are simply empty, as the spec requires.
 
@@ -409,6 +415,12 @@ interface SkillUsage {
   series: SkillUsageSeries[]; // skills used in the range, most used first
 }
 
+/** The lines of the "Skills over time" chart: a subset of `skillUsage.series`. */
+interface SkillsOverTime extends SkillUsage {
+  /** 'selected': the admin's selection (Preferences, overview.skillsOverTime) matched the view; 'auto': the most used skills. */
+  mode: 'selected' | 'auto';
+}
+
 interface SkillTotalsGroup {
   category: string;
   skills: {
@@ -438,6 +450,7 @@ interface DashboardResponse {
   impacts: ImpactItem[]; // newest first
   timeline: TimelineItem[]; // jobs and education, by start date
   skillUsage: SkillUsage;
+  skillsOverTime: SkillsOverTime; // the lines of the "Skills over time" chart
   skillTotals: SkillTotalsGroup[]; // categories in skills-list order, skills by years desc
   latestHighlights: LogLine[]; // 5 newest
 }
@@ -749,7 +762,7 @@ interface ProjectGraph {
 | GET    | `/api/preferences` | –    | –                              | `SitePreferences` `200`                  | done   |
 | PATCH  | `/api/preferences` | ✔    | `UpdateSitePreferencesRequest` | `SitePreferences` `200`, or `400`, `401` | done   |
 
-Site-wide settings, edited on `/admin/preferences`. For now there is one group, `pages`: which public pages visitors can see. More groups can be added later.
+Site-wide settings, edited on `/admin/preferences`. There are two groups: `pages` (which public pages visitors can see) and `overview` (settings of the Career Overview page). More groups can be added later.
 
 - **Pages and their ids:**
 
@@ -768,8 +781,15 @@ Site-wide settings, edited on `/admin/preferences`. For now there is one group, 
 - **`GET /api/preferences`** is public: the frontend needs it to build the menu and guard routes for visitors. (When a preference that must stay private is added one day, it gets an admin-only view, like `Profile` / `PublicProfile`.)
 - **`PATCH /api/preferences`**: partial update. Only the groups and keys sent change; leaving one out keeps it. Returns the complete `SitePreferences`.
   - `400` for an unknown group, an unknown page id, a value that isn't a boolean, or `null`.
+  - `400` for the `overview` group (nothing changes): `overview` that is `null` or not an object, `skillsOverTime` that is `null` or not an array, more than 8 ids, duplicate ids, an id that isn't a uuid, an unknown skill id (`message: "Unknown skill ids"`, as for experiences and projects), or an unknown key inside `overview`.
   - An empty body `{}` changes nothing and returns `200`.
   - Any combination is allowed, including every page disabled.
+- **Overview group:** `overview.skillsOverTime` is the list of skills the "Skills over time" chart of the Career Overview shows (see Dashboard).
+  - **Default:** `[]` = automatic, the 8 most used skills of the view. `GET` always includes `overview` with `skillsOverTime`.
+  - **At most 8 skill ids.** Selecting a skill doesn't require it to have any usage: a selected skill that isn't used in the visitor's view just isn't drawn.
+  - **Order:** ids come back in skills-list order (the skills' `sortOrder`), whatever order they were sent in. A skill that has been deleted silently drops out of the selection (no error, no write needed).
+  - **`PATCH`:** `overview` is merged like `pages` (keys left out are kept), but `skillsOverTime` is one value: sending it **replaces the whole list**, and `[]` goes back to automatic. The order sent doesn't matter.
+  - The selection isn't private, so `GET /api/preferences` stays public.
 - **Disabled pages are refused by the API too.** Each page's own endpoints answer `404` `{ "statusCode": 404, "message": "This page is disabled", "error": "Not Found" }` to visitors while it is disabled:
 
   | Page         | Endpoints refused                          |
@@ -794,11 +814,19 @@ type PagePreferences = Record<PublicPageId, boolean>;
 /** Site-wide preferences, edited on /admin/preferences. One group per kind of setting; more groups will be added later. */
 interface SitePreferences {
   pages: PagePreferences;
+  overview: OverviewPreferences;
+}
+
+/** Settings of the Career Overview page (`/`). */
+interface OverviewPreferences {
+  /** Skill ids the "Skills over time" chart shows, in skills-list order. [] (default) = automatic: the 8 most used skills of the view. At most 8. */
+  skillsOverTime: string[];
 }
 
 /** `PATCH /api/preferences` body: every group and every key is optional; what is sent is merged into the stored preferences. */
 interface UpdateSitePreferencesRequest {
   pages?: Partial<PagePreferences>;
+  overview?: Partial<OverviewPreferences>;
 }
 ```
 

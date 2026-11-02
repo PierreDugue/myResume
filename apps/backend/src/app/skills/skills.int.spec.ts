@@ -1,4 +1,5 @@
 import type { Skill } from '@my-resume/api-models';
+import { SkillsService } from './skills.service';
 import { Api, api, createTestApp, MISSING_ID, TestApp, UUID } from '../../testing/test-app';
 
 describe('Skills API', () => {
@@ -109,6 +110,31 @@ describe('Skills API', () => {
     for (const ids of [[a.id], [a.id, a.id], [a.id, b.id, MISSING_ID]]) {
       expect((await http.put('/api/skills/order', { ids })).status).toBe(400);
     }
+  });
+
+  describe('existingIds', () => {
+    it('keeps the ids that exist, in skills-list order, whatever order they are given in', async () => {
+      const a = (await create({ name: 'A', category: 'x' })).body as Skill;
+      const b = (await create({ name: 'B', category: 'x' })).body as Skill;
+      const c = (await create({ name: 'C', category: 'x' })).body as Skill;
+      await http.put('/api/skills/order', { ids: [c.id, a.id, b.id] });
+      const skills = t.app.get(SkillsService);
+
+      expect(await skills.existingIds([b.id, MISSING_ID, c.id, a.id])).toEqual([c.id, a.id, b.id]);
+      expect(await skills.existingIds([b.id, b.id])).toEqual([b.id]);
+      expect(await skills.existingIds([MISSING_ID])).toEqual([]);
+    });
+
+    it('returns [] for no ids', async () => {
+      expect(await t.app.get(SkillsService).existingIds([])).toEqual([]);
+    });
+
+    it('drops a deleted skill', async () => {
+      const a = (await create({ name: 'A', category: 'x' })).body as Skill;
+      const b = (await create({ name: 'B', category: 'x' })).body as Skill;
+      await http.delete(`/api/skills/${a.id}`);
+      expect(await t.app.get(SkillsService).existingIds([a.id, b.id])).toEqual([b.id]);
+    });
   });
 
   it('requires the admin token for every write (401)', async () => {

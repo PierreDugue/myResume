@@ -1,4 +1,5 @@
-import { buildDashboard, DashboardQueryError } from './dashboard';
+import { buildDashboard, DashboardQueryError, SKILLS_OVER_TIME_MAX } from './dashboard';
+import type { ResumeResponse } from '@my-resume/api-models';
 import { resumeFixture, TODAY } from './fixtures';
 
 const build = (query = {}) => buildDashboard({ resume: resumeFixture(), today: TODAY, query });
@@ -83,6 +84,162 @@ describe('buildDashboard', () => {
 
     it('ignores projects without dates', () => {
       expect(series(build(), 'React')).toBeUndefined();
+    });
+  });
+
+  describe('skills over time (the line chart)', () => {
+    const names = (d: ReturnType<typeof build>) => d.skillsOverTime.series.map((s) => s.name);
+    const withSelection = (skillsOverTime: string[], query = {}) =>
+      buildDashboard({ resume: resumeFixture(), today: TODAY, query, skillsOverTime });
+
+    /** Ten skills "s1".."s10" all used by one job, s1 the longest and s10 the shortest (hand-checkable ranking). */
+    function crowdedResume(): ResumeResponse {
+      const resume = resumeFixture();
+      const ids = Array.from({ length: 10 }, (_, i) => `sk-s${i + 1}`);
+      resume.skills = ids.map((id, i) => ({
+        id,
+        name: `S${i + 1}`,
+        slug: `s${i + 1}`,
+        category: 'Crowd',
+        level: null,
+        sortOrder: i,
+      }));
+      resume.projects = [];
+      resume.experiences = ids.map((id, i) => ({
+        ...resume.experiences[0],
+        id: `e-${id}`,
+        company: `C${i + 1}`,
+        // s1 starts in 2016, s2 in 2017, ... so s1 is used the most.
+        startDate: `${2016 + i}-01-01`,
+        endDate: '2026-01-31',
+        skillIds: [id],
+        highlights: [],
+      }));
+      return resume;
+    }
+
+    it('limits the chart to 8 lines', () => {
+      expect(SKILLS_OVER_TIME_MAX).toBe(8);
+    });
+
+    it('is automatic without a selection: every used skill, most used first', () => {
+      const d = build();
+      expect(d.skillsOverTime.mode).toBe('auto');
+      expect(names(d)).toEqual(['Angular', 'NgRx', 'Java', 'Claude']);
+      expect(d.skillsOverTime.years).toEqual(d.skillUsage.years);
+      expect(d.skillsOverTime.series).toEqual(d.skillUsage.series);
+    });
+
+    it('is automatic for an empty selection', () => {
+      const d = withSelection([]);
+      expect(d.skillsOverTime.mode).toBe('auto');
+      expect(names(d)).toEqual(['Angular', 'NgRx', 'Java', 'Claude']);
+    });
+
+    it('caps the automatic lines at the 8 most used skills', () => {
+      const d = buildDashboard({ resume: crowdedResume(), today: TODAY, query: {} });
+      expect(d.skillUsage.series).toHaveLength(10);
+      expect(d.skillsOverTime.mode).toBe('auto');
+      expect(names(d)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']);
+      expect(d.skillsOverTime.series).toEqual(d.skillUsage.series.slice(0, 8));
+    });
+
+    it('shows the selected skills, in usage order and not in selection order', () => {
+      const d = withSelection(['sk-claude', 'sk-angular']);
+      expect(d.skillsOverTime.mode).toBe('selected');
+      expect(names(d)).toEqual(['Angular', 'Claude']);
+      expect(d.skillsOverTime.series).toEqual([d.skillUsage.series[0], d.skillUsage.series[3]]);
+      expect(d.skillsOverTime.years).toEqual(d.skillUsage.years);
+    });
+
+    it('shows a selected skill even when it is not among the 8 most used', () => {
+      const d = buildDashboard({
+        resume: crowdedResume(),
+        today: TODAY,
+        query: {},
+        skillsOverTime: ['sk-s10', 'sk-s9'],
+      });
+      expect(d.skillsOverTime.mode).toBe('selected');
+      expect(names(d)).toEqual(['S9', 'S10']);
+    });
+
+    it('never draws more than the limit, even if given a longer selection', () => {
+      const resume = crowdedResume();
+      const d = buildDashboard({
+        resume,
+        today: TODAY,
+        query: {},
+        skillsOverTime: resume.skills.map((s) => s.id),
+      });
+      expect(d.skillsOverTime.mode).toBe('selected');
+      expect(names(d)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']);
+    });
+
+    it('keeps only the selected skills the category filter leaves', () => {
+      const d = withSelection(['sk-angular', 'sk-ngrx', 'sk-claude'], { category: 'State' });
+      expect(d.skillsOverTime.mode).toBe('selected');
+      expect(names(d)).toEqual(['NgRx']);
+    });
+
+    it('keeps only the selected skill the skill filter leaves', () => {
+      const d = withSelection(['sk-angular', 'sk-java'], { skill: 'java' });
+      expect(d.skillsOverTime.mode).toBe('selected');
+      expect(names(d)).toEqual(['Java']);
+    });
+
+    it('falls back to the most used skills when a filter leaves none of the selection', () => {
+      const byCategory = withSelection(['sk-angular'], { category: 'Languages' });
+      expect(byCategory.skillsOverTime.mode).toBe('auto');
+      expect(names(byCategory)).toEqual(['Java']);
+
+      const bySkill = withSelection(['sk-angular', 'sk-claude'], { skill: 'java' });
+      expect(bySkill.skillsOverTime.mode).toBe('auto');
+      expect(names(bySkill)).toEqual(['Java']);
+    });
+
+    it('ignores a selected skill that is not used in the range', () => {
+      // Java was only used at Capgemini, 2011-2013.
+      const partly = withSelection(['sk-java', 'sk-ngrx'], { from: 2022, to: 2024 });
+      expect(partly.skillsOverTime.mode).toBe('selected');
+      expect(names(partly)).toEqual(['NgRx']);
+
+      const none = withSelection(['sk-java'], { from: 2022, to: 2024 });
+      expect(none.skillsOverTime.mode).toBe('auto');
+      expect(names(none)).toEqual(['Angular', 'NgRx']);
+    });
+
+    it('ignores a selected skill that is never used', () => {
+      const d = withSelection(['sk-react']);
+      expect(d.skillsOverTime.mode).toBe('auto');
+      expect(names(d)).toEqual(['Angular', 'NgRx', 'Java', 'Claude']);
+    });
+
+    it('ignores unknown (deleted) skill ids', () => {
+      const unknownOnly = withSelection(['sk-gone']);
+      expect(unknownOnly.skillsOverTime.mode).toBe('auto');
+      expect(names(unknownOnly)).toEqual(['Angular', 'NgRx', 'Java', 'Claude']);
+
+      const mixed = withSelection(['sk-gone', 'sk-java']);
+      expect(mixed.skillsOverTime.mode).toBe('selected');
+      expect(names(mixed)).toEqual(['Java']);
+    });
+
+    it('does not change skillUsage', () => {
+      const plain = build();
+      expect(withSelection(['sk-claude']).skillUsage).toEqual(plain.skillUsage);
+      expect(withSelection(['sk-claude']).skillTotals).toEqual(plain.skillTotals);
+    });
+
+    it('is empty only when no skill is used in the view', () => {
+      const empty = buildDashboard({
+        resume: { ...resumeFixture(), skills: [], experiences: [], projects: [], education: [] },
+        today: TODAY,
+        query: {},
+        skillsOverTime: ['sk-angular'],
+      });
+      expect(empty.skillsOverTime.mode).toBe('auto');
+      expect(empty.skillsOverTime.series).toEqual([]);
+      expect(empty.skillsOverTime.years).toEqual(empty.skillUsage.years);
     });
   });
 

@@ -1,11 +1,22 @@
 import type {
+  OverviewPreferences,
   PagePreferences,
   PublicPageId,
   SitePreferences,
   UpdateSitePreferencesRequest,
 } from '@my-resume/api-models';
+import { SKILLS_OVER_TIME_MAX } from '@my-resume/resume-metrics';
 import { Type } from 'class-transformer';
-import { IsBoolean, IsObject, ValidateNested } from 'class-validator';
+import {
+  ArrayMaxSize,
+  ArrayUnique,
+  IsArray,
+  IsBoolean,
+  IsObject,
+  isUUID,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { IsOptionalButNotNull } from '../../common/validators';
 import type { SitePreferencesEntity } from '../entities/site-preferences.entity';
 
@@ -51,6 +62,17 @@ export class UpdatePagePreferencesDto implements Partial<PagePreferences> {
   about?: boolean;
 }
 
+/** Partial overview settings: each key optional, but valid when sent (never null). */
+export class UpdateOverviewPreferencesDto implements Partial<OverviewPreferences> {
+  /** At most SKILLS_OVER_TIME_MAX distinct skill ids; unknown ids are refused by the service (400). */
+  @IsOptionalButNotNull()
+  @IsArray()
+  @ArrayMaxSize(SKILLS_OVER_TIME_MAX)
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  skillsOverTime?: string[];
+}
+
 /** PATCH body: unknown groups and page ids are refused by the global ValidationPipe (400). */
 export class UpdateSitePreferencesDto implements UpdateSitePreferencesRequest {
   @IsOptionalButNotNull()
@@ -58,17 +80,30 @@ export class UpdateSitePreferencesDto implements UpdateSitePreferencesRequest {
   @ValidateNested()
   @Type(() => UpdatePagePreferencesDto)
   pages?: UpdatePagePreferencesDto;
+
+  @IsOptionalButNotNull()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdateOverviewPreferencesDto)
+  overview?: UpdateOverviewPreferencesDto;
 }
 
-/** Every page id with its stored flag, or the default; stored keys that aren't page ids are dropped. */
-export function toSitePreferences(entity: SitePreferencesEntity | null): SitePreferences {
+/**
+ * Every page id with its stored flag, or the default; stored keys that aren't page ids are dropped.
+ * `skillsOverTime` is the selection already resolved against the existing skills (the mapper stays
+ * pure): empty = automatic.
+ */
+export function toSitePreferences(
+  entity: SitePreferencesEntity | null,
+  skillsOverTime: readonly string[] = [],
+): SitePreferences {
   const stored: Record<string, unknown> = entity?.pages ?? {};
   const pages = { ...DEFAULT_PAGE_PREFERENCES };
   for (const id of PAGE_IDS) {
     const value = stored[id];
     if (typeof value === 'boolean') pages[id] = value;
   }
-  return { pages };
+  return { pages, overview: { skillsOverTime: [...skillsOverTime] } };
 }
 
 /** Only the page flags actually sent (class-transformer leaves absent keys undefined). */
@@ -79,4 +114,21 @@ export function sentPageFlags(dto: UpdatePagePreferencesDto | undefined): Partia
     if (typeof value === 'boolean') flags[id] = value;
   }
   return flags;
+}
+
+/** The stored selection, without anything that isn't a uuid string (hand-edited or old data), nor duplicates. */
+export function storedSkillsOverTime(entity: SitePreferencesEntity | null): string[] {
+  const stored: unknown = entity?.overview?.['skillsOverTime'];
+  if (!Array.isArray(stored)) return [];
+  const ids = stored.filter((id): id is string => typeof id === 'string' && isUUID(id, 'all'));
+  return [...new Set(ids)];
+}
+
+/** Only the overview settings actually sent (class-transformer leaves absent keys undefined). */
+export function sentOverviewPreferences(
+  dto: UpdateOverviewPreferencesDto | undefined,
+): Partial<OverviewPreferences> {
+  const sent: Partial<OverviewPreferences> = {};
+  if (Array.isArray(dto?.skillsOverTime)) sent.skillsOverTime = dto.skillsOverTime;
+  return sent;
 }

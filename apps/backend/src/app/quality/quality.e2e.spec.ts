@@ -12,6 +12,7 @@ import { AuthModule } from '../auth/auth.module';
 import { AdminUser } from '../auth/entities/admin-user.entity';
 import type { AppEnv } from '../config/env.validation';
 import { SitePreferencesEntity } from '../preferences/entities/site-preferences.entity';
+import { SkillEntity } from '../skills/entities/skill.entity';
 import { QUALITY_REPORT_FILE } from './quality.constants';
 import { QualityModule } from './quality.module';
 
@@ -50,6 +51,9 @@ describe('GET /api/quality', () => {
       })
       // No preferences row: every page, Quality included, is enabled.
       .overrideProvider(getRepositoryToken(SitePreferencesEntity))
+      .useValue({ find: vi.fn().mockResolvedValue([]) })
+      // PreferencesModule imports SkillsModule; the page guard never reads skills.
+      .overrideProvider(getRepositoryToken(SkillEntity))
       .useValue({ find: vi.fn().mockResolvedValue([]) })
       .overrideProvider(QUALITY_REPORT_FILE)
       .useValue(file)

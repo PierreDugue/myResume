@@ -19,6 +19,10 @@ export class SitePreferencesEntity {
   @Column({ type: 'jsonb', default: () => "'{}'" })
   pages!: Record<string, boolean>;
 
+  /** Only the overview settings the admin has set (e.g. `skillsOverTime`: skill ids); missing keys use the default. */
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  overview!: Record<string, unknown>;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 

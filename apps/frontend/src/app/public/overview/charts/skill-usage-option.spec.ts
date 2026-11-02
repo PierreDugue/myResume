@@ -14,9 +14,25 @@ describe('skillUsageOption (skills over time)', () => {
     expect(option.legend).toMatchObject({ data: ['Angular', 'NgRx'] });
   });
 
-  it('keeps the most used skills only', () => {
-    const option = skillUsageOption(usage, TEST_PALETTE, 1);
-    expect((option.series as { name: string }[]).map((s) => s.name)).toEqual(['Angular']);
+  it('draws every series it is given, without slicing (the backend limits them)', () => {
+    const many = {
+      ...usage,
+      series: Array.from({ length: 10 }, (_, i) => ({
+        ...usage.series[0],
+        skillId: `s${i}`,
+        name: `Skill ${i}`,
+      })),
+    };
+    const option = skillUsageOption(many, TEST_PALETTE);
+    const names = many.series.map((s) => s.name);
+    expect((option.series as { name: string }[]).map((s) => s.name)).toEqual(names);
+    expect(option.legend).toMatchObject({ data: names });
+  });
+
+  it('draws an empty chart when there are no series', () => {
+    const option = skillUsageOption({ years: usage.years, series: [] }, TEST_PALETTE);
+    expect(option.series).toEqual([]);
+    expect(option.legend).toMatchObject({ data: [] });
   });
 
   it('uses the theme palette and describes itself for screen readers', () => {

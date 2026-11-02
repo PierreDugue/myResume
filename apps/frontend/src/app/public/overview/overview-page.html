@@ -69,8 +69,8 @@
     <app-panel
       class="usage"
       title="Skills over time"
-      info="Years of experience accumulated with each skill, counting every month of the jobs and projects that used it."
-      [data]="d.skillUsage"
+      [info]="usageInfo()"
+      [data]="d.skillsOverTime"
       [canShowTable]="true"
       [(showTable)]="usageTable"
     >
@@ -83,7 +83,7 @@
             <thead>
               <tr>
                 <th scope="col">Skill</th>
-                @for (year of d.skillUsage.years; track year) {
+                @for (year of d.skillsOverTime.years; track year) {
                   <th scope="col">{{ year }}</th>
                 }
               </tr>

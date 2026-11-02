@@ -1,14 +1,19 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
-import type { SitePreferences, UpdateSitePreferencesRequest } from '@my-resume/api-models';
+import type { Skill, SitePreferences, UpdateSitePreferencesRequest } from '@my-resume/api-models';
+import { SKILLS_OVER_TIME_MAX } from '@my-resume/resume-metrics';
 import { Observable, Subject, of, throwError } from 'rxjs';
+import { ContentApi } from '../../core/content/content-api.service';
 import { PreferencesApi } from '../../core/preferences/preferences-api.service';
 import { SitePreferencesStore } from '../../core/preferences/site-preferences.store';
 import { $ } from '../../testing';
 import { field, renderRoute } from '../testing/render';
 import { PreferencesPage, toModel, toRequest } from './preferences-page';
 
-const prefs = (off: (keyof SitePreferences['pages'])[] = []): SitePreferences => ({
+const prefs = (
+  off: (keyof SitePreferences['pages'])[] = [],
+  skillsOverTime: string[] = [],
+): SitePreferences => ({
   pages: {
     overview: !off.includes('overview'),
     explore: !off.includes('explore'),
@@ -17,7 +22,33 @@ const prefs = (off: (keyof SitePreferences['pages'])[] = []): SitePreferences =>
     quality: !off.includes('quality'),
     about: !off.includes('about'),
   },
+  overview: { skillsOverTime },
 });
+
+const skill = (id: string, name: string, category: string, sortOrder: number): Skill => ({
+  id,
+  name,
+  slug: id,
+  category,
+  level: null,
+  sortOrder,
+});
+/** Ten skills in two categories; ids are `s1`..`s10`. */
+const NAMES = [
+  'Alpha',
+  'Bravo',
+  'Charlie',
+  'Delta',
+  'Echo',
+  'Foxtrot',
+  'Golf',
+  'Hotel',
+  'India',
+  'Juliet',
+];
+const SKILLS: Skill[] = NAMES.map((name, i) =>
+  skill(`s${i + 1}`, name, i < 6 ? 'Core' : 'Tools', i),
+);
 const LABELS = [
   'Career Overview',
   'Explore',
@@ -28,10 +59,28 @@ const LABELS = [
 ];
 
 describe('toModel / toRequest', () => {
-  it('copies the page flags into the form model and back', () => {
-    const model = toModel(prefs(['explore']));
-    expect(model).toEqual({ pages: prefs(['explore']).pages });
-    expect(toRequest(model)).toEqual({ pages: prefs(['explore']).pages });
+  it('copies the page flags and the overview group into the form model and back', () => {
+    const loaded = prefs(['explore'], ['s2', 's1']);
+    const model = toModel(loaded);
+    expect(model).toEqual({ pages: loaded.pages, overview: { skillsOverTime: ['s2', 's1'] } });
+    expect(toRequest(model)).toEqual({
+      pages: loaded.pages,
+      overview: { skillsOverTime: ['s2', 's1'] },
+    });
+  });
+
+  it('sends the overview group in full, even when it is empty (back to automatic)', () => {
+    expect(toRequest(toModel(prefs()))).toEqual({
+      pages: prefs().pages,
+      overview: { skillsOverTime: [] },
+    });
+  });
+
+  it('does not share the selection with the loaded preferences', () => {
+    const loaded = prefs([], ['s1']);
+    const model = toModel(loaded);
+    model.overview.skillsOverTime.push('s2');
+    expect(loaded.overview.skillsOverTime).toEqual(['s1']);
   });
 
   it('does not share the flags with the loaded preferences', () => {
@@ -45,22 +94,33 @@ describe('toModel / toRequest', () => {
 describe('PreferencesPage', () => {
   let loaded: () => Observable<SitePreferences>;
   let saved: (body: UpdateSitePreferencesRequest) => Observable<SitePreferences>;
+  let skills: () => Observable<Skill[]>;
   const get = vi.fn(() => loaded());
   const update = vi.fn((body: UpdateSitePreferencesRequest) => saved(body));
+  const listSkills = vi.fn(() => skills());
 
   const render = () =>
     renderRoute(
       '/admin/preferences',
       [{ path: 'admin/preferences', component: PreferencesPage }],
-      [{ provide: PreferencesApi, useValue: { get, update } }],
+      [
+        { provide: PreferencesApi, useValue: { get, update } },
+        { provide: ContentApi, useValue: { skills: { list: listSkills } } },
+      ],
     );
   const save = (el: HTMLElement) => $<HTMLButtonElement>(el, 'button[type="submit"]').click();
 
   beforeEach(() => {
     loaded = () => of(prefs(['explore']));
-    saved = (body) => of({ pages: { ...prefs().pages, ...body.pages } });
+    skills = () => of(SKILLS);
+    saved = (body) =>
+      of({
+        pages: { ...prefs().pages, ...body.pages },
+        overview: { skillsOverTime: body.overview?.skillsOverTime ?? [] },
+      });
     get.mockClear();
     update.mockClear();
+    listSkills.mockClear();
   });
 
   it('shows a checkbox per page with its path, checked when visitors can see it', async () => {
@@ -111,6 +171,7 @@ describe('PreferencesPage', () => {
         quality: true,
         about: true,
       },
+      overview: { skillsOverTime: [] },
     });
     expect($(el, '[role="status"]').textContent).toContain('Preferences saved');
   });
@@ -226,15 +287,197 @@ describe('PreferencesPage', () => {
     expect(field(el, 'Explore').checked).toBe(true);
   });
 
+  describe('Skills over time', () => {
+    const fieldset = (el: HTMLElement) =>
+      [...el.querySelectorAll('fieldset')].find(
+        (f) => f.querySelector(':scope > legend')?.textContent?.trim() === 'Skills over time',
+      ) as HTMLElement;
+    /** Blocked by the limit: `aria-disabled`, never `disabled`, so the keyboard can still reach it. */
+    const blocked = (b: HTMLInputElement): boolean => {
+      expect(b.disabled).toBe(false);
+      return b.getAttribute('aria-disabled') === 'true';
+    };
+    const box = (el: HTMLElement, name: string) =>
+      [...fieldset(el).querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].find(
+        (b) => b.closest('label')?.textContent?.trim() === name,
+      ) as HTMLInputElement;
+    const status = (el: HTMLElement) =>
+      fieldset(el).querySelector('[aria-live="polite"]')?.textContent?.replace(/\s+/g, ' ').trim();
+    const checkFirst = async (el: HTMLElement, settle: () => Promise<void>, n: number) => {
+      for (const name of NAMES.slice(0, n)) {
+        if (!box(el, name).checked) box(el, name).click();
+        await settle();
+      }
+    };
+
+    it('has a "Skills over time" fieldset after "Pages", explaining the chart and the automatic mode', async () => {
+      const { el } = await render();
+      expect(
+        [...el.querySelectorAll('form > fieldset > legend')].map((l) => l.textContent?.trim()),
+      ).toEqual(['Pages', 'Skills over time']);
+      const hint = fieldset(el).querySelector('.hint')?.textContent?.replace(/\s+/g, ' ') ?? '';
+      expect(hint).toContain('up to 8');
+      expect(hint).toContain('Career Overview');
+      expect(hint).toContain('most used');
+    });
+
+    it('lists the skills grouped by category, with the stored selection checked', async () => {
+      loaded = () => of(prefs([], ['s2', 's7']));
+      const { el } = await render();
+      expect(listSkills).toHaveBeenCalledOnce();
+      const legends = [...fieldset(el).querySelectorAll('.groups legend')].map((l) =>
+        l.textContent?.trim(),
+      );
+      expect(legends).toEqual(['Core', 'Tools']);
+      expect(fieldset(el).querySelectorAll('input[type="checkbox"]')).toHaveLength(10);
+      const checked = NAMES.filter((n) => box(el, n).checked);
+      expect(checked).toEqual(['Bravo', 'Golf']);
+    });
+
+    it('saves the chosen skills with the page flags', async () => {
+      loaded = () => of(prefs([], ['s2']));
+      const { el, settle } = await render();
+      box(el, 'Alpha').click();
+      await settle();
+      box(el, 'Bravo').click();
+      await settle();
+      box(el, 'India').click();
+      await settle();
+      save(el);
+      await settle();
+
+      expect(update).toHaveBeenCalledOnce();
+      expect(update).toHaveBeenCalledWith({
+        pages: prefs().pages,
+        overview: { skillsOverTime: ['s1', 's9'] },
+      });
+      expect($(el, '.saved').textContent).toContain('Preferences saved');
+      expect(box(el, 'India').checked).toBe(true);
+    });
+
+    it('sends [] when everything is unchecked (back to automatic)', async () => {
+      loaded = () => of(prefs([], ['s2']));
+      const { el, settle } = await render();
+      box(el, 'Bravo').click();
+      await settle();
+      save(el);
+      await settle();
+      expect(update).toHaveBeenCalledWith({
+        pages: prefs().pages,
+        overview: { skillsOverTime: [] },
+      });
+    });
+
+    it('says the lines are automatic when nothing is checked', async () => {
+      const { el, settle } = await render();
+      expect(status(el)).toBe('Automatic: the 8 most used skills');
+      box(el, 'Alpha').click();
+      await settle();
+      expect(status(el)).toBe('1 of 8 selected');
+      box(el, 'Alpha').click();
+      await settle();
+      expect(status(el)).toBe('Automatic: the 8 most used skills');
+    });
+
+    it('blocks the other boxes at the limit and says why', async () => {
+      expect(SKILLS_OVER_TIME_MAX).toBe(8);
+      const { el, settle } = await render();
+      await checkFirst(el, settle, 8);
+
+      expect(status(el)).toContain('8 of 8 selected');
+      expect(status(el)).toContain('You can pick up to 8 skills: uncheck one to pick another.');
+      expect(blocked(box(el, 'India'))).toBe(true);
+      expect(blocked(box(el, 'Juliet'))).toBe(true);
+      expect(blocked(box(el, 'Alpha'))).toBe(false);
+      expect(box(el, 'Hotel').checked).toBe(true);
+      expect(blocked(box(el, 'Hotel'))).toBe(false);
+
+      box(el, 'Hotel').click();
+      await settle();
+      expect(status(el)).toBe('7 of 8 selected');
+      expect(blocked(box(el, 'India'))).toBe(false);
+    });
+
+    it('opens with the limit already reached when 8 skills are stored', async () => {
+      loaded = () => of(prefs([], ['s1', 's2', 's3', 's4', 's5', 's6', 's7', 's8']));
+      const { el } = await render();
+      expect(blocked(box(el, 'India'))).toBe(true);
+      expect(status(el)).toContain('8 of 8 selected');
+    });
+
+    it('does not show the limit message below the limit', async () => {
+      const { el, settle } = await render();
+      await checkFirst(el, settle, 7);
+      expect(status(el)).toBe('7 of 8 selected');
+      expect(blocked(box(el, 'India'))).toBe(false);
+    });
+
+    it('shows the API error when the selection is refused (400), and keeps the form', async () => {
+      saved = () =>
+        throwError(
+          () => new HttpErrorResponse({ status: 400, error: { message: 'Unknown skill ids' } }),
+        );
+      const { el, settle } = await render();
+      box(el, 'Alpha').click();
+      await settle();
+      save(el);
+      await settle();
+      expect($(el, '[role="alert"]').textContent).toContain('Unknown skill ids.');
+      expect(el.querySelector('.saved')).toBeNull();
+      expect(box(el, 'Alpha').checked).toBe(true);
+    });
+
+    it('shows the error state with a retry when the skills cannot be loaded', async () => {
+      let calls = 0;
+      skills = () =>
+        calls++ === 0 ? throwError(() => new HttpErrorResponse({ status: 500 })) : of(SKILLS);
+      const { el, settle } = await render();
+      expect($(el, '[role="alert"]').textContent).toContain('Something went wrong');
+      expect(el.querySelector('form')).toBeNull();
+
+      $<HTMLButtonElement>(el, 'button.retry').click();
+      await settle();
+      expect(el.querySelector('form')).not.toBeNull();
+      expect(box(el, 'Alpha')).toBeTruthy();
+    });
+
+    it('shows one loading state until both the preferences and the skills are there', async () => {
+      const prefsAnswer = new Subject<SitePreferences>();
+      const skillsAnswer = new Subject<Skill[]>();
+      loaded = () => prefsAnswer;
+      skills = () => skillsAnswer;
+      const { el, detect, settle } = await renderPending();
+      prefsAnswer.next(prefs());
+      prefsAnswer.complete();
+      await detect();
+      expect($(el, '[role="status"]').textContent).toContain('Loading');
+      expect(el.querySelector('form')).toBeNull();
+
+      skillsAnswer.next(SKILLS);
+      skillsAnswer.complete();
+      await settle();
+      expect(el.querySelector('form')).not.toBeNull();
+    });
+  });
+
   /** Renders without waiting for pending resources (`whenStable()` would never end). */
   async function renderPending() {
     TestBed.configureTestingModule({
-      providers: [{ provide: PreferencesApi, useValue: { get, update } }],
+      providers: [
+        { provide: PreferencesApi, useValue: { get, update } },
+        { provide: ContentApi, useValue: { skills: { list: listSkills } } },
+      ],
     });
     const fixture = TestBed.createComponent(PreferencesPage);
     fixture.detectChanges();
     return {
       el: fixture.nativeElement as HTMLElement,
+      /** Renders what is there now, without waiting for pending requests. */
+      detect: async () => {
+        fixture.detectChanges();
+        await new Promise((resolve) => setTimeout(resolve));
+        fixture.detectChanges();
+      },
       settle: async () => {
         fixture.detectChanges();
         await new Promise((resolve) => setTimeout(resolve));

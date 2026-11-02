@@ -2,9 +2,12 @@ import type { SkillUsage } from '@my-resume/api-models';
 import type { ChartPalette } from '../../../shared/panels/chart-palette';
 import type { ChartOption } from '../../../shared/panels/echart/echarts-loader';
 
-/** "Skills over time": experience (years) accumulated by the end of each year, one line per skill. */
-export function skillUsageOption(usage: SkillUsage, palette: ChartPalette, top = 8): ChartOption {
-  const series = usage.series.slice(0, top);
+/**
+ * "Skills over time": experience (years) accumulated by the end of each year, one line per skill.
+ * Draws every series it is given: the backend already limits them (`DashboardResponse.skillsOverTime`).
+ */
+export function skillUsageOption(usage: SkillUsage, palette: ChartPalette): ChartOption {
+  const { series } = usage;
   const axisLabel = { color: palette.muted };
   return {
     aria: { enabled: true, decal: { show: false } },

@@ -61,7 +61,7 @@ A grid of panels. Each panel has a title, an info tooltip, and a menu with **Vie
   - The axis is continuous and quiet, and bars are evenly sized and in calm colors.
   - Jobs and education are on separate rows, so periods without a job don't stand out.
   - Stat values (years of experience) use the resume's own figures ("14+ years in IT", "9+ years of Angular"), not a sum of job durations.
-- **Time series:** skill usage over time. One line per skill (or per category), calculated from the jobs and projects that used it. Clicking a line in the legend shows only that skill.
+- **Time series:** skill usage over time. One line per skill (or per category), calculated from the jobs and projects that used it. Clicking a line in the legend shows only that skill. By default it shows the 8 most used skills of the view; the admin can pick up to 8 skills in Preferences (when a filter leaves none of them, the most used ones are shown).
 - **Bar gauge:** skill levels grouped by category.
 - **Heatmap:** technologies used per year, like a GitHub contribution graph.
 - **Logs panel (preview):** the latest highlights, with a link to Explore.
@@ -184,6 +184,7 @@ This connects to the resume's AI skills (Claude, Claude skills) and to "Generate
 - `/admin/preferences` ("Preferences"): which public pages visitors see (Career Overview, Explore, Traces, Service map, Quality, About this site).
   - Every page is enabled by default. A disabled page is hidden from the menu, its route redirects visitors, and its API endpoints answer `404`. The admin still sees it, to preview it.
   - The plain view `/resume` can't be disabled; visitors land there when every page is disabled.
+  - **Skills over time:** up to 8 skills (checkboxes grouped by category) for the Career Overview's line chart; none checked = automatic (the most used skills).
   - Built so more site preferences can be added later (one group per kind of setting).
 - **Resume PDF:** upload a PDF file; the latest one is offered as "Export PDF" on the public site.
 - **Import from PDF (later):** read text out of the uploaded PDF to pre-fill content, which the owner then checks and edits. The first content will be entered by hand or with a seed script based on the owner's PDF.
@@ -311,7 +312,7 @@ The server checks every message the client sends, limits each connection to 20 m
     - ✅ the quality report built by CI (unit and integration tests, coverage, bundle size vs budget, CI timings, Nx project graph), baked into the backend image and served by `GET /api/quality`, and the dashboard `/dashboards/quality`
     - Not done yet: Lighthouse scores and e2e test results in the report (the panels show "not measured yet").
 
-10b. **Admin preferences:** page visibility (`/admin/preferences`, `GET`/`PATCH /api/preferences`)
+10b. **Admin preferences:** page visibility and the skills of the overview's line chart (`/admin/preferences`, `GET`/`PATCH /api/preferences`)
 
 11. **Polish:** guided tour, SEO/OpenGraph tags (a preview image showing the dashboard), accessibility checks, performance budgets.
 12. **Later: "Ask my resume" AI assistant.**
