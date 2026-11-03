@@ -1,17 +1,24 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Service, inject, signal } from '@angular/core';
 import type { HealthResponse } from '@my-resume/api-models';
 import {
+  EMPTY,
   Observable,
   Subscription,
   catchError,
   defer,
+  distinctUntilChanged,
+  fromEvent,
   map,
   merge,
   of,
   repeat,
   share,
+  startWith,
+  switchMap,
   takeUntil,
+  tap,
   timer,
 } from 'rxjs';
 
@@ -22,7 +29,10 @@ export type ApiStatus = 'unknown' | 'starting' | 'up' | 'down';
 const SLOW_CHECK_MS = 3_000;
 /** How often to check while starting, so the banner goes away soon after the backend is up. */
 const STARTING_POLL_MS = 5_000;
-/** A cold start takes about a minute: after this long, report "down" instead. */
+/**
+ * A cold start takes about a minute: after this long, report "down" instead.
+ * Time while the tab is hidden doesn't count: the clock restarts after the tab is shown again.
+ */
 const STARTING_LIMIT_MS = 120_000;
 /** What the platform or nginx answer while the backend isn't up yet. */
 const PROXY_ERRORS = [502, 503, 504];
@@ -32,6 +42,7 @@ const PROXY_ERRORS = [502, 503, 504];
 export class ApiStatusService {
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly document = inject(DOCUMENT);
   private readonly current = signal<ApiStatus>('unknown');
   private polling?: Subscription;
   /** When the current cold start began, or undefined when not starting. */
@@ -46,18 +57,34 @@ export class ApiStatusService {
 
   /**
    * Checks now, then every `intervalMs` (every 5 s while the API is starting).
+   * Only checks while the browser tab is visible: hiding the tab stops the timers and cancels a
+   * check in flight (the status keeps its last value), and showing it checks again right away.
    * Calling it again while polling does nothing.
    */
   startPolling(intervalMs: number): void {
     if (this.polling) return;
-    this.polling = defer(() => this.check())
-      .pipe(
-        repeat({
-          delay: () => timer(this.current() === 'starting' ? STARTING_POLL_MS : intervalMs),
-        }),
-      )
+    const poll = defer(() => this.check()).pipe(
+      repeat({
+        delay: () => timer(this.current() === 'starting' ? STARTING_POLL_MS : intervalMs),
+      }),
+    );
+    this.polling = this.pageVisible()
+      .pipe(switchMap((visible) => (visible ? poll : EMPTY)))
       .subscribe((status) => this.update(status));
     this.destroyRef.onDestroy(() => this.polling?.unsubscribe());
+  }
+
+  /** Whether the browser tab is visible, starting with now; emits only when that changes. */
+  private pageVisible(): Observable<boolean> {
+    return fromEvent(this.document, 'visibilitychange').pipe(
+      startWith(undefined),
+      map(() => this.document.visibilityState !== 'hidden'),
+      distinctUntilChanged(),
+      // Hidden time doesn't count toward STARTING_LIMIT_MS.
+      tap((visible) => {
+        if (!visible) this.startingSince = undefined;
+      }),
+    );
   }
 
   /** Emits "starting" if the answer is slow, then the result of the check. */
