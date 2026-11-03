@@ -24,6 +24,7 @@ describe('Shell', () => {
   const preferences = signal<SitePreferences | null>(null);
   const withDisabled = (...off: PublicPageId[]): SitePreferences => ({
     pages: Object.fromEntries(NAV_ITEMS.map((i) => [i.page, !off.includes(i.page)])) as never,
+    overview: { skillsOverTime: [] },
   });
 
   async function render(url = '/') {

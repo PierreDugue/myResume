@@ -110,7 +110,70 @@ describe('OverviewPage (Career Overview)', () => {
       '2025',
       '2026',
     ]);
-    expect(table.querySelector('tbody tr')?.textContent).toContain('Angular');
+    // skillsOverTime (NgRx only), not skillUsage (Angular, NgRx)
+    expect([...table.querySelectorAll('tbody th')].map((th) => th.textContent?.trim())).toEqual([
+      'NgRx',
+    ]);
+  });
+
+  const panelOf = (el: HTMLElement, title: string) =>
+    [...el.querySelectorAll('app-panel')].find((p) =>
+      p.querySelector('h2')?.textContent?.includes(title),
+    ) as HTMLElement;
+
+  it('draws the lines of skillsOverTime, not those of skillUsage', async () => {
+    chart.setOption.mockClear();
+    await render();
+    const options = chart.setOption.mock.calls.map(
+      ([o]) => o as { series: { type: string; name: string }[] },
+    );
+    const lines = options.find((o) => o.series.every((s) => s.type === 'line'));
+    expect(lines?.series.map((s) => s.name)).toEqual(['NgRx']);
+  });
+
+  it('keeps the heatmap on skillUsage', async () => {
+    const { el, settle } = await render();
+    const panel = panelOf(el, 'Technologies per year');
+    $<HTMLButtonElement>(panel, 'button.panel-menu-toggle').click();
+    await settle();
+    [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+      .find((b) => b.textContent?.trim() === 'Show as table')
+      ?.click();
+    await settle();
+    expect([...panel.querySelectorAll('tbody th')].map((th) => th.textContent?.trim())).toEqual([
+      'Angular',
+      'NgRx',
+    ]);
+  });
+
+  it('inspects the data of skillsOverTime for the line chart panel', async () => {
+    const { el, settle } = await render();
+    const panel = panelOf(el, 'Skills over time');
+    $<HTMLButtonElement>(panel, 'button.panel-menu-toggle').click();
+    await settle();
+    [...panel.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')]
+      .find((b) => b.textContent?.trim() === 'Inspect data')
+      ?.click();
+    await settle();
+    const json = panel.querySelector('[role="dialog"] pre')?.textContent ?? '';
+    expect(json).toContain('"mode": "selected"');
+    expect(json).not.toContain('"Angular"');
+  });
+
+  const tooltip = (el: HTMLElement) =>
+    panelOf(el, 'Skills over time').querySelector('.info')?.getAttribute('data-tip') ?? '';
+
+  it.each([
+    ['selected' as const, 'chosen by the site owner', 'most used'],
+    ['auto' as const, 'most used skills', 'site owner'],
+  ])('explains the %s lines in the info tooltip', async (mode, says, doesNotSay) => {
+    respond = () => {
+      const data = dashboardFixture();
+      return of({ ...data, skillsOverTime: { ...data.skillsOverTime, mode } });
+    };
+    const { el } = await render();
+    expect(tooltip(el)).toContain(says);
+    expect(tooltip(el)).not.toContain(doesNotSay);
   });
 
   it('shows an error with a retry button', async () => {

@@ -14,9 +14,10 @@ const skill = (id: string, name: string, category: string): Skill => ({
 
 @Component({
   imports: [SkillPicker],
-  template: `<app-skill-picker [skills]="skills" [(selected)]="selected" />`,
+  template: `<app-skill-picker [skills]="skills" [(selected)]="selected" [max]="max()" />`,
 })
 class Host {
+  max = signal<number | null>(null);
   skills = [
     skill('1', 'Angular', 'Core'),
     skill('2', 'NgRx', 'State'),
@@ -24,6 +25,15 @@ class Host {
   ];
   selected = signal<string[]>(['2']);
 }
+
+/**
+ * A box the limit blocks: announced as disabled (`aria-disabled`) but never `disabled`, so it stays
+ * in the tab order and a keyboard user can still reach it.
+ */
+const blocked = (box: HTMLInputElement): boolean => {
+  expect(box.disabled).toBe(false);
+  return box.getAttribute('aria-disabled') === 'true';
+};
 
 describe('SkillPicker', () => {
   async function render() {
@@ -52,5 +62,81 @@ describe('SkillPicker', () => {
     expect(fixture.componentInstance.selected()).toEqual(['2', '1']);
     byLabel('NgRx').click();
     expect(fixture.componentInstance.selected()).toEqual(['1']);
+  });
+
+  describe('max', () => {
+    const boxesOf = (el: HTMLElement): Record<string, HTMLInputElement> =>
+      Object.fromEntries(
+        [...el.querySelectorAll<HTMLInputElement>('input[type="checkbox"]')].map((b) => [
+          b.closest('label')?.textContent?.trim(),
+          b,
+        ]),
+      );
+
+    it.each<[number | null, string[], string[]]>([
+      [null, ['1', '2', '3'], []],
+      [2, ['2', '1'], ['React']],
+      [1, ['2'], ['Angular', 'React']],
+    ])('with max %s and %j selected, blocks %j', async (max, selected, expected) => {
+      const { el, fixture } = await render();
+      fixture.componentInstance.max.set(max);
+      fixture.componentInstance.selected.set(selected);
+      await fixture.whenStable();
+      const boxes = boxesOf(el);
+      expect(Object.keys(boxes).filter((name) => blocked(boxes[name]))).toEqual(expected);
+    });
+
+    it('blocks the unchecked boxes once the limit is reached, and keeps the checked ones free', async () => {
+      const { el, fixture } = await render();
+      fixture.componentInstance.max.set(2);
+      await fixture.whenStable();
+      let boxes = boxesOf(el);
+      expect(blocked(boxes['Angular'])).toBe(false); // 1 of 2 selected
+
+      boxes['Angular'].click();
+      await fixture.whenStable();
+      boxes = boxesOf(el);
+      expect(fixture.componentInstance.selected()).toEqual(['2', '1']);
+      expect(blocked(boxes['React'])).toBe(true);
+      expect(blocked(boxes['Angular'])).toBe(false);
+      expect(blocked(boxes['NgRx'])).toBe(false);
+    });
+
+    it('unblocks the boxes again when one is unchecked', async () => {
+      const { el, fixture } = await render();
+      fixture.componentInstance.max.set(2);
+      fixture.componentInstance.selected.set(['1', '2']);
+      await fixture.whenStable();
+      expect(blocked(boxesOf(el)['React'])).toBe(true);
+
+      boxesOf(el)['NgRx'].click();
+      await fixture.whenStable();
+      expect(fixture.componentInstance.selected()).toEqual(['1']);
+      expect(blocked(boxesOf(el)['React'])).toBe(false);
+    });
+
+    it('ignores a click on a blocked box: it stays unchecked and the selection is unchanged', async () => {
+      const { el, fixture } = await render();
+      fixture.componentInstance.max.set(1);
+      await fixture.whenStable();
+
+      boxesOf(el)['React'].click();
+      await fixture.whenStable();
+      expect(boxesOf(el)['React'].checked).toBe(false);
+      expect(fixture.componentInstance.selected()).toEqual(['2']);
+    });
+
+    it('keeps a blocked box focusable', async () => {
+      const { el, fixture } = await render();
+      fixture.componentInstance.max.set(1);
+      await fixture.whenStable();
+      document.body.appendChild(el);
+      try {
+        boxesOf(el)['React'].focus();
+        expect(document.activeElement).toBe(boxesOf(el)['React']);
+      } finally {
+        el.remove();
+      }
+    });
   });
 });

@@ -1,6 +1,7 @@
 /**
- * Page visibility (docs/spec.md, Admin area, Preferences). `/api/preferences` is stubbed, so the
- * real preferences in the database are never read or changed.
+ * Page visibility and the "Skills over time" selection (docs/spec.md, Admin area, Preferences).
+ * `/api/preferences` and `/api/skills` are stubbed, so the real preferences in the database are
+ * never read or changed.
  */
 describe('page preferences (stubbed API)', () => {
   const enc = (v: object) =>
@@ -14,8 +15,24 @@ describe('page preferences (stubbed API)', () => {
     quality: true,
     about: true,
   };
-  const stubPreferences = (pages: Partial<typeof allVisible>) =>
-    cy.intercept('GET', '/api/preferences', { pages: { ...allVisible, ...pages } }).as('prefs');
+  const stubPreferences = (pages: Partial<typeof allVisible>, skillsOverTime: string[] = []) =>
+    cy
+      .intercept('GET', '/api/preferences', {
+        pages: { ...allVisible, ...pages },
+        overview: { skillsOverTime },
+      })
+      .as('prefs');
+  const names = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India'];
+  const skills = names.map((name, i) => ({
+    id: `00000000-0000-4000-8000-00000000000${i + 1}`,
+    name,
+    slug: name.toLowerCase(),
+    category: i < 5 ? 'Core' : 'Tools',
+    level: null,
+    sortOrder: i,
+  }));
+  const skillBox = (name: string) =>
+    cy.contains('fieldset', 'Skills over time').contains('label', name).find('input');
   const menu = () => cy.get('nav[aria-label="Main"]');
 
   describe('as a visitor', () => {
@@ -59,6 +76,7 @@ describe('page preferences (stubbed API)', () => {
   describe('as the admin', () => {
     beforeEach(() => {
       cy.intercept('GET', '/api/auth/me', { id: 'a', email: 'pierre@example.com' });
+      cy.intercept('GET', '/api/skills', skills);
     });
 
     it('sees a disabled page marked "Hidden" and can open it to preview', () => {
@@ -71,7 +89,10 @@ describe('page preferences (stubbed API)', () => {
     it('turns a page off from the preferences and sees the menu change at once', () => {
       stubPreferences({});
       cy.intercept('PATCH', '/api/preferences', (req) =>
-        req.reply({ pages: { ...allVisible, ...req.body.pages } }),
+        req.reply({
+          pages: { ...allVisible, ...req.body.pages },
+          overview: { skillsOverTime: req.body.overview.skillsOverTime },
+        }),
       ).as('save');
       cy.visit('/admin', { onBeforeLoad: (w) => w.localStorage.setItem('auth.token', token) });
       cy.get('nav[aria-label="Admin sections"]').contains('a', 'Preferences').click();
@@ -83,9 +104,57 @@ describe('page preferences (stubbed API)', () => {
 
       cy.wait('@save')
         .its('request.body')
-        .should('deep.equal', { pages: { ...allVisible, traces: false } });
+        .should('deep.equal', {
+          pages: { ...allVisible, traces: false },
+          overview: { skillsOverTime: [] },
+        });
       cy.contains('[role="status"]', 'Preferences saved');
       menu().contains('a', 'Traces').should('contain', 'Hidden');
+    });
+
+    it('picks up to 8 skills for the "Skills over time" chart and saves them', () => {
+      stubPreferences({}, [skills[0].id]);
+      cy.intercept('PATCH', '/api/preferences', (req) =>
+        req.reply({
+          pages: { ...allVisible, ...req.body.pages },
+          overview: { skillsOverTime: req.body.overview.skillsOverTime },
+        }),
+      ).as('save');
+      cy.visit('/admin/preferences', {
+        onBeforeLoad: (w) => w.localStorage.setItem('auth.token', token),
+      });
+
+      cy.contains('fieldset', 'Skills over time').within(() => {
+        cy.contains('legend', 'Core');
+        cy.contains('legend', 'Tools');
+        cy.contains('1 of 8 selected');
+      });
+      skillBox('Alpha').should('be.checked');
+      names.slice(1, 8).forEach((name) => skillBox(name).check());
+
+      cy.contains('fieldset', 'Skills over time').within(() => {
+        cy.contains('8 of 8 selected');
+        cy.contains('You can pick up to 8 skills: uncheck one to pick another.');
+      });
+      skillBox('India').should('have.attr', 'aria-disabled', 'true').and('not.be.disabled');
+      skillBox('Hotel').should('not.have.attr', 'aria-disabled');
+
+      // A blocked box stays focusable, but neither a click on it nor on its label checks it.
+      skillBox('India').focus().should('have.focus');
+      skillBox('India').click();
+      skillBox('India').should('not.be.checked');
+      cy.contains('fieldset', 'Skills over time').contains('label', 'India').click();
+      skillBox('India').should('not.be.checked');
+      cy.contains('fieldset', 'Skills over time').contains('8 of 8 selected');
+
+      cy.contains('button', 'Save preferences').click();
+      cy.wait('@save')
+        .its('request.body.overview.skillsOverTime')
+        .should(
+          'deep.equal',
+          skills.slice(0, 8).map((s) => s.id),
+        );
+      cy.contains('[role="status"]', 'Preferences saved');
     });
   });
 });

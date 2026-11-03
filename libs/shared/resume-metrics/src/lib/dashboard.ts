@@ -7,6 +7,7 @@ import type {
   ResumeResponse,
   Skill,
   SkillTotalsGroup,
+  SkillsOverTime,
   SkillUsageSeries,
   StatValue,
   TimelineItem,
@@ -21,14 +22,24 @@ export interface DashboardInput {
   /** `YYYY-MM-DD`: "now" for current jobs and the default range. */
   today: string;
   query: DashboardQuery;
+  /** The admin's selection for "Skills over time" (skill ids). Missing or empty = automatic. */
+  skillsOverTime?: readonly string[];
 }
+
+/** The most lines the "Skills over time" chart draws: the automatic top, and the admin's maximum selection. */
+export const SKILLS_OVER_TIME_MAX = 8;
 
 const MIN_YEAR = 1950;
 const MAX_YEAR = 2100;
 const LATEST_HIGHLIGHTS = 5;
 
 /** Calculates every panel of the Career Overview (see docs/api-contract.md, Dashboard). */
-export function buildDashboard({ resume, today, query }: DashboardInput): DashboardResponse {
+export function buildDashboard({
+  resume,
+  today,
+  query,
+  skillsOverTime,
+}: DashboardInput): DashboardResponse {
   const currentYear = Number(today.slice(0, 4));
   const firstJobYear = minYear(resume.experiences.map((e) => e.startDate)) ?? currentYear;
   const range = resolveRange(query, firstJobYear, currentYear);
@@ -140,6 +151,7 @@ export function buildDashboard({ resume, today, query }: DashboardInput): Dashbo
       ),
     timeline: buildTimeline(resume, experiences, overlapsRange),
     skillUsage: { years, series },
+    skillsOverTime: pickSkillsOverTime(years, series, skillsOverTime),
     skillTotals: groupTotals(series, resume.skills),
     latestHighlights: highlights.slice(0, LATEST_HIGHLIGHTS).map(
       ({ h, e }): LogLine => ({
@@ -269,6 +281,22 @@ function buildTimeline(
   return items
     .filter((i) => overlapsRange(i.startDate, i.endDate))
     .sort((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
+/**
+ * The chart's lines, a subset of `series` (same order). The admin's selection wins if at least one
+ * selected skill is in `series` (used in the range and kept by the filters); otherwise the most used.
+ */
+function pickSkillsOverTime(
+  years: number[],
+  series: SkillUsageSeries[],
+  selection: readonly string[] = [],
+): SkillsOverTime {
+  const selected = series.filter((s) => selection.includes(s.skillId));
+  if (selected.length > 0) {
+    return { mode: 'selected', years, series: selected.slice(0, SKILLS_OVER_TIME_MAX) };
+  }
+  return { mode: 'auto', years, series: series.slice(0, SKILLS_OVER_TIME_MAX) };
 }
 
 function groupTotals(series: SkillUsageSeries[], skills: Skill[]): SkillTotalsGroup[] {

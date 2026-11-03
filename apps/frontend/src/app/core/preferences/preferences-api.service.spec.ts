@@ -32,8 +32,8 @@ describe('PreferencesApi', () => {
     const result = firstValueFrom(api.get());
     const req = http.expectOne('/api/preferences');
     expect(req.request.method).toBe('GET');
-    req.flush({ pages: all(true) });
-    expect(await result).toEqual({ pages: all(true) });
+    req.flush({ pages: all(true), overview: { skillsOverTime: [] } });
+    expect(await result).toEqual({ pages: all(true), overview: { skillsOverTime: [] } });
   });
 
   it('sends only what changed with PATCH /api/preferences and returns the full preferences', async () => {
@@ -41,7 +41,7 @@ describe('PreferencesApi', () => {
     const req = http.expectOne('/api/preferences');
     expect(req.request.method).toBe('PATCH');
     expect(req.request.body).toEqual({ pages: { explore: false } });
-    req.flush({ pages: { ...all(true), explore: false } });
+    req.flush({ pages: { ...all(true), explore: false }, overview: { skillsOverTime: [] } });
     expect((await result).pages.explore).toBe(false);
   });
 

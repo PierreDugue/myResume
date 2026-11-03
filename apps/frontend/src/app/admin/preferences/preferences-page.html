@@ -37,6 +37,33 @@
         </div>
       </fieldset>
 
+      <fieldset>
+        <legend>Skills over time</legend>
+        <p class="hint">
+          The checked skills (up to {{ skillsMax }}) are the lines of the "Skills over time" chart
+          on the Career Overview. With none checked, the chart shows the {{ skillsMax }} most used
+          skills of the view. When a visitor's filter leaves none of the checked skills, the most
+          used ones are shown instead.
+        </p>
+        <app-skill-picker
+          [skills]="skills()"
+          [(selected)]="form.overview.skillsOverTime().value"
+          [max]="skillsMax"
+        />
+        <div aria-live="polite">
+          @if (skillsCount() === 0) {
+            <p class="hint">Automatic: the {{ skillsMax }} most used skills</p>
+          } @else {
+            <p class="hint">{{ skillsCount() }} of {{ skillsMax }} selected</p>
+          }
+          @if (skillsCount() >= skillsMax) {
+            <p class="warning">
+              You can pick up to {{ skillsMax }} skills: uncheck one to pick another.
+            </p>
+          }
+        </div>
+      </fieldset>
+
       <div class="form-actions">
         <button class="button primary" type="submit" [disabled]="form().submitting()">
           Save preferences

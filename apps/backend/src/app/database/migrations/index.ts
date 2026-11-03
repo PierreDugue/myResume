@@ -7,6 +7,7 @@ import { TagHighlightSkills1792736365265 } from './1792736365265-TagHighlightSki
 import { AddProjectSpans1792744929736 } from './1792744929736-AddProjectSpans';
 import { SeedProjectSpans1792744955583 } from './1792744955583-SeedProjectSpans';
 import { AddSitePreferences1793466829834 } from './1793466829834-AddSitePreferences';
+import { AddOverviewPreferences1793629800000 } from './1793629800000-AddOverviewPreferences';
 
 /**
  * Every migration of this folder, in order. The backend is bundled with webpack, so TypeORM cannot
@@ -22,4 +23,5 @@ export const MIGRATIONS: MixedList<Function | string> = [
   AddProjectSpans1792744929736,
   SeedProjectSpans1792744955583,
   AddSitePreferences1793466829834,
+  AddOverviewPreferences1793629800000,
 ];

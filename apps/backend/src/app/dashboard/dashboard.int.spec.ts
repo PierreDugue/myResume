@@ -1,4 +1,5 @@
-import type { DashboardResponse } from '@my-resume/api-models';
+import type { DashboardResponse, Experience } from '@my-resume/api-models';
+import { SKILLS_OVER_TIME_MAX } from '@my-resume/resume-metrics';
 import { Api, api, createTestApp, TestApp } from '../../testing/test-app';
 
 describe('GET /api/dashboard (seeded resume)', () => {
@@ -77,5 +78,115 @@ describe('GET /api/dashboard (seeded resume)', () => {
     ['an unknown parameter', '?foo=1'],
   ])('returns 400 for %s', async (_case, query) => {
     expect((await get(query)).status).toBe(400);
+  });
+
+  describe('skills over time', () => {
+    const select = (ids: string[]) =>
+      http.patch('/api/preferences', { overview: { skillsOverTime: ids } });
+    const reset = () => t.dataSource.query('DELETE FROM "site_preferences"');
+    beforeEach(reset);
+    afterEach(reset);
+
+    it('is automatic without a selection: the first 8 of skillUsage', async () => {
+      const { body } = await get();
+      expect(body.skillUsage.series.length).toBeGreaterThan(SKILLS_OVER_TIME_MAX);
+      expect(body.skillsOverTime.mode).toBe('auto');
+      expect(body.skillsOverTime.years).toEqual(body.skillUsage.years);
+      expect(body.skillsOverTime.series).toEqual(
+        body.skillUsage.series.slice(0, SKILLS_OVER_TIME_MAX),
+      );
+    });
+
+    it('shows the selection, in usage order and not in the order sent', async () => {
+      const before = (await get()).body;
+      const usage = before.skillUsage.series;
+      // Not among the top 8, the least used, and the most used.
+      const picked = [usage[usage.length - 1], usage[0], usage[2]];
+      expect((await select(picked.map((s) => s.skillId))).status).toBe(200);
+
+      const { body } = await get();
+      expect(body.skillsOverTime.mode).toBe('selected');
+      expect(body.skillsOverTime.series.map((s) => s.skillId)).toEqual([
+        usage[0].skillId,
+        usage[2].skillId,
+        usage[usage.length - 1].skillId,
+      ]);
+      expect(body.skillsOverTime.series[0]).toEqual(usage[0]);
+      expect(body.skillUsage).toEqual(before.skillUsage);
+      expect(body.skillTotals).toEqual(before.skillTotals);
+    });
+
+    it('keeps only the selected skills that the category filter leaves', async () => {
+      const usage = (await get()).body.skillUsage.series;
+      const ai = usage.filter((s) => s.category === 'AI');
+      const other = usage.find((s) => s.category !== 'AI');
+      expect(ai.length).toBeGreaterThan(0);
+      expect(other).toBeDefined();
+      await select([other?.skillId as string, ai[0].skillId]);
+
+      const { body } = await get('?category=AI');
+      expect(body.skillsOverTime.mode).toBe('selected');
+      expect(body.skillsOverTime.series.map((s) => s.skillId)).toEqual([ai[0].skillId]);
+    });
+
+    it('falls back to the most used skills when a filter keeps none of the selection', async () => {
+      const usage = (await get()).body.skillUsage.series;
+      const other = usage.find((s) => s.category !== 'AI');
+      await select([other?.skillId as string]);
+
+      expect((await get()).body.skillsOverTime.mode).toBe('selected');
+      const { body } = await get('?category=AI');
+      expect(body.skillsOverTime.mode).toBe('auto');
+      expect(body.skillsOverTime.series).toEqual(
+        body.skillUsage.series.slice(0, SKILLS_OVER_TIME_MAX),
+      );
+      expect(body.skillsOverTime.series.length).toBeGreaterThan(0);
+    });
+
+    it('applies the skill filter to the selection', async () => {
+      const usage = (await get()).body.skillUsage.series;
+      await select([usage[0].skillId, usage[1].skillId]);
+
+      const bySkill = (await get(`?skill=${usage[1].slug}`)).body;
+      expect(bySkill.skillsOverTime.mode).toBe('selected');
+      expect(bySkill.skillsOverTime.series.map((s) => s.skillId)).toEqual([usage[1].skillId]);
+    });
+
+    it('keeps only the selected skills used in the range', async () => {
+      const usedIn2011 = (await get('?from=2011&to=2011')).body.skillUsage.series;
+      const ids2011 = new Set(usedIn2011.map((s) => s.skillId));
+      const notIn2011 = (await get()).body.skillUsage.series.find((s) => !ids2011.has(s.skillId));
+      expect(usedIn2011.length).toBeGreaterThan(0);
+      expect(notIn2011).toBeDefined();
+      await select([usedIn2011[0].skillId, notIn2011?.skillId as string]);
+
+      const { body } = await get('?from=2011&to=2011');
+      expect(body.skillsOverTime.years).toEqual([2011]);
+      expect(body.skillsOverTime.mode).toBe('selected');
+      expect(body.skillsOverTime.series.map((s) => s.skillId)).toEqual([usedIn2011[0].skillId]);
+    });
+
+    it('drops a deleted skill from the selection and falls back to automatic', async () => {
+      const { body: temp } = await http.post('/api/skills', { name: 'Temp skill', category: 'x' });
+      const [job] = (await http.get('/api/experiences')).body as Experience[];
+      try {
+        // Used by a job, so the selection really draws it before the delete.
+        await http.patch(`/api/experiences/${job.id}`, { skillIds: [...job.skillIds, temp.id] });
+        await select([temp.id]);
+        const before = (await get()).body.skillsOverTime;
+        expect(before.mode).toBe('selected');
+        expect(before.series.map((s) => s.skillId)).toEqual([temp.id]);
+
+        expect((await http.delete(`/api/skills/${temp.id}`)).status).toBe(204);
+        const { body } = await get();
+        expect(body.skillsOverTime.mode).toBe('auto');
+        expect(body.skillsOverTime.series).toEqual(
+          body.skillUsage.series.slice(0, SKILLS_OVER_TIME_MAX),
+        );
+      } finally {
+        await http.delete(`/api/skills/${temp.id}`);
+        await http.patch(`/api/experiences/${job.id}`, { skillIds: job.skillIds });
+      }
+    });
   });
 });

@@ -19,8 +19,9 @@ import { LogPreview } from './panels/logs/log-preview';
 import { ProfilePanel } from './panels/profile/profile-panel';
 import { CareerTimeline } from './panels/timeline/career-timeline';
 
-const USAGE_TOP = 8;
 const HEATMAP_TOP = 15;
+const USAGE_INFO =
+  'Years of experience accumulated with each skill, counting every month of the jobs and projects that used it.';
 
 /**
  * Home dashboard ("Career Overview"). The URL holds the view (?from&to&category&skill), so any view
@@ -98,15 +99,18 @@ export class OverviewPage {
     return readChartPalette(this.document.documentElement);
   });
 
-  protected readonly usageSeries = computed(
-    () => this.data()?.skillUsage.series.slice(0, USAGE_TOP) ?? [],
-  );
+  protected readonly usageSeries = computed(() => this.data()?.skillsOverTime.series ?? []);
   protected readonly heatmapSeries = computed(
     () => this.data()?.skillUsage.series.slice(0, HEATMAP_TOP) ?? [],
   );
+  protected readonly usageInfo = computed(() =>
+    this.data()?.skillsOverTime.mode === 'selected'
+      ? `${USAGE_INFO} Shows the skills chosen by the site owner that match the view.`
+      : `${USAGE_INFO} Shows the most used skills of the view.`,
+  );
   protected readonly usageOption = computed(() => {
     const data = this.data();
-    return data ? skillUsageOption(data.skillUsage, this.palette(), USAGE_TOP) : null;
+    return data ? skillUsageOption(data.skillsOverTime, this.palette()) : null;
   });
   protected readonly heatmapOption = computed(() => {
     const data = this.data();

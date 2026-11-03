@@ -12,7 +12,7 @@ const prefs = (off: PublicPageId[] = []): SitePreferences => {
   for (const id of ['overview', 'explore', 'traces', 'serviceMap', 'quality', 'about'] as const) {
     pages[id] = !off.includes(id);
   }
-  return { pages };
+  return { pages, overview: { skillsOverTime: [] } };
 };
 
 describe('pageAccessGuard', () => {

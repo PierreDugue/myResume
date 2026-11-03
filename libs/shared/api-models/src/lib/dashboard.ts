@@ -81,6 +81,12 @@ export interface SkillUsage {
   series: SkillUsageSeries[];
 }
 
+/** The lines of the "Skills over time" chart: a subset of `skillUsage.series`. */
+export interface SkillsOverTime extends SkillUsage {
+  /** 'selected': the admin's selection (Preferences, overview.skillsOverTime) matched the view; 'auto': the most used skills. */
+  mode: 'selected' | 'auto';
+}
+
 export interface SkillTotalsGroup {
   category: string;
   skills: {
@@ -111,6 +117,7 @@ export interface DashboardResponse {
   impacts: ImpactItem[];
   timeline: TimelineItem[];
   skillUsage: SkillUsage;
+  skillsOverTime: SkillsOverTime;
   skillTotals: SkillTotalsGroup[];
   latestHighlights: LogLine[];
 }

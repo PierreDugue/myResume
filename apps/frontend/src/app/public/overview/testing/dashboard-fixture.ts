@@ -124,6 +124,22 @@ export function dashboardFixture(): DashboardResponse {
         },
       ],
     },
+    // Differs from `skillUsage` on purpose: the page must draw this one, not the other.
+    skillsOverTime: {
+      mode: 'selected',
+      years: [2024, 2025, 2026],
+      series: [
+        {
+          skillId: 'n',
+          slug: 'ngrx',
+          name: 'NgRx',
+          category: 'State',
+          monthsPerYear: [12, 11, 0],
+          cumulativeYears: [2.3, 3.3, 3.3],
+          totalYears: 1.9,
+        },
+      ],
+    },
     skillTotals: [
       {
         category: 'Core',
