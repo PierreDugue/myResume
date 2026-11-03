@@ -19,8 +19,6 @@ This site shows my career the way a monitoring tool (in the style of Grafana) sh
 
 The time range picker and the filters (`$company`, `$skill_category`, `$tech`) apply to every panel and are kept in the URL, so any view can be shared as a link. Every chart can also be shown as a table, and every panel has an **Inspect data** menu that shows the raw JSON behind it.
 
-Planned next (see the build order in [docs/spec.md](docs/spec.md)): status alerts (`OpenToWork` 🔥), live site metrics streamed over WebSockets, PDF export, a quality dashboard, and an "Ask my resume" assistant.
-
 ## How it works
 
 ```

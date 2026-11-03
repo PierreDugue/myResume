@@ -161,4 +161,145 @@ describe('ApiStatusService', () => {
       expect(service.status()).toBe('up');
     });
   });
+
+  describe('page visibility (hidden tabs send no health checks)', () => {
+    const proxyPage = '<html><body>Bad Gateway</body></html>';
+    const bad = { status: 502, statusText: 'Bad Gateway' };
+
+    /** jsdom's tab is always visible; this fakes the Page Visibility API. */
+    function setVisibility(state: DocumentVisibilityState): void {
+      Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state });
+      document.dispatchEvent(new Event('visibilitychange'));
+    }
+
+    beforeEach(() => vi.useFakeTimers());
+
+    afterEach(() => {
+      // Remove the fake, so the other tests see the real "visible" state again.
+      delete (document as { visibilityState?: unknown }).visibilityState;
+    });
+
+    it('makes no request while the tab starts hidden, then checks as soon as it is visible', () => {
+      Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get: () => 'hidden',
+      });
+      service.startPolling(30_000);
+
+      vi.advanceTimersByTime(5 * 30_000);
+      http.expectNone('/api/health');
+      expect(service.status()).toBe('unknown');
+
+      setVisibility('visible');
+      http.expectOne('/api/health').flush(up);
+      expect(service.status()).toBe('up');
+
+      vi.advanceTimersByTime(29_999);
+      http.expectNone('/api/health');
+      vi.advanceTimersByTime(1);
+      http.expectOne('/api/health').flush(up);
+    });
+
+    it('stops polling when the tab becomes hidden, and resumes with an immediate check', () => {
+      service.startPolling(30_000);
+      http.expectOne('/api/health').flush(up);
+
+      vi.advanceTimersByTime(10_000);
+      setVisibility('hidden');
+
+      vi.advanceTimersByTime(20_000);
+      http.expectNone('/api/health');
+      vi.advanceTimersByTime(10 * 60_000);
+      http.expectNone('/api/health');
+
+      setVisibility('visible');
+      http.expectOne('/api/health').flush(up);
+
+      vi.advanceTimersByTime(29_999);
+      http.expectNone('/api/health');
+      vi.advanceTimersByTime(1);
+      http.expectOne('/api/health').flush(up);
+    });
+
+    it('keeps the last status while the tab is hidden', () => {
+      service.startPolling(30_000);
+      http.expectOne('/api/health').flush(up);
+
+      setVisibility('hidden');
+      vi.advanceTimersByTime(10 * 60_000);
+
+      expect(service.status()).toBe('up');
+    });
+
+    it('cancels the 5 second check when the tab becomes hidden while starting', () => {
+      service.startPolling(30_000);
+      http.expectOne('/api/health').flush(proxyPage, bad);
+      expect(service.status()).toBe('starting');
+
+      vi.advanceTimersByTime(3_000);
+      setVisibility('hidden');
+      vi.advanceTimersByTime(60_000);
+      http.expectNone('/api/health');
+      expect(service.status()).toBe('starting');
+
+      setVisibility('visible');
+      http.expectOne('/api/health').flush(up);
+      expect(service.status()).toBe('up');
+    });
+
+    it('does not count hidden time toward the 2 minute limit', () => {
+      service.startPolling(30_000);
+      http.expectOne('/api/health').flush(proxyPage, bad);
+
+      // Starting for 100 s.
+      for (let t = 5_000; t <= 100_000; t += 5_000) {
+        vi.advanceTimersByTime(5_000);
+        http.expectOne('/api/health').flush(proxyPage, bad);
+      }
+      expect(service.status()).toBe('starting');
+
+      setVisibility('hidden');
+      vi.advanceTimersByTime(10 * 60_000);
+      setVisibility('visible');
+      http.expectOne('/api/health').flush(proxyPage, bad);
+      expect(service.status()).toBe('starting');
+
+      // The 2 minutes start again from that first "starting" answer.
+      for (let t = 5_000; t <= 115_000; t += 5_000) {
+        vi.advanceTimersByTime(5_000);
+        http.expectOne('/api/health').flush(proxyPage, bad);
+      }
+      expect(service.status()).toBe('starting');
+      vi.advanceTimersByTime(5_000);
+      http.expectOne('/api/health').flush(proxyPage, bad);
+      expect(service.status()).toBe('down');
+    });
+
+    it('cancels a check in flight when the tab becomes hidden', () => {
+      service.startPolling(30_000);
+      const req = http.expectOne('/api/health');
+
+      vi.advanceTimersByTime(2_000);
+      setVisibility('hidden');
+      expect(req.cancelled).toBe(true);
+
+      // The slow-check timer (3 s) must not report "starting" while hidden.
+      vi.advanceTimersByTime(60_000);
+      expect(service.status()).toBe('unknown');
+      http.expectNone('/api/health');
+    });
+
+    it('does not check again when the tab is still visible after a visibilitychange', () => {
+      service.startPolling(30_000);
+      http.expectOne('/api/health').flush(up);
+
+      setVisibility('visible');
+      http.expectNone('/api/health');
+
+      vi.advanceTimersByTime(29_999);
+      http.expectNone('/api/health');
+      vi.advanceTimersByTime(1);
+      http.expectOne('/api/health').flush(up);
+    });
+  });
 });
