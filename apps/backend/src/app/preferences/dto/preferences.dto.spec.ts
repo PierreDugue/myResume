@@ -2,7 +2,7 @@ import type { SitePreferences } from '@my-resume/api-models';
 import { SitePreferencesEntity } from '../entities/site-preferences.entity';
 import {
   sentOverviewPreferences,
-  storedSkillsOverTime,
+  parseStoredSkillsOverTime,
   toSitePreferences,
   UpdateOverviewPreferencesDto,
 } from './preferences.dto';
@@ -91,14 +91,14 @@ describe('toSitePreferences, overview', () => {
   });
 });
 
-describe('storedSkillsOverTime', () => {
+describe('parseStoredSkillsOverTime', () => {
   it('is empty without a row or without the key', () => {
-    expect(storedSkillsOverTime(null)).toEqual([]);
-    expect(storedSkillsOverTime(entity({}, {}))).toEqual([]);
+    expect(parseStoredSkillsOverTime(null)).toEqual([]);
+    expect(parseStoredSkillsOverTime(entity({}, {}))).toEqual([]);
   });
 
   it('returns the stored uuids', () => {
-    expect(storedSkillsOverTime(entity({}, { skillsOverTime: [ID_B, ID_A] }))).toEqual([
+    expect(parseStoredSkillsOverTime(entity({}, { skillsOverTime: [ID_B, ID_A] }))).toEqual([
       ID_B,
       ID_A,
     ]);
@@ -110,12 +110,12 @@ describe('storedSkillsOverTime', () => {
     ['null', null],
     ['a number', 3],
   ])('ignores a stored value that is %s instead of an array', (_case, value) => {
-    expect(storedSkillsOverTime(entity({}, { skillsOverTime: value }))).toEqual([]);
+    expect(parseStoredSkillsOverTime(entity({}, { skillsOverTime: value }))).toEqual([]);
   });
 
   it('drops items that are not uuid strings, and duplicates', () => {
     const stored = [ID_A, 7, null, 'abc', "x'); DROP TABLE skills;--", {}, ID_B, ID_A];
-    expect(storedSkillsOverTime(entity({}, { skillsOverTime: stored }))).toEqual([ID_A, ID_B]);
+    expect(parseStoredSkillsOverTime(entity({}, { skillsOverTime: stored }))).toEqual([ID_A, ID_B]);
   });
 });
 

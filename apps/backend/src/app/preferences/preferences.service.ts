@@ -6,7 +6,7 @@ import { SkillsService } from '../skills/skills.service';
 import {
   sentOverviewPreferences,
   sentPageFlags,
-  storedSkillsOverTime,
+  parseStoredSkillsOverTime,
   toSitePreferences,
   UpdateSitePreferencesDto,
 } from './dto/preferences.dto';
@@ -62,12 +62,12 @@ export class PreferencesService {
    * the dashboard needs no extra query, since `buildDashboard` ignores unknown ids.
    */
   async storedSkillsOverTime(): Promise<string[]> {
-    return storedSkillsOverTime(await this.find());
+    return parseStoredSkillsOverTime(await this.find());
   }
 
   /** The stored selection, minus the skills that no longer exist, in skills-list order. */
   private async toResponse(row: SitePreferencesEntity | null): Promise<SitePreferences> {
-    return toSitePreferences(row, await this.skills.existingIds(storedSkillsOverTime(row)));
+    return toSitePreferences(row, await this.skills.existingIds(parseStoredSkillsOverTime(row)));
   }
 
   private async find(): Promise<SitePreferencesEntity | null> {

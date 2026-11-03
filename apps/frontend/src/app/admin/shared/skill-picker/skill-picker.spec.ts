@@ -73,11 +73,17 @@ describe('SkillPicker', () => {
         ]),
       );
 
-    it('has no limit by default: no box is blocked', async () => {
+    it.each<[number | null, string[], string[]]>([
+      [null, ['1', '2', '3'], []],
+      [2, ['2', '1'], ['React']],
+      [1, ['2'], ['Angular', 'React']],
+    ])('with max %s and %j selected, blocks %j', async (max, selected, expected) => {
       const { el, fixture } = await render();
-      fixture.componentInstance.selected.set(['1', '2', '3']);
+      fixture.componentInstance.max.set(max);
+      fixture.componentInstance.selected.set(selected);
       await fixture.whenStable();
-      expect(Object.values(boxesOf(el)).every((b) => !blocked(b))).toBe(true);
+      const boxes = boxesOf(el);
+      expect(Object.keys(boxes).filter((name) => blocked(boxes[name]))).toEqual(expected);
     });
 
     it('blocks the unchecked boxes once the limit is reached, and keeps the checked ones free', async () => {
@@ -131,16 +137,6 @@ describe('SkillPicker', () => {
       } finally {
         el.remove();
       }
-    });
-
-    it('blocks the unchecked boxes when max is 1 and one is selected', async () => {
-      const { el, fixture } = await render();
-      fixture.componentInstance.max.set(1);
-      await fixture.whenStable();
-      const boxes = boxesOf(el);
-      expect(blocked(boxes['NgRx'])).toBe(false);
-      expect(blocked(boxes['Angular'])).toBe(true);
-      expect(blocked(boxes['React'])).toBe(true);
     });
   });
 });

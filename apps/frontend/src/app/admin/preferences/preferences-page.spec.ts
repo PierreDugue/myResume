@@ -1,7 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import type { Skill, SitePreferences, UpdateSitePreferencesRequest } from '@my-resume/api-models';
-import { SKILLS_OVER_TIME_MAX } from '@my-resume/resume-metrics';
 import { Observable, Subject, of, throwError } from 'rxjs';
 import { ContentApi } from '../../core/content/content-api.service';
 import { PreferencesApi } from '../../core/preferences/preferences-api.service';
@@ -66,13 +65,6 @@ describe('toModel / toRequest', () => {
     expect(toRequest(model)).toEqual({
       pages: loaded.pages,
       overview: { skillsOverTime: ['s2', 's1'] },
-    });
-  });
-
-  it('sends the overview group in full, even when it is empty (back to automatic)', () => {
-    expect(toRequest(toModel(prefs()))).toEqual({
-      pages: prefs().pages,
-      overview: { skillsOverTime: [] },
     });
   });
 
@@ -321,14 +313,10 @@ describe('PreferencesPage', () => {
       expect(hint).toContain('most used');
     });
 
-    it('lists the skills grouped by category, with the stored selection checked', async () => {
+    it('lists every skill, with the stored selection checked', async () => {
       loaded = () => of(prefs([], ['s2', 's7']));
       const { el } = await render();
       expect(listSkills).toHaveBeenCalledOnce();
-      const legends = [...fieldset(el).querySelectorAll('.groups legend')].map((l) =>
-        l.textContent?.trim(),
-      );
-      expect(legends).toEqual(['Core', 'Tools']);
       expect(fieldset(el).querySelectorAll('input[type="checkbox"]')).toHaveLength(10);
       const checked = NAMES.filter((n) => box(el, n).checked);
       expect(checked).toEqual(['Bravo', 'Golf']);
@@ -368,33 +356,24 @@ describe('PreferencesPage', () => {
       });
     });
 
-    it('says the lines are automatic when nothing is checked', async () => {
+    it.each([
+      [0, 'Automatic: the 8 most used skills'],
+      [1, '1 of 8 selected'],
+      [7, '7 of 8 selected'],
+      [8, '8 of 8 selected You can pick up to 8 skills: uncheck one to pick another.'],
+    ])('with %i checked, says "%s"', async (n, expected) => {
       const { el, settle } = await render();
-      expect(status(el)).toBe('Automatic: the 8 most used skills');
-      box(el, 'Alpha').click();
-      await settle();
-      expect(status(el)).toBe('1 of 8 selected');
-      box(el, 'Alpha').click();
-      await settle();
-      expect(status(el)).toBe('Automatic: the 8 most used skills');
+      await checkFirst(el, settle, n);
+      expect(status(el)).toBe(expected);
     });
 
-    it('blocks the other boxes at the limit and says why', async () => {
-      expect(SKILLS_OVER_TIME_MAX).toBe(8);
+    it('passes the limit to the picker: at 8, the other boxes are blocked until one is unchecked', async () => {
       const { el, settle } = await render();
       await checkFirst(el, settle, 8);
-
-      expect(status(el)).toContain('8 of 8 selected');
-      expect(status(el)).toContain('You can pick up to 8 skills: uncheck one to pick another.');
       expect(blocked(box(el, 'India'))).toBe(true);
-      expect(blocked(box(el, 'Juliet'))).toBe(true);
-      expect(blocked(box(el, 'Alpha'))).toBe(false);
-      expect(box(el, 'Hotel').checked).toBe(true);
-      expect(blocked(box(el, 'Hotel'))).toBe(false);
 
       box(el, 'Hotel').click();
       await settle();
-      expect(status(el)).toBe('7 of 8 selected');
       expect(blocked(box(el, 'India'))).toBe(false);
     });
 

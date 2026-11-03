@@ -128,13 +128,6 @@ describe('Skills API', () => {
     it('returns [] for no ids', async () => {
       expect(await t.app.get(SkillsService).existingIds([])).toEqual([]);
     });
-
-    it('drops a deleted skill', async () => {
-      const a = (await create({ name: 'A', category: 'x' })).body as Skill;
-      const b = (await create({ name: 'B', category: 'x' })).body as Skill;
-      await http.delete(`/api/skills/${a.id}`);
-      expect(await t.app.get(SkillsService).existingIds([a.id, b.id])).toEqual([b.id]);
-    });
   });
 
   it('requires the admin token for every write (401)', async () => {

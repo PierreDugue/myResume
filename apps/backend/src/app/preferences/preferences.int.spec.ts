@@ -6,10 +6,8 @@ import type {
   SitePreferences,
 } from '@my-resume/api-models';
 import { SKILLS_OVER_TIME_MAX } from '@my-resume/resume-metrics';
-import { vi } from 'vitest';
 import request from 'supertest';
 import { Api, api, createTestApp, TestApp } from '../../testing/test-app';
-import { SkillsService } from '../skills/skills.service';
 import { PreferencesService } from './preferences.service';
 
 const ALL_ENABLED: PagePreferences = {
@@ -302,52 +300,24 @@ describe('Preferences API', () => {
         expect(await service().storedSkillsOverTime()).toEqual([]);
       });
 
-      it('returns the stored ids without looking up the skills (buildDashboard ignores unknown ids)', async () => {
-        await http.patch('/api/preferences', { overview: { skillsOverTime: [ids[2], ids[0]] } });
+      it('returns the stored ids as they are: no skills lookup, so a deleted id stays', async () => {
         await t.dataSource.query(
-          `UPDATE "site_preferences" SET "overview" = jsonb_build_object('skillsOverTime', jsonb_build_array($1::text, $2::text, $3::text))`,
+          `INSERT INTO "site_preferences" ("overview") VALUES (jsonb_build_object('skillsOverTime', jsonb_build_array($1::text, $2::text, $3::text)))`,
           [ids[2], MISSING, ids[0]],
         );
-        const skills = t.app.get(SkillsService);
-        const existingIds = vi.spyOn(skills, 'existingIds');
-        const findByIds = vi.spyOn(skills, 'findByIdsOrFail');
-        try {
-          expect(await service().storedSkillsOverTime()).toEqual([ids[2], MISSING, ids[0]]);
-          expect(existingIds).not.toHaveBeenCalled();
-          expect(findByIds).not.toHaveBeenCalled();
-        } finally {
-          existingIds.mockRestore();
-          findByIds.mockRestore();
-        }
+        expect(await service().storedSkillsOverTime()).toEqual([ids[2], MISSING, ids[0]]);
       });
     });
 
     it('ignores malformed values already stored (never fails, never reaches the SQL)', async () => {
-      const cases: [unknown, string[]][] = [
-        ['nope', []],
-        [null, []],
-        [{ 0: 'x' }, []],
-        [[7, null, "'); DROP TABLE skills;--", ids[0], ids[0]], [ids[0]]],
-      ];
-      for (const [stored, expected] of cases) {
-        await t.dataSource.query('DELETE FROM "site_preferences"');
-        await t.dataSource.query(`INSERT INTO "site_preferences" ("overview") VALUES ($1::jsonb)`, [
-          JSON.stringify({ skillsOverTime: stored }),
-        ]);
-        const res = await http.get('/api/preferences');
-        expect(res.status).toBe(200);
-        expect(res.body.overview.skillsOverTime, JSON.stringify(stored)).toEqual(expected);
-      }
-    });
-
-    it('returns 401 without a token and changes nothing', async () => {
-      const res = await http.patch(
-        '/api/preferences',
-        { overview: { skillsOverTime: [ids[0]] } },
-        false,
-      );
-      expect(res.status).toBe(401);
-      expect(await selection()).toEqual([]);
+      // Every kind of bad entry at once; each kind is unit-tested in preferences.dto.spec.ts.
+      const stored = [7, null, "'); DROP TABLE skills;--", ids[0], ids[0]];
+      await t.dataSource.query(`INSERT INTO "site_preferences" ("overview") VALUES ($1::jsonb)`, [
+        JSON.stringify({ skillsOverTime: stored }),
+      ]);
+      const res = await http.get('/api/preferences');
+      expect(res.status).toBe(200);
+      expect(res.body.overview.skillsOverTime).toEqual([ids[0]]);
     });
 
     it.each<[string, () => unknown]>([

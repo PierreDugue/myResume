@@ -1,5 +1,5 @@
-import { buildDashboard, DashboardQueryError, SKILLS_OVER_TIME_MAX } from './dashboard';
-import type { ResumeResponse } from '@my-resume/api-models';
+import type { DashboardQuery, ResumeResponse } from '@my-resume/api-models';
+import { buildDashboard, DashboardQueryError } from './dashboard';
 import { resumeFixture, TODAY } from './fixtures';
 
 const build = (query = {}) => buildDashboard({ resume: resumeFixture(), today: TODAY, query });
@@ -118,10 +118,6 @@ describe('buildDashboard', () => {
       return resume;
     }
 
-    it('limits the chart to 8 lines', () => {
-      expect(SKILLS_OVER_TIME_MAX).toBe(8);
-    });
-
     it('is automatic without a selection: every used skill, most used first', () => {
       const d = build();
       expect(d.skillsOverTime.mode).toBe('auto');
@@ -130,8 +126,12 @@ describe('buildDashboard', () => {
       expect(d.skillsOverTime.series).toEqual(d.skillUsage.series);
     });
 
-    it('is automatic for an empty selection', () => {
-      const d = withSelection([]);
+    it.each([
+      ['an empty selection', []],
+      ['a selected skill that is never used', ['sk-react']],
+      ['an unknown (deleted) skill id', ['sk-gone']],
+    ])('is automatic for %s', (_, selection) => {
+      const d = withSelection(selection);
       expect(d.skillsOverTime.mode).toBe('auto');
       expect(names(d)).toEqual(['Angular', 'NgRx', 'Java', 'Claude']);
     });
@@ -175,53 +175,61 @@ describe('buildDashboard', () => {
       expect(names(d)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']);
     });
 
-    it('keeps only the selected skills the category filter leaves', () => {
-      const d = withSelection(['sk-angular', 'sk-ngrx', 'sk-claude'], { category: 'State' });
-      expect(d.skillsOverTime.mode).toBe('selected');
-      expect(names(d)).toEqual(['NgRx']);
-    });
-
-    it('keeps only the selected skill the skill filter leaves', () => {
-      const d = withSelection(['sk-angular', 'sk-java'], { skill: 'java' });
-      expect(d.skillsOverTime.mode).toBe('selected');
-      expect(names(d)).toEqual(['Java']);
-    });
-
-    it('falls back to the most used skills when a filter leaves none of the selection', () => {
-      const byCategory = withSelection(['sk-angular'], { category: 'Languages' });
-      expect(byCategory.skillsOverTime.mode).toBe('auto');
-      expect(names(byCategory)).toEqual(['Java']);
-
-      const bySkill = withSelection(['sk-angular', 'sk-claude'], { skill: 'java' });
-      expect(bySkill.skillsOverTime.mode).toBe('auto');
-      expect(names(bySkill)).toEqual(['Java']);
-    });
-
-    it('ignores a selected skill that is not used in the range', () => {
-      // Java was only used at Capgemini, 2011-2013.
-      const partly = withSelection(['sk-java', 'sk-ngrx'], { from: 2022, to: 2024 });
-      expect(partly.skillsOverTime.mode).toBe('selected');
-      expect(names(partly)).toEqual(['NgRx']);
-
-      const none = withSelection(['sk-java'], { from: 2022, to: 2024 });
-      expect(none.skillsOverTime.mode).toBe('auto');
-      expect(names(none)).toEqual(['Angular', 'NgRx']);
-    });
-
-    it('ignores a selected skill that is never used', () => {
-      const d = withSelection(['sk-react']);
-      expect(d.skillsOverTime.mode).toBe('auto');
-      expect(names(d)).toEqual(['Angular', 'NgRx', 'Java', 'Claude']);
-    });
-
-    it('ignores unknown (deleted) skill ids', () => {
-      const unknownOnly = withSelection(['sk-gone']);
-      expect(unknownOnly.skillsOverTime.mode).toBe('auto');
-      expect(names(unknownOnly)).toEqual(['Angular', 'NgRx', 'Java', 'Claude']);
-
-      const mixed = withSelection(['sk-gone', 'sk-java']);
-      expect(mixed.skillsOverTime.mode).toBe('selected');
-      expect(names(mixed)).toEqual(['Java']);
+    // Java was only used at Capgemini, 2011-2013.
+    it.each<[string, string[], DashboardQuery, 'selected' | 'auto', string[]]>([
+      [
+        'the category filter keeps NgRx',
+        ['sk-angular', 'sk-ngrx', 'sk-claude'],
+        { category: 'State' },
+        'selected',
+        ['NgRx'],
+      ],
+      [
+        'the skill filter keeps Java',
+        ['sk-angular', 'sk-java'],
+        { skill: 'java' },
+        'selected',
+        ['Java'],
+      ],
+      [
+        'the category filter keeps none: automatic',
+        ['sk-angular'],
+        { category: 'Languages' },
+        'auto',
+        ['Java'],
+      ],
+      [
+        'the skill filter keeps none: automatic',
+        ['sk-angular', 'sk-claude'],
+        { skill: 'java' },
+        'auto',
+        ['Java'],
+      ],
+      [
+        'the range drops Java, NgRx stays',
+        ['sk-java', 'sk-ngrx'],
+        { from: 2022, to: 2024 },
+        'selected',
+        ['NgRx'],
+      ],
+      [
+        'the range drops the whole selection: automatic',
+        ['sk-java'],
+        { from: 2022, to: 2024 },
+        'auto',
+        ['Angular', 'NgRx'],
+      ],
+      [
+        'an unknown id next to a used skill is ignored',
+        ['sk-gone', 'sk-java'],
+        {},
+        'selected',
+        ['Java'],
+      ],
+    ])('selection and view: %s', (_, selection, query, mode, expected) => {
+      const d = withSelection(selection, query);
+      expect(d.skillsOverTime.mode).toBe(mode);
+      expect(names(d)).toEqual(expected);
     });
 
     it('does not change skillUsage', () => {

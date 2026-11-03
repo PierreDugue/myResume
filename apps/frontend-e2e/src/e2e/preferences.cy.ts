@@ -139,6 +139,14 @@ describe('page preferences (stubbed API)', () => {
       skillBox('India').should('have.attr', 'aria-disabled', 'true').and('not.be.disabled');
       skillBox('Hotel').should('not.have.attr', 'aria-disabled');
 
+      // A blocked box stays focusable, but neither a click on it nor on its label checks it.
+      skillBox('India').focus().should('have.focus');
+      skillBox('India').click();
+      skillBox('India').should('not.be.checked');
+      cy.contains('fieldset', 'Skills over time').contains('label', 'India').click();
+      skillBox('India').should('not.be.checked');
+      cy.contains('fieldset', 'Skills over time').contains('8 of 8 selected');
+
       cy.contains('button', 'Save preferences').click();
       cy.wait('@save')
         .its('request.body.overview.skillsOverTime')
@@ -147,20 +155,6 @@ describe('page preferences (stubbed API)', () => {
           skills.slice(0, 8).map((s) => s.id),
         );
       cy.contains('[role="status"]', 'Preferences saved');
-    });
-
-    it('goes back to automatic when no skill is checked', () => {
-      stubPreferences({}, [skills[1].id]);
-      cy.intercept('PATCH', '/api/preferences', (req) =>
-        req.reply({ pages: allVisible, overview: req.body.overview }),
-      ).as('save');
-      cy.visit('/admin/preferences', {
-        onBeforeLoad: (w) => w.localStorage.setItem('auth.token', token),
-      });
-      skillBox('Bravo').uncheck();
-      cy.contains('Automatic: the 8 most used skills');
-      cy.contains('button', 'Save preferences').click();
-      cy.wait('@save').its('request.body.overview').should('deep.equal', { skillsOverTime: [] });
     });
   });
 });

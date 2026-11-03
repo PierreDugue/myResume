@@ -117,7 +117,7 @@ export function sentPageFlags(dto: UpdatePagePreferencesDto | undefined): Partia
 }
 
 /** The stored selection, without anything that isn't a uuid string (hand-edited or old data), nor duplicates. */
-export function storedSkillsOverTime(entity: SitePreferencesEntity | null): string[] {
+export function parseStoredSkillsOverTime(entity: SitePreferencesEntity | null): string[] {
   const stored: unknown = entity?.overview?.['skillsOverTime'];
   if (!Array.isArray(stored)) return [];
   const ids = stored.filter((id): id is string => typeof id === 'string' && isUUID(id, 'all'));

@@ -163,20 +163,17 @@ describe('OverviewPage (Career Overview)', () => {
   const tooltip = (el: HTMLElement) =>
     panelOf(el, 'Skills over time').querySelector('.info')?.getAttribute('data-tip') ?? '';
 
-  it('says in the info tooltip that the chart shows the skills chosen by the site owner', async () => {
-    const { el } = await render();
-    expect(tooltip(el)).toContain('chosen by the site owner');
-    expect(tooltip(el)).not.toContain('most used');
-  });
-
-  it('says in the info tooltip that the chart shows the most used skills when automatic', async () => {
+  it.each([
+    ['selected' as const, 'chosen by the site owner', 'most used'],
+    ['auto' as const, 'most used skills', 'site owner'],
+  ])('explains the %s lines in the info tooltip', async (mode, says, doesNotSay) => {
     respond = () => {
       const data = dashboardFixture();
-      return of({ ...data, skillsOverTime: { ...data.skillsOverTime, mode: 'auto' as const } });
+      return of({ ...data, skillsOverTime: { ...data.skillsOverTime, mode } });
     };
     const { el } = await render();
-    expect(tooltip(el)).toContain('most used skills');
-    expect(tooltip(el)).not.toContain('site owner');
+    expect(tooltip(el)).toContain(says);
+    expect(tooltip(el)).not.toContain(doesNotSay);
   });
 
   it('shows an error with a retry button', async () => {
