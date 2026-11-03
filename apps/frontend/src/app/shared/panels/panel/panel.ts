@@ -18,6 +18,8 @@ export class Panel {
   /** Adds "Show as table" / "Show chart" to the menu. */
   readonly canShowTable = input(false);
   readonly showTable = model(false);
+  /** Dims the body and shows a progress bar while the panel's data is being refreshed. */
+  readonly loading = input(false);
 
   protected readonly menuOpen = signal(false);
   protected readonly fullscreen = signal(false);

@@ -1,7 +1,11 @@
 <div class="toolbar" role="group" aria-label="Dashboard view">
   <div class="control">
     <label for="dash-from">From</label>
-    <select id="dash-from" (change)="setYear('from', $any($event.target).value)">
+    <select
+      id="dash-from"
+      [disabled]="dashboard.isLoading()"
+      (change)="setYear('from', $any($event.target).value)"
+    >
       @for (year of years(); track year) {
         <option [value]="year" [selected]="year === view().from">{{ year }}</option>
       }
@@ -9,7 +13,11 @@
   </div>
   <div class="control">
     <label for="dash-to">To</label>
-    <select id="dash-to" (change)="setYear('to', $any($event.target).value)">
+    <select
+      id="dash-to"
+      [disabled]="dashboard.isLoading()"
+      (change)="setYear('to', $any($event.target).value)"
+    >
       @for (year of years(); track year) {
         <option [value]="year" [selected]="year === view().to">{{ year }}</option>
       }
@@ -17,7 +25,11 @@
   </div>
   <div class="control">
     <label for="dash-category">Category</label>
-    <select id="dash-category" (change)="setFilter('category', $any($event.target).value)">
+    <select
+      id="dash-category"
+      [disabled]="dashboard.isLoading()"
+      (change)="setFilter('category', $any($event.target).value)"
+    >
       <option value="" [selected]="!view().category">All categories</option>
       @for (category of data()?.filters?.categories ?? []; track category) {
         <option [value]="category" [selected]="category === view().category">{{ category }}</option>
@@ -26,7 +38,11 @@
   </div>
   <div class="control">
     <label for="dash-skill">Skill</label>
-    <select id="dash-skill" (change)="setFilter('skill', $any($event.target).value)">
+    <select
+      id="dash-skill"
+      [disabled]="dashboard.isLoading()"
+      (change)="setFilter('skill', $any($event.target).value)"
+    >
       <option value="" [selected]="!view().skill">All skills</option>
       @for (group of skillGroups(); track group.category) {
         <optgroup [label]="group.category">
@@ -39,7 +55,9 @@
       }
     </select>
   </div>
-  <button class="button reset" type="button" (click)="reset()">Whole career</button>
+  <button class="button reset" type="button" [disabled]="dashboard.isLoading()" (click)="reset()">
+    Whole career
+  </button>
   @if (dashboard.isLoading()) {
     <span class="loading" role="status">Loading…</span>
   }
@@ -47,11 +65,15 @@
 
 @if (data(); as d) {
   <div class="grid">
-    <app-panel class="profile" title="Profile" [data]="d.profile">
+    <app-panel class="profile" title="Profile" [data]="d.profile" [loading]="dashboard.isLoading()">
       <app-profile-panel [profile]="d.profile" [status]="d.status" />
     </app-panel>
 
-    <div class="stats">
+    <div
+      class="stats"
+      [class.refreshing]="dashboard.isLoading()"
+      [attr.aria-busy]="dashboard.isLoading() || null"
+    >
       @for (stat of d.stats; track stat.key) {
         <app-stat-panel [label]="stat.label" [display]="stat.display" [hint]="stat.hint" />
       }
@@ -59,6 +81,7 @@
 
     <app-panel
       class="timeline"
+      [loading]="dashboard.isLoading()"
       title="Career timeline"
       info="Jobs and education over the selected years."
       [data]="d.timeline"
@@ -68,6 +91,7 @@
 
     <app-panel
       class="usage"
+      [loading]="dashboard.isLoading()"
       title="Skills over time"
       [info]="usageInfo()"
       [data]="d.skillsOverTime"
@@ -110,6 +134,7 @@
 
     <app-panel
       class="totals"
+      [loading]="dashboard.isLoading()"
       title="Experience by skill"
       info="Years of use within the selected range, by category."
       [data]="d.skillTotals"
@@ -119,6 +144,7 @@
 
     <app-panel
       class="impacts"
+      [loading]="dashboard.isLoading()"
       title="Impact"
       info="Quantified results from the resume, newest first."
       [data]="d.impacts"
@@ -128,6 +154,7 @@
 
     <app-panel
       class="heatmap"
+      [loading]="dashboard.isLoading()"
       title="Technologies per year"
       info="Months of use per technology and year."
       [data]="d.skillUsage"
@@ -167,6 +194,7 @@
 
     <app-panel
       class="logs"
+      [loading]="dashboard.isLoading()"
       title="Latest highlights"
       info="The newest achievements, as log lines."
       [data]="d.latestHighlights"

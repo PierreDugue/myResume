@@ -25,6 +25,12 @@
   }
 }
 
+.control select:disabled,
+.reset:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .loading,
 .muted {
   color: var(--color-text-muted);
@@ -44,6 +50,11 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: var(--space-3);
+  transition: opacity 0.2s ease;
+  &.refreshing {
+    opacity: 0.5;
+    pointer-events: none;
+  }
 }
 .timeline,
 .impacts {
@@ -79,6 +90,12 @@ td {
 }
 th[scope='row'] {
   text-align: left;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stats {
+    transition: none;
+  }
 }
 
 @media (max-width: 1100px) {

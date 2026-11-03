@@ -4,6 +4,7 @@
 }
 
 .panel {
+  position: relative;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -99,6 +100,50 @@ h2 {
 .body {
   flex: 1;
   min-height: 0;
+  transition: opacity 0.2s ease;
+}
+
+// Refreshing: the old content stays visible but dimmed; the header (menu) stays usable.
+.loading .body {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.panel-progress {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 2px;
+  overflow: hidden;
+  border-radius: var(--radius) var(--radius) 0 0;
+  &::after {
+    content: '';
+    display: block;
+    width: 40%;
+    height: 100%;
+    background: var(--color-accent);
+    animation: panel-progress 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes panel-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .body {
+    transition: none;
+  }
+  .panel-progress::after {
+    width: 100%;
+    animation: none;
+  }
 }
 
 .overlay {

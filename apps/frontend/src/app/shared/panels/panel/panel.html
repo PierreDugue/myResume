@@ -1,4 +1,12 @@
-<section class="panel" [class.fullscreen]="fullscreen()">
+<section
+  class="panel"
+  [class.fullscreen]="fullscreen()"
+  [class.loading]="loading()"
+  [attr.aria-busy]="loading() || null"
+>
+  @if (loading()) {
+    <div class="panel-progress" aria-hidden="true"></div>
+  }
   <header>
     <h2>{{ title() }}</h2>
     @if (info(); as text) {

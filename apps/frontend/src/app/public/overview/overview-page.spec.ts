@@ -1,5 +1,5 @@
 import type { DashboardQuery, DashboardResponse } from '@my-resume/api-models';
-import { Observable, of, throwError } from 'rxjs';
+import { Observable, Subject, of, throwError } from 'rxjs';
 import { renderRoute, type } from '../../admin/testing/render';
 import { DashboardApi } from '../../core/dashboard/dashboard-api.service';
 import { fakePageAccess } from '../../layout/testing/fake-page-access';
@@ -196,5 +196,108 @@ describe('OverviewPage (Career Overview)', () => {
     const { el } = await render();
     expect(el.querySelectorAll('app-log-preview li')).toHaveLength(2);
     expect(el.querySelector('app-log-preview a.explore')).toBeNull();
+  });
+
+  describe('while a new view is loading', () => {
+    const FILTERS = ['From', 'To', 'Category', 'Skill'];
+
+    async function renderWithPendingRequest() {
+      const pending = new Subject<DashboardResponse>();
+      respond = (q) => (q.from === 2020 ? pending : of(dashboardFixture()));
+      const page = await render();
+      type(select(page.el, 'From'), '2020');
+      // settle() would wait for the rxResource's pending task, so only tick the loop.
+      await vi.waitFor(() => {
+        page.harness.detectChanges();
+        expect(select(page.el, 'From').disabled).toBe(true);
+      });
+      const flush = async () => {
+        pending.next(dashboardFixture());
+        pending.complete();
+        await page.settle();
+      };
+      return { ...page, flush };
+    }
+
+    it('disables the filters and the reset button, and keeps the old data on screen', async () => {
+      const { el } = await renderWithPendingRequest();
+      for (const label of FILTERS) expect(select(el, label).disabled).toBe(true);
+      expect($<HTMLButtonElement>(el, 'button.reset').disabled).toBe(true);
+      expect(el.textContent).toContain('Pierre Dugue');
+      expect($(el, '.loading[role="status"]').textContent).toContain('Loading');
+    });
+
+    it('marks every panel and the stats as busy', async () => {
+      const { el } = await renderWithPendingRequest();
+      const panels = [...el.querySelectorAll('app-panel section.panel')];
+      expect(panels).toHaveLength(7);
+      for (const panel of panels) expect(panel.getAttribute('aria-busy')).toBe('true');
+      expect($(el, '.stats').getAttribute('aria-busy')).toBe('true');
+      expect($(el, '.stats').classList).toContain('refreshing');
+    });
+
+    it('enables everything again once the response arrives', async () => {
+      const { el, flush } = await renderWithPendingRequest();
+      await flush();
+      for (const label of FILTERS) expect(select(el, label).disabled).toBe(false);
+      expect($<HTMLButtonElement>(el, 'button.reset').disabled).toBe(false);
+      expect(el.querySelectorAll('[aria-busy]')).toHaveLength(0);
+      expect(el.querySelector('.panel-progress')).toBeNull();
+    });
+
+    // Browsers move the focus of a control to the page when it gets disabled; jsdom keeps it there
+    // (and ignores blur() on a disabled element), so move it by hand.
+    const loseFocus = () => {
+      document.body.tabIndex = -1;
+      document.body.focus();
+      document.body.removeAttribute('tabindex');
+    };
+
+    it('gives the focus back to the filter that was changed once the response arrives', async () => {
+      const pending = new Subject<DashboardResponse>();
+      respond = (q) => (q.category === 'Core' ? pending : of(dashboardFixture()));
+      const { el, harness, settle } = await render();
+      const category = select(el, 'Category');
+      category.focus();
+      type(category, 'Core');
+      await vi.waitFor(() => {
+        harness.detectChanges();
+        expect(category.disabled).toBe(true);
+      });
+      loseFocus();
+      pending.next(dashboardFixture());
+      pending.complete();
+      await settle();
+      expect(document.activeElement).toBe(category);
+    });
+
+    it('gives the focus back to the reset button once the response arrives', async () => {
+      const pending = new Subject<DashboardResponse>();
+      respond = (q) => (q.from === undefined ? pending : of(dashboardFixture()));
+      const { el, harness, settle } = await render('/?from=2020');
+      const reset = $<HTMLButtonElement>(el, 'button.reset');
+      reset.focus();
+      reset.click();
+      await vi.waitFor(() => {
+        harness.detectChanges();
+        expect(reset.disabled).toBe(true);
+      });
+      loseFocus();
+      pending.next(dashboardFixture());
+      pending.complete();
+      await settle();
+      expect(document.activeElement).toBe(reset);
+    });
+
+    it('does not take the focus back if the visitor moved it elsewhere meanwhile', async () => {
+      const { el, flush } = await renderWithPendingRequest();
+      const elsewhere = $<HTMLButtonElement>(
+        panelOf(el, 'Impact'),
+        'button.panel-menu-toggle',
+      );
+      elsewhere.focus();
+      await flush();
+      expect(document.activeElement).toBe(elsewhere);
+    });
   });
 });

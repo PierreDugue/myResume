@@ -12,6 +12,7 @@ import { Panel } from './panel';
       [data]="data"
       [canShowTable]="true"
       [(showTable)]="table"
+      [loading]="loading()"
     >
       <p class="content">chart</p>
     </app-panel>
@@ -20,6 +21,7 @@ import { Panel } from './panel';
 class Host {
   data = { years: [2024, 2025] };
   table = signal(false);
+  loading = signal(false);
 }
 
 describe('Panel', () => {
@@ -92,5 +94,45 @@ describe('Panel', () => {
     expect(
       [...el.querySelectorAll('[role="menuitem"]')].map((i) => i.textContent?.trim()),
     ).toContain('Show chart');
+  });
+
+  describe('loading', () => {
+    it('is idle by default: no aria-busy and no progress bar', async () => {
+      const { el } = await render();
+      expect($(el, 'section.panel').hasAttribute('aria-busy')).toBe(false);
+      expect(el.querySelector('.panel-progress')).toBeNull();
+    });
+
+    it('is busy while loading: aria-busy, a decorative progress bar and the content kept', async () => {
+      const { el, fixture } = await render();
+      fixture.componentInstance.loading.set(true);
+      await fixture.whenStable();
+      expect($(el, 'section.panel').getAttribute('aria-busy')).toBe('true');
+      expect($(el, 'section.panel').classList).toContain('loading');
+      expect($(el, '.panel-progress').getAttribute('aria-hidden')).toBe('true');
+      expect($(el, '.content').textContent).toBe('chart');
+    });
+
+    it('keeps the menu usable while loading', async () => {
+      const { el, fixture, choose, openMenu } = await render();
+      fixture.componentInstance.loading.set(true);
+      await fixture.whenStable();
+      await openMenu();
+      expect($(el, 'button.panel-menu-toggle').getAttribute('aria-expanded')).toBe('true');
+      await openMenu(); // close it again
+      await choose('Show as table');
+      expect(fixture.componentInstance.table()).toBe(true);
+    });
+
+    it('goes back to idle when loading ends', async () => {
+      const { el, fixture } = await render();
+      fixture.componentInstance.loading.set(true);
+      await fixture.whenStable();
+      fixture.componentInstance.loading.set(false);
+      await fixture.whenStable();
+      expect($(el, 'section.panel').hasAttribute('aria-busy')).toBe(false);
+      expect($(el, 'section.panel').classList).not.toContain('loading');
+      expect(el.querySelector('.panel-progress')).toBeNull();
+    });
   });
 });

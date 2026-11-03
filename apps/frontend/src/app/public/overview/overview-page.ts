@@ -1,4 +1,12 @@
-import { Component, DOCUMENT, computed, inject, linkedSignal, signal } from '@angular/core';
+import {
+  Component,
+  DOCUMENT,
+  afterRenderEffect,
+  computed,
+  inject,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import type { DashboardQuery, DashboardResponse } from '@my-resume/api-models';
@@ -65,6 +73,23 @@ export class OverviewPage {
     source: () => (this.dashboard.hasValue() ? this.dashboard.value() : undefined),
     computation: (next, previous) => next ?? previous?.value,
   });
+
+  /**
+   * The control that started the current load. Disabling it while loading drops its focus to the
+   * page, so keyboard users get it back once the controls are enabled again.
+   */
+  private focusToRestore: HTMLElement | null = null;
+
+  constructor() {
+    afterRenderEffect(() => {
+      if (this.dashboard.isLoading()) return;
+      const target = this.focusToRestore;
+      this.focusToRestore = null;
+      const active = this.document.activeElement;
+      // Only when the focus was lost, not when the visitor moved it elsewhere meanwhile.
+      if (target?.isConnected && (!active || active === this.document.body)) target.focus();
+    });
+  }
 
   protected readonly today = new Date().toISOString().slice(0, 10);
   protected readonly usageTable = signal(false);
@@ -148,6 +173,13 @@ export class OverviewPage {
   }
 
   private navigate(query: DashboardQuery): void {
+    this.rememberFocus();
     void this.router.navigate([], { relativeTo: this.route, queryParams: toQueryParams(query) });
+  }
+
+  private rememberFocus(): void {
+    const active = this.document.activeElement;
+    this.focusToRestore =
+      active instanceof HTMLElement && active !== this.document.body ? active : null;
   }
 }
