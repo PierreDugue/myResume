@@ -176,6 +176,16 @@ describe('OverviewPage (Career Overview)', () => {
     expect(tooltip(el)).not.toContain(doesNotSay);
   });
 
+  it('says the selected lines are for the whole career, not filtered by the view', async () => {
+    respond = () => {
+      const data = dashboardFixture();
+      return of({ ...data, skillsOverTime: { ...data.skillsOverTime, mode: 'selected' as const } });
+    };
+    const { el } = await render();
+    expect(tooltip(el)).toContain('whole career');
+    expect(tooltip(el)).not.toContain('match the view');
+  });
+
   it('shows an error with a retry button', async () => {
     let calls = 0;
     respond = () => (calls++ === 0 ? throwError(() => new Error('down')) : of(dashboardFixture()));

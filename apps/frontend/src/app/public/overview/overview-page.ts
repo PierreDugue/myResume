@@ -130,7 +130,7 @@ export class OverviewPage {
   );
   protected readonly usageInfo = computed(() =>
     this.data()?.skillsOverTime.mode === 'selected'
-      ? `${USAGE_INFO} Shows the skills chosen by the site owner that match the view.`
+      ? `${USAGE_INFO} Shows the skills chosen by the site owner for the whole career.`
       : `${USAGE_INFO} Shows the most used skills of the view.`,
   );
   protected readonly usageOption = computed(() => {

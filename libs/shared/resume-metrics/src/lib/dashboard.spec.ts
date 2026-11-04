@@ -175,49 +175,94 @@ describe('buildDashboard', () => {
       expect(names(d)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8']);
     });
 
-    // Java was only used at Capgemini, 2011-2013.
+    // Java was only used at Capgemini, 2011-2013. The default range is 2011-2026 (first job to now),
+    // and filters.minYear is 2008 (education). Only the whole-career view draws the selection.
     it.each<[string, string[], DashboardQuery, 'selected' | 'auto', string[]]>([
+      // A filter ignores the selection, even when it keeps every selected skill.
       [
-        'the category filter keeps NgRx',
-        ['sk-angular', 'sk-ngrx', 'sk-claude'],
+        'the category filter ignores the selection, even when it keeps every selected skill',
+        ['sk-ngrx'],
         { category: 'State' },
-        'selected',
+        'auto',
         ['NgRx'],
       ],
       [
-        'the skill filter keeps Java',
+        'the category filter is automatic even when the selection is the only used skill of the category',
+        ['sk-angular'],
+        { category: 'Core' },
+        'auto',
+        ['Angular'],
+      ],
+      [
+        'the skill filter ignores the selection, even when it keeps Java',
         ['sk-angular', 'sk-java'],
         { skill: 'java' },
-        'selected',
+        'auto',
         ['Java'],
       ],
       [
-        'the category filter keeps none: automatic',
+        'a category filter that keeps none of the selection ignores it: automatic',
         ['sk-angular'],
         { category: 'Languages' },
         'auto',
         ['Java'],
       ],
       [
-        'the skill filter keeps none: automatic',
+        'a skill filter that keeps none of the selection ignores it: automatic',
         ['sk-angular', 'sk-claude'],
         { skill: 'java' },
         'auto',
         ['Java'],
       ],
       [
-        'the range drops Java, NgRx stays',
+        'a narrowed range ignores the selection, even when it keeps NgRx',
         ['sk-java', 'sk-ngrx'],
         { from: 2022, to: 2024 },
-        'selected',
-        ['NgRx'],
+        'auto',
+        ['Angular', 'NgRx'],
       ],
       [
-        'the range drops the whole selection: automatic',
+        'a narrowed range that holds none of the selection ignores it: automatic',
         ['sk-java'],
         { from: 2022, to: 2024 },
         'auto',
         ['Angular', 'NgRx'],
+      ],
+      // Only a range that isn't narrower than the whole career keeps the selection.
+      [
+        'explicit default years are still the whole career: selected',
+        ['sk-java', 'sk-claude'],
+        { from: 2011, to: 2026 },
+        'selected',
+        ['Java', 'Claude'],
+      ],
+      [
+        'a wider range (from filters.minYear) is still the whole career: selected',
+        ['sk-java', 'sk-claude'],
+        { from: 2008 },
+        'selected',
+        ['Java', 'Claude'],
+      ],
+      [
+        'a later end year than the current year is still the whole career: selected',
+        ['sk-java'],
+        { to: 2030 },
+        'selected',
+        ['Java'],
+      ],
+      [
+        'only from narrowed (2012) is a filter: automatic',
+        ['sk-claude'],
+        { from: 2012 },
+        'auto',
+        ['Angular', 'NgRx', 'Java', 'Claude'],
+      ],
+      [
+        'only to narrowed (2025) is a filter: automatic',
+        ['sk-ngrx'],
+        { to: 2025 },
+        'auto',
+        ['Angular', 'NgRx', 'Java'],
       ],
       [
         'an unknown id next to a used skill is ignored',
@@ -230,6 +275,37 @@ describe('buildDashboard', () => {
       const d = withSelection(selection, query);
       expect(d.skillsOverTime.mode).toBe(mode);
       expect(names(d)).toEqual(expected);
+    });
+
+    it('keeps the selection with no experience: the career starts at the current year', () => {
+      // No job, so the default range is 2026–2026. The one project (Nov 2025–Feb 2026) uses Angular
+      // 2 months in 2025 (Nov, Dec) and 2 in 2026 (Jan, Feb).
+      const resume = resumeFixture();
+      resume.experiences = [];
+      resume.projects = [
+        {
+          ...resume.projects[0],
+          id: 'p-solo',
+          startDate: '2025-11-01',
+          endDate: '2026-02-28',
+          skillIds: ['sk-angular'],
+          spans: [],
+        },
+      ];
+      const draw = (query: DashboardQuery) =>
+        buildDashboard({ resume, today: TODAY, query, skillsOverTime: ['sk-angular'] });
+
+      const current = draw({});
+      expect(current.range).toEqual({ from: 2026, to: 2026 });
+      expect(current.skillsOverTime.mode).toBe('selected');
+      expect(names(current)).toEqual(['Angular']);
+      expect(current.skillsOverTime.series[0].monthsPerYear).toEqual([2]);
+
+      const wider = draw({ from: 2025 });
+      expect(wider.range).toEqual({ from: 2025, to: 2026 });
+      expect(wider.skillsOverTime.mode).toBe('selected');
+      expect(names(wider)).toEqual(['Angular']);
+      expect(wider.skillsOverTime.series[0].monthsPerYear).toEqual([2, 2]);
     });
 
     it('does not change skillUsage', () => {

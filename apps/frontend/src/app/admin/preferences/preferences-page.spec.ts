@@ -311,6 +311,9 @@ describe('PreferencesPage', () => {
       expect(hint).toContain('up to 8');
       expect(hint).toContain('Career Overview');
       expect(hint).toContain('most used');
+      expect(hint).toContain('whole career');
+      expect(hint).toContain('filters');
+      expect(hint).not.toContain('leaves none of the checked skills');
     });
 
     it('lists every skill, with the stored selection checked', async () => {

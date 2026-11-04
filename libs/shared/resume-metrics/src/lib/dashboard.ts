@@ -151,7 +151,11 @@ export function buildDashboard({
       ),
     timeline: buildTimeline(resume, experiences, overlapsRange),
     skillUsage: { years, series },
-    skillsOverTime: pickSkillsOverTime(years, series, skillsOverTime),
+    skillsOverTime: pickSkillsOverTime(
+      years,
+      series,
+      isWholeCareer({ range, firstJobYear, currentYear, category, skill }) ? skillsOverTime : [],
+    ),
     skillTotals: groupTotals(series, resume.skills),
     latestHighlights: highlights.slice(0, LATEST_HIGHLIGHTS).map(
       ({ h, e }): LogLine => ({
@@ -284,8 +288,29 @@ function buildTimeline(
 }
 
 /**
- * The chart's lines, a subset of `series` (same order). The admin's selection wins if at least one
- * selected skill is in `series` (used in the range and kept by the filters); otherwise the most used.
+ * The whole-career view: no category, no skill, and a range that isn't narrower than the default
+ * (first job's year to the current year). A wider range counts too, e.g. from `filters.minYear`.
+ */
+function isWholeCareer(view: {
+  range: { from: number; to: number };
+  firstJobYear: number;
+  currentYear: number;
+  category: string | null;
+  skill: Skill | null;
+}): boolean {
+  return (
+    !view.category &&
+    !view.skill &&
+    view.range.from <= view.firstJobYear &&
+    view.range.to >= view.currentYear
+  );
+}
+
+/**
+ * The chart's lines, a subset of `series` (same order). `selection` is the admin's selection, which
+ * the caller passes only in the whole-career view: if at least one selected skill is in `series`
+ * (used), the lines are those skills (at most 8) and the mode is `selected`. Otherwise (a filter, no
+ * selection, or no selected skill used) the lines are the 8 most used skills and the mode is `auto`.
  */
 function pickSkillsOverTime(
   years: number[],

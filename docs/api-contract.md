@@ -349,8 +349,9 @@ Every panel of the home dashboard in one call. The backend calculates everything
 
 - **Skills over time:** `skillsOverTime` holds the lines of the home page's line chart. The backend picks them, so the frontend only draws them.
   - `skillsOverTime.years` equals `skillUsage.years`. `series` is a subset of `skillUsage.series`, in the same order (most used in the range first), with at most 8 items.
-  - If at least one of the admin's selected skills (Preferences, `overview.skillsOverTime`) is in `skillUsage.series` (that is: used in the range, and kept by the `category` and `skill` filters), `series` is exactly those selected skills and `mode` is `'selected'`.
-  - Otherwise (no selection, or none of the selected skills match the view) `series` is the first 8 of `skillUsage.series` and `mode` is `'auto'`. So the chart is empty only when `skillUsage.series` is empty.
+  - **Whole-career view:** no `category`, no `skill`, and a year range that isn't narrowed: the resolved `from` is ≤ the default `from` (the first job's year) and the resolved `to` is ≥ the current year. Leaving `from` / `to` out, sending them equal to the defaults, or sending a wider range (e.g. `from` down to `filters.minYear`, which can be before the first job because of education and projects) all count as the whole career. Any narrower `from` or `to` is a filter.
+  - In the whole-career view, if at least one of the admin's selected skills (Preferences, `overview.skillsOverTime`) is in `skillUsage.series` (that is: used), `series` is exactly those selected skills (same order as `skillUsage.series`, at most 8) and `mode` is `'selected'`.
+  - Otherwise (any filter: `category`, `skill` or a narrowed range; or no selection; or none of the selected skills is used) the admin's selection is not used: `series` is the first 8 of `skillUsage.series` and `mode` is `'auto'`. So the chart is empty only when `skillUsage.series` is empty.
   - The selection is not a query parameter: visitors can't change it, it comes from the preferences.
   - `skillUsage` itself is unchanged and still lists every skill used in the range (the heatmap, stats and totals use it).
 - **Headline figures don't depend on the range:** years in IT and years of Angular come from the profile (entered by hand), and "uptime" counts from the first job.
@@ -417,7 +418,7 @@ interface SkillUsage {
 
 /** The lines of the "Skills over time" chart: a subset of `skillUsage.series`. */
 interface SkillsOverTime extends SkillUsage {
-  /** 'selected': the admin's selection (Preferences, overview.skillsOverTime) matched the view; 'auto': the most used skills. */
+  /** 'selected': the admin's selection (Preferences, overview.skillsOverTime), shown only in the whole-career view (no category, no skill, range not narrowed); 'auto': the most used skills of the view. */
   mode: 'selected' | 'auto';
 }
 
@@ -784,7 +785,7 @@ Site-wide settings, edited on `/admin/preferences`. There are two groups: `pages
   - `400` for the `overview` group (nothing changes): `overview` that is `null` or not an object, `skillsOverTime` that is `null` or not an array, more than 8 ids, duplicate ids, an id that isn't a uuid, an unknown skill id (`message: "Unknown skill ids"`, as for experiences and projects), or an unknown key inside `overview`.
   - An empty body `{}` changes nothing and returns `200`.
   - Any combination is allowed, including every page disabled.
-- **Overview group:** `overview.skillsOverTime` is the list of skills the "Skills over time" chart of the Career Overview shows (see Dashboard).
+- **Overview group:** `overview.skillsOverTime` is the list of skills the "Skills over time" chart of the Career Overview shows in the whole-career view only (see Dashboard: no `category`, no `skill`, range not narrowed). With any filter the chart is automatic and ignores the selection.
   - **Default:** `[]` = automatic, the 8 most used skills of the view. `GET` always includes `overview` with `skillsOverTime`.
   - **At most 8 skill ids.** Selecting a skill doesn't require it to have any usage: a selected skill that isn't used in the visitor's view just isn't drawn.
   - **Order:** ids come back in skills-list order (the skills' `sortOrder`), whatever order they were sent in. A skill that has been deleted silently drops out of the selection (no error, no write needed).
@@ -819,7 +820,7 @@ interface SitePreferences {
 
 /** Settings of the Career Overview page (`/`). */
 interface OverviewPreferences {
-  /** Skill ids the "Skills over time" chart shows, in skills-list order. [] (default) = automatic: the 8 most used skills of the view. At most 8. */
+  /** Skill ids the "Skills over time" chart shows in the whole-career view (no filter), in skills-list order. [] (default) = automatic: the 8 most used skills of the view. With any filter the chart is automatic too. At most 8. */
   skillsOverTime: string[];
 }
 

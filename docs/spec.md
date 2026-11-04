@@ -185,7 +185,7 @@ This connects to the resume's AI skills (Claude, Claude skills) and to "Generate
 - `/admin/preferences` ("Preferences"): which public pages visitors see (Career Overview, Explore, Traces, Service map, Quality, About this site).
   - Every page is enabled by default. A disabled page is hidden from the menu, its route redirects visitors, and its API endpoints answer `404`. The admin still sees it, to preview it.
   - The plain view `/resume` can't be disabled; visitors land there when every page is disabled.
-  - **Skills over time:** up to 8 skills (checkboxes grouped by category) for the Career Overview's line chart; none checked = automatic (the most used skills).
+  - **Skills over time:** up to 8 skills (checkboxes grouped by category) for the Career Overview's line chart. The selection is used when the Career Overview shows the whole career with no filter; with none checked, or when a visitor filters by category, skill or years, the chart shows the most used skills of the view.
   - Built so more site preferences can be added later (one group per kind of setting).
 - **Resume PDF:** upload a PDF file; the latest one is offered as "Export PDF" on the public site.
 - **Import from PDF (later):** read text out of the uploaded PDF to pre-fill content, which the owner then checks and edits. The first content will be entered by hand or with a seed script based on the owner's PDF.

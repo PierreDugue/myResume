@@ -41,9 +41,9 @@
         <legend>Skills over time</legend>
         <p class="hint">
           The checked skills (up to {{ skillsMax }}) are the lines of the "Skills over time" chart
-          on the Career Overview. With none checked, the chart shows the {{ skillsMax }} most used
-          skills of the view. When a visitor's filter leaves none of the checked skills, the most
-          used ones are shown instead.
+          on the Career Overview when it shows the whole career. With none checked, or when a
+          visitor filters by category, skill or years, the chart shows the {{ skillsMax }} most used
+          skills of the view.
         </p>
         <app-skill-picker
           [skills]="skills()"

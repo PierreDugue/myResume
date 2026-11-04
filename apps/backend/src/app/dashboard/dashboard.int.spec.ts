@@ -116,20 +116,24 @@ describe('GET /api/dashboard (seeded resume)', () => {
       expect(body.skillTotals).toEqual(before.skillTotals);
     });
 
-    it('keeps only the selected skills that the category filter leaves', async () => {
+    it('ignores the selection under a category filter, even one that keeps a selected skill', async () => {
       const usage = (await get()).body.skillUsage.series;
       const ai = usage.filter((s) => s.category === 'AI');
       const other = usage.find((s) => s.category !== 'AI');
       expect(ai.length).toBeGreaterThan(0);
       expect(other).toBeDefined();
       await select([other?.skillId as string, ai[0].skillId]);
+      expect((await get()).body.skillsOverTime.mode).toBe('selected');
 
       const { body } = await get('?category=AI');
-      expect(body.skillsOverTime.mode).toBe('selected');
-      expect(body.skillsOverTime.series.map((s) => s.skillId)).toEqual([ai[0].skillId]);
+      expect(body.skillsOverTime.mode).toBe('auto');
+      expect(body.skillsOverTime.series).toEqual(
+        body.skillUsage.series.slice(0, SKILLS_OVER_TIME_MAX),
+      );
+      expect(body.skillsOverTime.series.length).toBeGreaterThan(0);
     });
 
-    it('falls back to the most used skills when a filter keeps none of the selection', async () => {
+    it('ignores the selection under a category filter that keeps none of it', async () => {
       const usage = (await get()).body.skillUsage.series;
       const other = usage.find((s) => s.category !== 'AI');
       await select([other?.skillId as string]);
@@ -143,27 +147,50 @@ describe('GET /api/dashboard (seeded resume)', () => {
       expect(body.skillsOverTime.series.length).toBeGreaterThan(0);
     });
 
-    it('applies the skill filter to the selection', async () => {
+    it('ignores the selection under a skill filter', async () => {
       const usage = (await get()).body.skillUsage.series;
       await select([usage[0].skillId, usage[1].skillId]);
 
       const bySkill = (await get(`?skill=${usage[1].slug}`)).body;
-      expect(bySkill.skillsOverTime.mode).toBe('selected');
+      expect(bySkill.skillsOverTime.mode).toBe('auto');
       expect(bySkill.skillsOverTime.series.map((s) => s.skillId)).toEqual([usage[1].skillId]);
+      expect(bySkill.skillsOverTime.series).toEqual(bySkill.skillUsage.series);
     });
 
-    it('keeps only the selected skills used in the range', async () => {
+    it('ignores the selection when the range is narrowed', async () => {
       const usedIn2011 = (await get('?from=2011&to=2011')).body.skillUsage.series;
-      const ids2011 = new Set(usedIn2011.map((s) => s.skillId));
-      const notIn2011 = (await get()).body.skillUsage.series.find((s) => !ids2011.has(s.skillId));
       expect(usedIn2011.length).toBeGreaterThan(0);
-      expect(notIn2011).toBeDefined();
-      await select([usedIn2011[0].skillId, notIn2011?.skillId as string]);
+      await select([usedIn2011[0].skillId]);
 
       const { body } = await get('?from=2011&to=2011');
       expect(body.skillsOverTime.years).toEqual([2011]);
+      expect(body.skillsOverTime.mode).toBe('auto');
+      expect(body.skillsOverTime.series).toEqual(
+        body.skillUsage.series.slice(0, SKILLS_OVER_TIME_MAX),
+      );
+    });
+
+    it('keeps the selection when the range is the default one sent explicitly', async () => {
+      const before = (await get()).body;
+      const usage = before.skillUsage.series;
+      await select([usage[usage.length - 1].skillId]);
+
+      const { body } = await get(`?from=${before.range.from}&to=${before.range.to}`);
+      expect(body.range).toEqual(before.range);
       expect(body.skillsOverTime.mode).toBe('selected');
-      expect(body.skillsOverTime.series.map((s) => s.skillId)).toEqual([usedIn2011[0].skillId]);
+      expect(body.skillsOverTime.series.map((s) => s.skillId)).toEqual([
+        usage[usage.length - 1].skillId,
+      ]);
+    });
+
+    it('keeps the selection when the range is wider than the career', async () => {
+      const before = (await get()).body;
+      const usage = before.skillUsage.series;
+      await select([usage[0].skillId]);
+
+      const { body } = await get(`?from=${before.filters.minYear}`);
+      expect(body.skillsOverTime.mode).toBe('selected');
+      expect(body.skillsOverTime.series.map((s) => s.skillId)).toEqual([usage[0].skillId]);
     });
 
     it('drops a deleted skill from the selection and falls back to automatic', async () => {

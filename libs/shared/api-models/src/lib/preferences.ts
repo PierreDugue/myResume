@@ -6,7 +6,7 @@ export type PagePreferences = Record<PublicPageId, boolean>;
 
 /** Settings of the Career Overview page (`/`). */
 export interface OverviewPreferences {
-  /** Skill ids the "Skills over time" chart shows, in skills-list order. [] (default) = automatic: the 8 most used skills of the view. At most 8. */
+  /** Skill ids the "Skills over time" chart shows in the whole-career view (no filter), in skills-list order. [] (default) = automatic: the 8 most used skills of the view. With any filter the chart is automatic too. At most 8. */
   skillsOverTime: string[];
 }
 
