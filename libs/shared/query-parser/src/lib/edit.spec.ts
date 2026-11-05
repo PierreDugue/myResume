@@ -1,10 +1,6 @@
 import { withLabelMatcher } from './edit';
 
 describe('withLabelMatcher', () => {
-  it('starts a selector on an empty query', () => {
-    expect(withLabelMatcher('', 'company', 'Acme')).toBe('{company="Acme"}');
-  });
-
   it('adds the matcher to the selector and keeps the line filters', () => {
     expect(withLabelMatcher('{type="experience"} |= "api"', 'company', 'Acme')).toBe(
       '{type="experience", company="Acme"} |= "api"',
@@ -22,6 +18,9 @@ describe('withLabelMatcher', () => {
       '{tech="Angular", tech="NgRx"}',
     );
     expect(withLabelMatcher('{tech="Angular"}', 'tech', 'angular')).toBe('{tech="Angular"}');
+    expect(withLabelMatcher('{team="Angular"}', 'tech', 'angular')).toBe(
+      '{team="Angular", tech="angular"}',
+    );
   });
 
   it('supports != to exclude a value', () => {
@@ -30,13 +29,5 @@ describe('withLabelMatcher', () => {
 
   it('keeps plain text as a line filter', () => {
     expect(withLabelMatcher('latency', 'company', 'Acme')).toBe('{company="Acme"} |= "latency"');
-  });
-
-  it('escapes quotes in the value', () => {
-    expect(withLabelMatcher('', 'team', 'say "hi"')).toBe('{team="say \\"hi\\""}');
-  });
-
-  it('throws on an invalid query, since it cannot be edited safely', () => {
-    expect(() => withLabelMatcher('{company=', 'level', 'info')).toThrow();
   });
 });

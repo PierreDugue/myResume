@@ -66,6 +66,7 @@ describe('AboutPage', () => {
       'Why there is an admin area',
       'Architecture',
       'AI-assisted development',
+      'Testing: from TDD to mutation testing',
       'Decisions',
     ]);
     expect(el.querySelector('h1')).toBeNull();

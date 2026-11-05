@@ -550,7 +550,7 @@ interface LogLabel {
 Each project shown as a trace: the **root span** is the project itself, its children are the project's spans. Both endpoints return `404` while the page is disabled (see Preferences).
 
 - **Which projects are traces:** those with a `startDate` or at least one span. Others aren't listed, and `GET /api/traces/:slug` returns `404` for them (as for an unknown slug).
-- **Root span:** it starts at the project's `startDate`, or its first span's start when the project has none. It ends at the project's `endDate`; for an ongoing project (no `endDate`), at the latest of today and its spans' ends.
+- **Root span:** it starts at the project's `startDate`, or its earliest span's start when the project has none. It ends at the project's `endDate`; for an ongoing project (no `endDate`), at the latest of today and its spans' ends.
 - **Ongoing spans** (no `endDate`) end today (or at their start, if that is later).
 - **Durations** count calendar days, both ends included (a span from 2026-10-22 to 2026-10-22 lasts 1 day).
 - **Position:** `offset` and `width` place each span on the root's time axis, as fractions of the root's duration (0..1), so the frontend only draws.

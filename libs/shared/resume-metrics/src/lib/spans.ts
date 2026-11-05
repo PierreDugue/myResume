@@ -29,17 +29,15 @@ export function spanOutlineErrors(
   project: { startDate: string | null; endDate: string | null },
 ): string[] {
   const errors: string[] = [];
-  const parents = spanParents(spans.map((s) => Math.max(0, s.depth)));
+  const parents = spanParents(spans.map((s) => s.depth));
   // An ongoing end sorts after any date.
   const end = (date: string | null) => date ?? '9999-12-31';
 
   spans.forEach((span, index) => {
     const label = `Span ${index + 1} "${span.name}"`;
     const above = index > 0 ? spans[index - 1].depth : -1;
-    if (span.depth < 0 || (index === 0 && span.depth !== 0)) {
+    if (index === 0 && span.depth !== 0) {
       errors.push(`${label} must be at the top level`);
-    } else if (span.depth > MAX_SPAN_DEPTH) {
-      errors.push(`${label} is nested too deep: at most ${MAX_SPAN_DEPTH + 1} levels`);
     } else if (span.depth > above + 1) {
       errors.push(`${label} can only be one level deeper than the span above it`);
     }

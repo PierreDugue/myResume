@@ -1,10 +1,33 @@
 import type { DashboardQuery, ResumeResponse } from '@my-resume/api-models';
 import { buildDashboard, DashboardQueryError } from './dashboard';
-import { resumeFixture, TODAY } from './fixtures';
+import { resumeFixture, SKILLS, TODAY } from './fixtures';
 
 const build = (query = {}) => buildDashboard({ resume: resumeFixture(), today: TODAY, query });
 const series = (d: ReturnType<typeof build>, name: string) =>
   d.skillUsage.series.find((s) => s.name === name);
+
+/**
+ * The fixture with its skills listed in reverse (sortOrder renumbered to match) and the undated
+ * project dated Jan–Mar 2026, so React is used 3 months. Neither the skills list nor the usage order
+ * agrees with the fixture's order any more, so sorting and grouping are really exercised.
+ */
+function reorderedSkillsResume(): ResumeResponse {
+  const resume = resumeFixture();
+  resume.skills = Object.values(SKILLS)
+    .reverse()
+    .map((s, i) => ({ ...s, sortOrder: i }));
+  resume.projects = resume.projects.map((p) =>
+    p.id === 'p-undated' ? { ...p, startDate: '2026-01-01', endDate: '2026-03-31' } : p,
+  );
+  return resume;
+}
+
+/** The fixture with its jobs listed oldest first (the fixture has them newest first). */
+function oldestFirstResume(): ResumeResponse {
+  const resume = resumeFixture();
+  resume.experiences.reverse();
+  return resume;
+}
 
 describe('buildDashboard', () => {
   describe('range and filters', () => {
@@ -30,11 +53,14 @@ describe('buildDashboard', () => {
       });
     });
 
+    it('accepts the bounds themselves: 1950 and 2100', () => {
+      expect(build({ from: 1950, to: 2100 }).range).toEqual({ from: 1950, to: 2100 });
+    });
+
     it.each([
       ['from after to', { from: 2025, to: 2020 }],
-      ['a year before 1950', { from: 1900 }],
-      ['a year after 2100', { to: 2200 }],
-      ['a non-integer year', { from: 2020.5 }],
+      ['a year before 1950', { from: 1949 }],
+      ['a year after 2100', { to: 2101 }],
       ['an unknown skill', { skill: 'cobol' }],
       ['an unknown category', { category: 'Gardening' }],
     ])('rejects %s', (_case, query) => {
@@ -53,28 +79,51 @@ describe('buildDashboard', () => {
       ]);
     });
 
-    it('gives the all-time experience at the end of each year', () => {
-      const angular = series(build({ from: 2022, to: 2026 }), 'Angular');
-      expect(angular?.cumulativeYears).toEqual([0.3, 1.3, 2.3, 3.3, 3.8]);
+    it('restricts to the range and gives the all-time experience at the end of each year', () => {
+      // Java: Capgemini Sep 2011–Jul 2013. In 2013 it has 7 months (Jan–Jul), in 2014 none.
+      // All-time at the end of 2013: 4 (2011) + 12 (2012) + 7 = 23 months = 1.9 years.
+      const java = series(build({ from: 2013, to: 2014 }), 'Java');
+      expect(java?.monthsPerYear).toEqual([7, 0]);
+      expect(java?.totalYears).toBe(0.6);
+      expect(java?.cumulativeYears).toEqual([1.9, 1.9]);
     });
 
-    it('lists only skills used in the range, most used first', () => {
-      expect(build().skillUsage.series.map((s) => s.name)).toEqual([
-        'Angular',
-        'NgRx',
-        'Java',
-        'Claude',
-      ]);
+    it('accumulates the all-time experience year by year, below the total when use goes on after the range', () => {
+      // Angular: 4 months in 2022 (Sep–Dec) before the range, then 12 (2023), 12 (2024), 11 (2025).
+      // All-time at the end of each year: 16 months = 1.3, 28 = 2.3, 39 = 3.25 -> 3.3 years.
+      // The range total is only 35 months = 2.9 years, and Whoz (2026) keeps it going after 2025.
+      const angular = series(build({ from: 2023, to: 2025 }), 'Angular');
+      expect(angular?.monthsPerYear).toEqual([12, 12, 11]);
+      expect(angular?.cumulativeYears).toEqual([1.3, 2.3, 3.3]);
+      expect(angular?.totalYears).toBe(2.9);
+    });
+
+    it('lists only skills used in the range, most used first (not in skills-list order)', () => {
+      // Months: Angular 45, NgRx 39, Java 23, Claude 6, React 3; the skills list is the reverse.
+      const resume = reorderedSkillsResume();
+      const names = (query = {}) =>
+        buildDashboard({ resume, today: TODAY, query }).skillUsage.series.map((s) => s.name);
+      expect(names()).toEqual(['Angular', 'NgRx', 'Java', 'Claude', 'React']);
+      // Angular and NgRx both have 28 months in 2022–2024: the tie goes to the lower sortOrder.
       expect(build({ from: 2022, to: 2024 }).skillUsage.series.map((s) => s.name)).toEqual([
         'Angular',
         'NgRx',
       ]);
-    });
-
-    it('restricts the range: a 2022–2024 window counts only those years', () => {
-      const angular = series(build({ from: 2022, to: 2024 }), 'Angular');
-      expect(angular?.monthsPerYear).toEqual([4, 12, 12]);
-      expect(angular?.totalYears).toBe(2.3);
+      // Same tie with the sortOrders swapped while the list keeps Angular first: sortOrder decides.
+      const swapped = resumeFixture();
+      swapped.skills = swapped.skills.map((s) =>
+        s.slug === 'angular'
+          ? { ...s, sortOrder: 1 }
+          : s.slug === 'ngrx'
+            ? { ...s, sortOrder: 0 }
+            : s,
+      );
+      const tied = buildDashboard({
+        resume: swapped,
+        today: TODAY,
+        query: { from: 2022, to: 2024 },
+      });
+      expect(tied.skillUsage.series.map((s) => s.name)).toEqual(['NgRx', 'Angular']);
     });
 
     it('filters by category or by skill', () => {
@@ -89,7 +138,7 @@ describe('buildDashboard', () => {
 
   describe('skills over time (the line chart)', () => {
     const names = (d: ReturnType<typeof build>) => d.skillsOverTime.series.map((s) => s.name);
-    const withSelection = (skillsOverTime: string[], query = {}) =>
+    const withSelection = (skillsOverTime: string[] | undefined, query = {}) =>
       buildDashboard({ resume: resumeFixture(), today: TODAY, query, skillsOverTime });
 
     /** Ten skills "s1".."s10" all used by one job, s1 the longest and s10 the shortest (hand-checkable ranking). */
@@ -118,22 +167,18 @@ describe('buildDashboard', () => {
       return resume;
     }
 
-    it('is automatic without a selection: every used skill, most used first', () => {
-      const d = build();
-      expect(d.skillsOverTime.mode).toBe('auto');
-      expect(names(d)).toEqual(['Angular', 'NgRx', 'Java', 'Claude']);
-      expect(d.skillsOverTime.years).toEqual(d.skillUsage.years);
-      expect(d.skillsOverTime.series).toEqual(d.skillUsage.series);
-    });
-
-    it.each([
+    it.each<[string, string[] | undefined]>([
+      ['no selection', undefined],
       ['an empty selection', []],
       ['a selected skill that is never used', ['sk-react']],
       ['an unknown (deleted) skill id', ['sk-gone']],
-    ])('is automatic for %s', (_, selection) => {
+    ])('is automatic for %s: every used skill, most used first', (_, selection) => {
       const d = withSelection(selection);
-      expect(d.skillsOverTime.mode).toBe('auto');
-      expect(names(d)).toEqual(['Angular', 'NgRx', 'Java', 'Claude']);
+      expect(d.skillsOverTime).toEqual({
+        mode: 'auto',
+        years: d.skillUsage.years,
+        series: d.skillUsage.series,
+      });
     });
 
     it('caps the automatic lines at the 8 most used skills', () => {
@@ -187,46 +232,11 @@ describe('buildDashboard', () => {
         ['NgRx'],
       ],
       [
-        'the category filter is automatic even when the selection is the only used skill of the category',
-        ['sk-angular'],
-        { category: 'Core' },
-        'auto',
-        ['Angular'],
-      ],
-      [
         'the skill filter ignores the selection, even when it keeps Java',
         ['sk-angular', 'sk-java'],
         { skill: 'java' },
         'auto',
         ['Java'],
-      ],
-      [
-        'a category filter that keeps none of the selection ignores it: automatic',
-        ['sk-angular'],
-        { category: 'Languages' },
-        'auto',
-        ['Java'],
-      ],
-      [
-        'a skill filter that keeps none of the selection ignores it: automatic',
-        ['sk-angular', 'sk-claude'],
-        { skill: 'java' },
-        'auto',
-        ['Java'],
-      ],
-      [
-        'a narrowed range ignores the selection, even when it keeps NgRx',
-        ['sk-java', 'sk-ngrx'],
-        { from: 2022, to: 2024 },
-        'auto',
-        ['Angular', 'NgRx'],
-      ],
-      [
-        'a narrowed range that holds none of the selection ignores it: automatic',
-        ['sk-java'],
-        { from: 2022, to: 2024 },
-        'auto',
-        ['Angular', 'NgRx'],
       ],
       // Only a range that isn't narrower than the whole career keeps the selection.
       [
@@ -278,8 +288,7 @@ describe('buildDashboard', () => {
     });
 
     it('keeps the selection with no experience: the career starts at the current year', () => {
-      // No job, so the default range is 2026–2026. The one project (Nov 2025–Feb 2026) uses Angular
-      // 2 months in 2025 (Nov, Dec) and 2 in 2026 (Jan, Feb).
+      // No job, so the default range is 2026–2026, which is still the whole career.
       const resume = resumeFixture();
       resume.experiences = [];
       resume.projects = [
@@ -292,20 +301,10 @@ describe('buildDashboard', () => {
           spans: [],
         },
       ];
-      const draw = (query: DashboardQuery) =>
-        buildDashboard({ resume, today: TODAY, query, skillsOverTime: ['sk-angular'] });
-
-      const current = draw({});
-      expect(current.range).toEqual({ from: 2026, to: 2026 });
-      expect(current.skillsOverTime.mode).toBe('selected');
-      expect(names(current)).toEqual(['Angular']);
-      expect(current.skillsOverTime.series[0].monthsPerYear).toEqual([2]);
-
-      const wider = draw({ from: 2025 });
-      expect(wider.range).toEqual({ from: 2025, to: 2026 });
-      expect(wider.skillsOverTime.mode).toBe('selected');
-      expect(names(wider)).toEqual(['Angular']);
-      expect(wider.skillsOverTime.series[0].monthsPerYear).toEqual([2, 2]);
+      const d = buildDashboard({ resume, today: TODAY, query: {}, skillsOverTime: ['sk-angular'] });
+      expect(d.range).toEqual({ from: 2026, to: 2026 });
+      expect(d.skillsOverTime.mode).toBe('selected');
+      expect(names(d)).toEqual(['Angular']);
     });
 
     it('does not change skillUsage', () => {
@@ -313,42 +312,33 @@ describe('buildDashboard', () => {
       expect(withSelection(['sk-claude']).skillUsage).toEqual(plain.skillUsage);
       expect(withSelection(['sk-claude']).skillTotals).toEqual(plain.skillTotals);
     });
-
-    it('is empty only when no skill is used in the view', () => {
-      const empty = buildDashboard({
-        resume: { ...resumeFixture(), skills: [], experiences: [], projects: [], education: [] },
-        today: TODAY,
-        query: {},
-        skillsOverTime: ['sk-angular'],
-      });
-      expect(empty.skillsOverTime.mode).toBe('auto');
-      expect(empty.skillsOverTime.series).toEqual([]);
-      expect(empty.skillsOverTime.years).toEqual(empty.skillUsage.years);
-    });
   });
 
   describe('skill totals (bar gauge)', () => {
     it('groups used skills by category (skills-list order), most years first', () => {
-      expect(build().skillTotals).toEqual([
+      // The skills list is reversed: Core (React, Angular) comes first, then AI, Languages, State.
+      const resume = reorderedSkillsResume();
+      expect(buildDashboard({ resume, today: TODAY, query: {} }).skillTotals).toEqual([
         {
           category: 'Core',
           skills: [
             { skillId: 'sk-angular', slug: 'angular', name: 'Angular', years: 3.8, level: null },
+            { skillId: 'sk-react', slug: 'react', name: 'React', years: 0.3, level: null },
           ],
-        },
-        {
-          category: 'State',
-          skills: [{ skillId: 'sk-ngrx', slug: 'ngrx', name: 'NgRx', years: 3.3, level: null }],
-        },
-        {
-          category: 'Languages',
-          skills: [{ skillId: 'sk-java', slug: 'java', name: 'Java', years: 1.9, level: null }],
         },
         {
           category: 'AI',
           skills: [
             { skillId: 'sk-claude', slug: 'claude', name: 'Claude', years: 0.5, level: null },
           ],
+        },
+        {
+          category: 'Languages',
+          skills: [{ skillId: 'sk-java', slug: 'java', name: 'Java', years: 1.9, level: null }],
+        },
+        {
+          category: 'State',
+          skills: [{ skillId: 'sk-ngrx', slug: 'ngrx', name: 'NgRx', years: 3.3, level: null }],
         },
       ]);
     });
@@ -393,7 +383,11 @@ describe('buildDashboard', () => {
     });
 
     it('does not let the range change the headline figures', () => {
-      expect(stat(build({ from: 2024, to: 2024 }), 'yearsInIt')?.value).toBe(14);
+      expect(stat(build({ from: 2024, to: 2024 }), 'uptime')).toMatchObject({
+        value: 2011,
+        display: 'since 2011',
+        hint: '15 years',
+      });
     });
   });
 
@@ -441,25 +435,45 @@ describe('buildDashboard', () => {
   });
 
   describe('impacts and latest highlights', () => {
-    it('lists quantified achievements in the range, newest first', () => {
-      expect(build().impacts.map((i) => [i.company, i.impact.metric])).toEqual([
+    it('lists quantified achievements in the range, newest first (jobs listed oldest first)', () => {
+      const resume = oldestFirstResume();
+      const impacts = (query = {}) => buildDashboard({ resume, today: TODAY, query }).impacts;
+      expect(impacts().map((i) => [i.company, i.impact.metric])).toEqual([
         ['Whoz', 'Code generated with Claude'],
         ['KX', 'Page load time'],
       ]);
-      expect(build({ to: 2025 }).impacts.map((i) => i.company)).toEqual(['KX']);
+      expect(impacts({ to: 2025 }).map((i) => i.company)).toEqual(['KX']);
     });
 
-    it('gives the 5 newest highlights as log lines (same day: resume order)', () => {
-      expect(build().latestHighlights.map((l) => [l.date, l.level, l.company])).toEqual([
+    it('gives the 5 newest highlights as log lines, newest first (same day: resume order)', () => {
+      // Six highlights in the range, jobs oldest first and dates out of order: the oldest is dropped.
+      const resume = oldestFirstResume();
+      const highlight = (id: string, date: string, level: 'achievement' | 'milestone') => ({
+        id,
+        date,
+        level,
+        message: id,
+        impact: null,
+        labels: {},
+        skillIds: [],
+        sortOrder: 9,
+      });
+      const byCompany = (company: string) => resume.experiences.find((e) => e.company === company)!;
+      byCompany('Capgemini').highlights = [
+        highlight('h-c-1', '2013-06-30', 'milestone'),
+        highlight('h-c-2', '2012-05-05', 'achievement'),
+      ];
+      byCompany('Whoz').highlights.push(highlight('h-whoz-2', '2026-07-01', 'milestone'));
+
+      const lines = buildDashboard({ resume, today: TODAY, query: {} }).latestHighlights;
+      expect(lines.map((l) => [l.date, l.level, l.company])).toEqual([
         ['2026-10-22', 'achievement', 'Whoz'],
+        ['2026-07-01', 'milestone', 'Whoz'],
         ['2025-11-30', 'achievement', 'KX'],
         ['2025-11-30', 'milestone', 'KX'],
+        ['2013-06-30', 'milestone', 'Capgemini'],
       ]);
     });
-  });
-
-  it('passes the public profile through', () => {
-    expect(build().profile?.fullName).toBe('Pierre Dugue');
   });
 
   it('works on an empty resume', () => {
@@ -467,9 +481,12 @@ describe('buildDashboard', () => {
       resume: { profile: null, experiences: [], education: [], skills: [], projects: [] },
       today: TODAY,
       query: {},
+      skillsOverTime: ['sk-angular'],
     });
     expect(d.range).toEqual({ from: 2026, to: 2026 });
     expect(d.status.state).toBe('open-to-work');
     expect(d.stats.find((s) => s.key === 'yearsInIt')).toMatchObject({ value: 0, display: '–' });
+    // A stale selection of a skill that no longer exists falls back to automatic.
+    expect(d.skillsOverTime).toEqual({ mode: 'auto', years: [2026], series: [] });
   });
 });

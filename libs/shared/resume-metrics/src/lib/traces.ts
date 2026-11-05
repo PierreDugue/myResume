@@ -50,7 +50,7 @@ export function buildTraces(resume: ResumeResponse, today: string): TraceSummary
 }
 
 function traceSpans(project: Project, skills: Skill[], today: string): TraceSpan[] | null {
-  const spans = [...project.spans].sort((a, b) => a.sortOrder - b.sortOrder);
+  const spans = project.spans;
   const start = project.startDate ?? minDate(spans.map((s) => s.startDate));
   if (!start) return null;
 

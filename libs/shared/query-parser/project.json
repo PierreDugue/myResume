@@ -17,6 +17,12 @@
         ],
         "parallel": false
       }
+    },
+    "mutation": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "stryker run libs/shared/query-parser/stryker.config.json"
+      }
     }
   }
 }

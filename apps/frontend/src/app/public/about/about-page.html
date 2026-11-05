@@ -141,9 +141,9 @@
   <app-panel class="half" title="AI-assisted development">
     <p>
       Built with <strong>Claude Code</strong> and specialized agents: architect, API contract,
-      backend, frontend and reviewer. Test-driven development is mandatory (red, green, refactor),
-      and the workflow is contract-first: API contract and shared types, then backend, then
-      frontend, then review.
+      backend, frontend, reviewer and unit-test reviewer. Test-driven development is mandatory (red,
+      green, refactor), and the workflow is contract-first: API contract and shared types, then
+      backend, then frontend, then review.
     </p>
     <p>The repository is public:</p>
     <ul>
@@ -169,6 +169,43 @@
         >
       </li>
     </ul>
+  </app-panel>
+
+  <app-panel
+    class="half"
+    title="Testing: from TDD to mutation testing"
+    info="StrykerJS on the shared libraries, triaged by a dedicated agent."
+  >
+    <dl>
+      <dt>Why TDD in the first place</dt>
+      <dd>
+        When an AI writes most of the code, tests are the spec it can run: "done" means "green", not
+        "looks done". Writing them first keeps them about behavior, not about whatever the code
+        happens to do.
+      </dd>
+      <dt>What went wrong</dt>
+      <dd>
+        Tests cost almost nothing to write, so the suite grew without a limit: impossible edge
+        cases, checks TypeScript already makes. Worse, some tests could never fail. The data in the
+        test was already in the order a sort should produce, so deleting the sort kept everything
+        green. "Red, then green" only proves a test fails when the whole feature is missing, not
+        when one rule inside it breaks.
+      </dd>
+      <dt>What changed</dt>
+      <dd>
+        A unit-test reviewer agent now asks of every test whether it's relevant, whether its case
+        can really happen, and whether it can fail. <strong>StrykerJS</strong> answers the last
+        question for real: it breaks the code in hundreds of small ways and reports every change no
+        test catches. The agent sorts those survivors into real gaps, harmless changes and display
+        text. Stryker also caught gaps in the agent's own rewrites, which is why it doesn't work
+        alone.
+      </dd>
+      <dt>Result so far</dt>
+      <dd>
+        On the Explore query parser: 68 tests down to 62, and the mutation score up from 88% to 96%.
+        Fewer tests, but each one can fail.
+      </dd>
+    </dl>
   </app-panel>
 
   <app-panel class="half" title="Decisions">

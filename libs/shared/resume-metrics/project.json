@@ -17,6 +17,12 @@
         ],
         "parallel": false
       }
+    },
+    "mutation": {
+      "executor": "nx:run-commands",
+      "options": {
+        "command": "stryker run libs/shared/resume-metrics/stryker.config.json"
+      }
     }
   }
 }

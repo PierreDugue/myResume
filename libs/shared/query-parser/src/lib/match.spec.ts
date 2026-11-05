@@ -28,6 +28,20 @@ describe('compileQuery', () => {
       expect(kept('{company!="ACME"}')).toEqual([1]);
     });
 
+    it('compares = and != literally, even with regex metacharacters', () => {
+      const lead: LogRecord = {
+        labels: { role: 'Tech Lead (Angular)' },
+        tech: ['C++'],
+        line: 'Led the team',
+      };
+      const plain: LogRecord = { labels: { role: 'Tech Lead Angular' }, tech: [], line: 'x' };
+      const keptIn = (query: string) =>
+        [lead, plain].flatMap((r, i) => (compileQuery(parseQuery(query))(r) ? [i] : []));
+      expect(keptIn('{role="tech lead (angular)"}')).toEqual([0]);
+      expect(keptIn('{role!="tech lead (angular)"}')).toEqual([1]);
+      expect(keptIn('{tech="c++"}')).toEqual([0]);
+    });
+
     it('needs every matcher to hold', () => {
       expect(kept('{type="experience", level="milestone"}')).toEqual([]);
       expect(kept('{type="education", level="milestone"}')).toEqual([1]);
@@ -69,6 +83,10 @@ describe('compileQuery', () => {
       expect(kept('|= "KUBERNETES"')).toEqual([0]);
       expect(kept('!= "kubernetes"')).toEqual([1]);
       expect(kept('kubernetes')).toEqual([0]);
+      // Text is literal, not a regex: "." and "+" are ordinary characters.
+      expect(kept('|= "p9."')).toEqual([]);
+      expect(kept('!= "p9."')).toEqual([0, 1]);
+      expect(kept('C++')).toEqual([]);
     });
 
     it('matches regular expressions anywhere in the line', () => {

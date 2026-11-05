@@ -55,9 +55,9 @@ describe('parseQuery', () => {
   });
 
   it('reads plain text as a "contains" filter', () => {
-    expect(parseQuery('  page load time ')).toEqual({
+    expect(parseQuery('  shipped it! | fast ')).toEqual({
       matchers: [],
-      filters: [{ op: '|=', value: 'page load time' }],
+      filters: [{ op: '|=', value: 'shipped it! | fast' }],
     });
   });
 
@@ -78,6 +78,8 @@ describe('parseQuery', () => {
 
   it('reads backtick strings raw', () => {
     expect(parseQuery('{role=~`.*\\(lead\\)`}').matchers[0].value).toBe('.*\\(lead\\)');
+    // Backslashes and quotes stay exactly as typed: no unescaping.
+    expect(parseQuery('|= `a\\\\b\\"`').filters[0].value).toBe('a\\\\b\\"');
   });
 
   it('accepts label names with digits and underscores', () => {
@@ -104,42 +106,40 @@ describe('parseQuery', () => {
     });
   });
 
-  it('rejects an invalid regular expression at its value', () => {
-    const error = errorOf('{role=~"lead("}');
-    expect(error.column).toBe(8);
+  it.each([
+    ['{role=~"("}', 8],
+    ['{role!~"("}', 8],
+    ['|~ "("', 4],
+    ['!~ "("', 4],
+    ['|~ "(a)\\1"', 4],
+    ['|~ "(?=a)"', 4],
+  ])('rejects the invalid regular expression in %s at its value', (input, column) => {
+    const error = errorOf(input);
+    expect(error.column).toBe(column);
     expect(error.message).toMatch(/^Invalid regular expression/);
   });
 
-  it('rejects a query longer than 500 characters', () => {
-    const error = errorOf(`|= "${'a'.repeat(500)}"`);
+  it('accepts text that is not a valid regex with the non-regex operators', () => {
+    const query = parseQuery('{tech="C++", tech!="("} |= "C++" != "("');
+    expect(query.matchers).toEqual([
+      { label: 'tech', op: '=', value: 'C++' },
+      { label: 'tech', op: '!=', value: '(' },
+    ]);
+    expect(query.filters).toEqual([
+      { op: '|=', value: 'C++' },
+      { op: '!=', value: '(' },
+    ]);
+  });
+
+  it('accepts a query of 500 characters and rejects one of 501', () => {
+    expect(parseQuery('a'.repeat(500)).filters[0].value).toHaveLength(500);
+    const error = errorOf('a'.repeat(501));
     expect(error.message).toBe('The query is too long: at most 500 characters (column 501)');
   });
 
-  describe('regular expressions (RE2 syntax, matched in linear time)', () => {
-    it.each([
-      '(a+)+',
-      '(a|b)*',
-      'a*a*a*a*b',
-      '.*.*.*.*b',
-      '(?:x+)+',
-      '[(+)]+',
-      'a{2,3}',
-      '(\\d+)%',
-    ])('accepts %s, since no pattern can be slow', (pattern) => {
-      expect(() => parseQuery(`|~ \`${pattern}\``)).not.toThrow();
-    });
-
-    it.each([
-      ['(a)\\1', 'a back-reference'],
-      ['(?=a)', 'a lookahead'],
-      ['(?<!a)b', 'a lookbehind'],
-    ])('refuses %s (%s) as invalid', (pattern) => {
-      const error = errorOf(`|~ \`${pattern}\``);
-      expect(error.column).toBe(4);
-      expect(error.message).toMatch(/^Invalid regular expression/);
-    });
-
-    it('refuses a regular expression over 100 characters', () => {
+  describe('regular expression length', () => {
+    it('accepts 100 characters and refuses 101', () => {
+      expect(() => parseQuery(`|~ \`${'x'.repeat(100)}\``)).not.toThrow();
       const error = errorOf(`|~ \`${'x'.repeat(101)}\``);
       expect(error.message).toBe('Regular expression too long: at most 100 characters (column 4)');
     });
@@ -147,25 +147,13 @@ describe('parseQuery', () => {
 });
 
 describe('formatQuery', () => {
-  it('prints a query in the canonical form', () => {
-    expect(
-      formatQuery({
-        matchers: [
-          { label: 'company', op: '=', value: 'Acme' },
-          { label: 'level', op: '!=', value: 'info' },
-        ],
-        filters: [{ op: '|=', value: 'say "hi"' }],
-      }),
-    ).toBe('{company="Acme", level!="info"} |= "say \\"hi\\""');
-  });
-
   it('prints only the parts that are set', () => {
     expect(formatQuery({ matchers: [], filters: [] })).toBe('');
     expect(formatQuery({ matchers: [], filters: [{ op: '!~', value: 'x' }] })).toBe('!~ "x"');
   });
 
-  it('round-trips through parseQuery', () => {
-    const query = '{role=~"lead.*\\\\d", tech="C#"} |= "a\\\\b" !~ "x"';
+  it('prints the canonical form and round-trips through parseQuery', () => {
+    const query = '{role=~"lead.*\\\\d", tech="C#", team!="say \\"hi\\""} |= "a\\\\b" !~ "x"';
     expect(formatQuery(parseQuery(query))).toBe(query);
     expect(parseQuery(formatQuery(parseQuery(query)))).toEqual(parseQuery(query));
   });

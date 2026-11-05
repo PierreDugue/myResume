@@ -1,0 +1,27 @@
+{
+  "$schema": "../../../node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "vitest",
+  "vitest": {
+    "configFile": "libs/shared/query-parser/vitest.config.mts",
+    "related": false
+  },
+  "mutate": [
+    "libs/shared/query-parser/src/**/*.ts",
+    "!libs/shared/query-parser/src/**/*.spec.ts",
+    "!libs/shared/query-parser/src/**/fixtures.ts"
+  ],
+  "checkers": ["typescript"],
+  "tsconfigFile": "libs/shared/query-parser/tsconfig.lib.json",
+  "coverageAnalysis": "perTest",
+  "disableBail": true,
+  "incremental": true,
+  "incrementalFile": "coverage/query-parser/mutation/incremental.json",
+  "htmlReporter": {
+    "fileName": "coverage/query-parser/mutation/index.html"
+  },
+  "jsonReporter": {
+    "fileName": "coverage/query-parser/mutation/report.json"
+  },
+  "reporters": ["html", "json", "clear-text", "progress"],
+  "tempDirName": "tmp/stryker-query-parser"
+}
