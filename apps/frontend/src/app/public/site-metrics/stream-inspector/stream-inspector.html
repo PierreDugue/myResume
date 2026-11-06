@@ -1,0 +1,20 @@
+@if (entries().length === 0) {
+  <p class="empty">No messages yet.</p>
+} @else {
+  <ol>
+    @for (entry of entries(); track $index) {
+      <li>
+        <span class="time">{{ entry.time }}</span
+        >&ngsp;<span class="direction">
+          @if (entry.direction === 'http') {
+            {{ entry.symbol }}
+          } @else {
+            <span aria-hidden="true">{{ entry.symbol }}</span
+            >&ngsp;<span class="sr-only">{{ directionName(entry.direction) }}</span>
+          }</span
+        >&ngsp;<span class="event">{{ entry.event }}</span
+        >&ngsp;<span class="preview">{{ entry.preview }}</span>
+      </li>
+    }
+  </ol>
+}

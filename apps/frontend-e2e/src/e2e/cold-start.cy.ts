@@ -1,6 +1,6 @@
 /**
- * Cold start on free hosting (docs/spec.md, Cross-cutting requirements): the platform answers 502
- * while it wakes the backend. Here the first answers are stubbed with 502s, then the real API
+ * The backend is starting (docs/spec.md, Cross-cutting requirements): after a deploy or restart,
+ * or when a free-plan service wakes up, the proxy answers 502 until the backend is up. Here the first answers are stubbed with 502s, then the real API
  * (proxy → NestJS → PostgreSQL) answers.
  */
 describe('cold start', () => {

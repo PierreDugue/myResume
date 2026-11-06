@@ -13,6 +13,7 @@ describe('page preferences (stubbed API)', () => {
     traces: true,
     serviceMap: true,
     quality: true,
+    siteMetrics: true,
     about: true,
   };
   const stubPreferences = (pages: Partial<typeof allVisible>, skillsOverTime: string[] = []) =>
@@ -61,6 +62,7 @@ describe('page preferences (stubbed API)', () => {
         traces: false,
         serviceMap: false,
         quality: false,
+        siteMetrics: false,
         about: false,
       });
       cy.visit('/about-this-site');

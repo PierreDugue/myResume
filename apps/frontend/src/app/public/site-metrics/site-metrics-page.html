@@ -1,0 +1,80 @@
+<div class="toolbar">
+  <app-refresh-picker [mode]="mode()" (modeChange)="setMode($event)" />
+  <app-live-badge [status]="store.feedStatus()" />
+</div>
+
+@if (store.samples().length > 0) {
+  <div class="grid">
+    <div class="stats">
+      @for (stat of stats(); track stat.label) {
+        <app-stat-panel [label]="stat.label" [display]="stat.display" [hint]="stat.hint" />
+      }
+    </div>
+
+    @for (chart of charts(); track chart.id) {
+      <app-panel
+        class="chart"
+        [title]="chart.title"
+        [info]="chart.info"
+        [data]="window()"
+        [canShowTable]="true"
+        [showTable]="tables()[chart.id] ?? false"
+        (showTableChange)="setTable(chart.id, $event)"
+      >
+        @if (tables()[chart.id]) {
+          <div class="table-wrap">
+            <table>
+              <caption class="sr-only">
+                {{
+                  chart.title
+                }}, last 2 minutes, newest first
+              </caption>
+              <thead>
+                <tr>
+                  @for (column of chart.table.columns; track column) {
+                    <th scope="col">{{ column }}</th>
+                  }
+                </tr>
+              </thead>
+              <tbody>
+                @for (row of chart.table.rows; track row.key) {
+                  <tr>
+                    <th scope="row">{{ row.cells[0] }}</th>
+                    @for (cell of row.cells.slice(1); track $index) {
+                      <td class="num">{{ cell }}</td>
+                    }
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        } @else {
+          <app-echart [options]="chart.option" [mergeUpdates]="true" [label]="chart.label" />
+        }
+      </app-panel>
+    }
+  </div>
+} @else if (store.error()) {
+  <section class="panel empty-state">
+    <p role="alert">The process metrics could not be loaded.</p>
+    <button class="button retry" type="button" (click)="store.retry()">Try again</button>
+  </section>
+} @else if (store.loading()) {
+  <p class="loading muted" role="status">Loading the process metrics…</p>
+} @else {
+  <section class="panel empty-state">
+    <h2>No samples yet</h2>
+    <p>
+      The backend samples its own process every second. It has just started: the charts fill in
+      within a few seconds.
+    </p>
+  </section>
+}
+
+<app-panel
+  class="inspector"
+  title="Stream inspector"
+  info="The last messages of the feed, newest first, with this browser's clock. ↑ sent to the server, ↓ received from it, • a connection event, HTTP a polling request. Long payloads are cut."
+>
+  <app-stream-inspector [entries]="store.inspector()" />
+</app-panel>

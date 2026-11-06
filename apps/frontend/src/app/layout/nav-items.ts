@@ -20,5 +20,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { label: 'Traces', page: 'traces', path: '/traces', exact: false },
   { label: 'Service map', page: 'serviceMap', path: '/service-map', exact: false },
   { label: 'Code quality', page: 'quality', path: '/dashboards/quality', exact: false },
+  { label: 'Site metrics', page: 'siteMetrics', path: '/dashboards/meta', exact: false },
   { label: 'About this site', page: 'about', path: '/about-this-site', exact: false },
 ];

@@ -1,0 +1,12 @@
+<div class="picker" role="group" aria-label="Refresh">
+  @for (option of options; track option.mode) {
+    <button
+      type="button"
+      [attr.aria-pressed]="mode() === option.mode"
+      [class.active]="mode() === option.mode"
+      (click)="mode.set(option.mode)"
+    >
+      {{ option.label }}
+    </button>
+  }
+</div>

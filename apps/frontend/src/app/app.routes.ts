@@ -49,6 +49,13 @@ export const appRoutes: Route[] = [
         loadComponent: () => import('./public/quality/quality-page').then((m) => m.QualityPage),
       },
       {
+        path: 'dashboards/meta',
+        title: 'This site, observed',
+        data: page('siteMetrics'),
+        loadComponent: () =>
+          import('./public/site-metrics/site-metrics-page').then((m) => m.SiteMetricsPage),
+      },
+      {
         path: 'resume',
         title: 'Plain view',
         loadComponent: () =>

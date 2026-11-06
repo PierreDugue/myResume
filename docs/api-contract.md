@@ -756,6 +756,94 @@ interface ProjectGraph {
 }
 ```
 
+### Site metrics
+
+| Method | Path                        | Auth | Request        | Response                                       | Status |
+| ------ | --------------------------- | ---- | -------------- | ---------------------------------------------- | ------ |
+| GET    | `/api/site-metrics/process` | –    | query: `since` | `ProcessMetricsHistory` `200`, or `400`, `404` | done   |
+
+The live health of the backend's own Node.js process, for the "This site, observed" dashboard (`/dashboards/meta`). The site has too few visitors for traffic metrics, so it shows its own process health instead. Returns `404` while the page is disabled (see Preferences). The WebSocket channel (see Real-time) is the main way to follow it; this endpoint returns the same history as the fallback (every page must work without WebSockets) and serves the 5 s / 30 s / 1 min refresh settings.
+
+- **Sampling:** the backend samples its process once per second, always (a cheap in-memory timer, never the database), into a ring buffer of the last 5 minutes (300 samples). The buffer is lost on restart.
+- **`since`** (optional): an ISO 8601 timestamp used as an exclusive cursor: only samples with a `ts` strictly later are returned. The client sends back the `ts` of the last sample it has. Leaving it out returns the whole buffer.
+  - An unparseable value (including an empty one), or one longer than 40 characters, returns `400`. Any ISO 8601 date or date-time that `Date` can read is accepted, with this rule on time zones: **a value with a time part must include an offset** (`Z` or `±hh:mm`), otherwise it is `400` (on the socket, `invalid_message`), because without an offset the meaning would depend on the server's time zone. A date-only value (`YYYY-MM-DD`) is read as midnight UTC. Clients send back the `ts` of a sample, which always ends in `Z`.
+  - A `since` older than the buffer returns the whole buffer; one in the future returns `samples: []`.
+  - The cursor is a server timestamp, not a counter, so it also works across a backend restart: the new process's samples are later, so they are returned. `startedAt` tells the client the process changed.
+- **Rate limit:** the normal global limit (300 requests per minute per IP); polling every 5 s is 12 per minute.
+- **No personal or environment data:** samples hold only numbers about the process: no env variables, paths, versions, hostnames or IPs.
+- **Timestamps** are ISO 8601 strings from the server clock, like everywhere else in the API.
+- **Units:** memory in MB (1 MB = 1,000,000 bytes, 1 decimal), event-loop delay and GC time in ms (2 decimals), CPU in % of one core (1 decimal, can exceed 100).
+
+```ts
+/** One sample of the backend's Node.js process, covering the last interval (1 s). */
+interface ProcessSample {
+  ts: string; // ISO timestamp (server clock), end of the interval; strictly increasing
+  uptimeSeconds: number; // whole seconds since the process started
+  eventLoopLagMs: { p50: number; p99: number }; // event-loop delay over the interval, 2 decimals
+  memoryMb: { rss: number; heapTotal: number; heapUsed: number }; // 1 MB = 1,000,000 bytes, 1 decimal
+  cpuPercent: number; // process CPU (user + system) over the interval, % of one core, 1 decimal; can exceed 100
+  gc: { minorCount: number; minorMs: number; majorCount: number; majorMs: number }; // GC pauses observed during the interval; major = mark-sweep-compact, minor = everything else (scavenge, incremental marking, weak callbacks); ms with 2 decimals
+}
+
+interface ProcessMetricsHistory {
+  startedAt: string; // ISO: when the backend process started (changes after a deploy or restart)
+  intervalMs: number; // 1000
+  samples: ProcessSample[]; // oldest first; at most 300 (the last 5 minutes)
+}
+
+interface ProcessMetricsQuery {
+  since?: string; // ISO 8601, exclusive cursor, at most 40 characters; a time part needs an offset (Z or ±hh:mm), date-only = midnight UTC
+}
+```
+
+### Real-time (WebSocket)
+
+Socket.IO, namespace `/live`, path `/api/socket.io`. The browser connects to the same origin; nginx and the dev proxy forward the upgrade unchanged. **No token: every channel is public and read-only.**
+
+**Connection rules:**
+
+- **Limits:**
+  - at most 200 open connections per visitor IP; more are refused at the handshake and the client sees `connect_error`
+  - at most 20 messages per second per connection; extra messages are dropped and, if they carry an ack, answered `{ ok: false, error: 'rate_limited', message }`
+  - a message larger than 4 kB (4096 bytes) closes the connection (Socket.IO `maxHttpBufferSize`)
+- **Proxy secret:** with `PROXY_SECRET` set, a handshake without the valid `X-Proxy-Secret` header is refused (`403`), like HTTP requests.
+- **Rooms:** one room per channel. A client receives a channel's pushes only after subscribing, and the server only builds and sends ticks while at least one client is subscribed. Subscriptions don't survive a reconnect: the client subscribes again on every `connect`.
+- **Validation:** every client message is validated. An invalid one gets `{ ok: false, error: 'invalid_message', message }` in its ack. **A client must always send the payload object**: `subscribe:metrics` is sent as `{}` for "everything", never with no payload (a missing payload reaches the server as `[]`, which is not an object and is `invalid_message`), nor with `null`, an array or any other non-object. Validation comes before the `page_disabled` check. `message` is generic and never echoes what the client sent (keys or values).
+- **Disabled page:** while the page of a channel is disabled (see Preferences), its `subscribe:*` answers `{ ok: false, error: 'page_disabled', message }` to everyone, because sockets carry no token. Disabling a page refuses new subscriptions only: existing ones are not ended and keep receiving ticks until the client unsubscribes, reloads or disconnects.
+- **Timestamps** are ISO 8601 strings, as in the HTTP API.
+
+| Client → server                                                                                                                                               | Ack                                                                                          | Server → client                                                                                              | Status                                                    |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------- |
+| `subscribe:metrics` `SubscribeMetricsRequest` (`{ since?: string }`, same rules as the HTTP `since`; `{}` for everything; unknown keys are `invalid_message`) | `LiveAck<ProcessMetricsHistory>`: the buffered history (after `since`), sent before any tick | then `metrics:tick` `ProcessSample`, one per second, to the `metrics` room                                   | done                                                      |
+| `unsubscribe:metrics` (no payload)                                                                                                                            | `LiveAck<null>`                                                                              | stops the ticks                                                                                              | done                                                      |
+| `subscribe:logs` `{ query?: string }`                                                                                                                         | later                                                                                        | `logs:line` (batches, at most 10 per second): `{ ts, level, method, route, status, durationMs, country? }[]` | planned, not built yet (later room on the same namespace) |
+| `subscribe:events`                                                                                                                                            | later                                                                                        | `events:new`: `{ ts, type, message }` (page viewed, PDF downloaded, ...)                                     | planned, not built yet (later room on the same namespace) |
+| –                                                                                                                                                             | –                                                                                            | `content:changed`: `{ entity, id }`, sent when the admin edits content, so open dashboards refresh           | planned, not built yet                                    |
+| –                                                                                                                                                             | –                                                                                            | `alert:state`: `{ name, state }`, sent when a status alert changes                                           | planned, not built yet                                    |
+
+The `logs`, `events`, `content:changed` and `alert:state` payloads above are indicative only: their types are written when each channel is designed.
+
+**Order and merging.** In practice the history ack arrives before the first tick, but a tick can arrive around the ack. Clients therefore merge by `ts`: dedupe, then sort ascending. After a reconnect, the client subscribes again with `since` set to the `ts` of the last sample it has, so it only receives what it missed.
+
+```ts
+type LiveErrorCode = 'invalid_message' | 'rate_limited' | 'page_disabled';
+type LiveAck<T> = { ok: true; data: T } | { ok: false; error: LiveErrorCode; message: string };
+
+type SubscribeMetricsRequest = ProcessMetricsQuery; // { since?: string }
+
+/** Socket.IO typed event maps for the /live namespace (server: Namespace<LiveClientEvents, LiveServerEvents>; client: Socket<LiveServerEvents, LiveClientEvents>). New channels add their events here. */
+interface LiveServerEvents {
+  'metrics:tick': (sample: ProcessSample) => void;
+}
+interface LiveClientEvents {
+  'subscribe:metrics': (
+    request: SubscribeMetricsRequest,
+    ack: (response: LiveAck<ProcessMetricsHistory>) => void,
+  ) => void;
+  'unsubscribe:metrics': (ack: (response: LiveAck<null>) => void) => void;
+}
+```
+
 ### Preferences
 
 | Method | Path               | Auth | Request                        | Response                                 | Status |
@@ -767,14 +855,15 @@ Site-wide settings, edited on `/admin/preferences`. There are two groups: `pages
 
 - **Pages and their ids:**
 
-  | Id           | Page                          |
-  | ------------ | ----------------------------- |
-  | `overview`   | `/` (Career Overview)         |
-  | `explore`    | `/explore`                    |
-  | `traces`     | `/traces` and `/traces/:slug` |
-  | `serviceMap` | `/service-map`                |
-  | `quality`    | `/dashboards/quality`         |
-  | `about`      | `/about-this-site`            |
+  | Id            | Page                                       |
+  | ------------- | ------------------------------------------ |
+  | `overview`    | `/` (Career Overview)                      |
+  | `explore`     | `/explore`                                 |
+  | `traces`      | `/traces` and `/traces/:slug`              |
+  | `serviceMap`  | `/service-map`                             |
+  | `quality`     | `/dashboards/quality`                      |
+  | `siteMetrics` | `/dashboards/meta` ("This site, observed") |
+  | `about`       | `/about-this-site`                         |
 
   The plain view `/resume` is not a preference: it is always available (the spec requires a plain view one click away), and it is where visitors land when every page is disabled.
 
@@ -793,21 +882,31 @@ Site-wide settings, edited on `/admin/preferences`. There are two groups: `pages
   - The selection isn't private, so `GET /api/preferences` stays public.
 - **Disabled pages are refused by the API too.** Each page's own endpoints answer `404` `{ "statusCode": 404, "message": "This page is disabled", "error": "Not Found" }` to visitors while it is disabled:
 
-  | Page         | Endpoints refused                          |
-  | ------------ | ------------------------------------------ |
-  | `overview`   | `GET /api/dashboard`                       |
-  | `explore`    | `GET /api/logs`, `GET /api/logs/labels`    |
-  | `traces`     | `GET /api/traces`, `GET /api/traces/:slug` |
-  | `serviceMap` | `GET /api/service-map`                     |
-  | `quality`    | `GET /api/quality`                         |
-  | `about`      | none                                       |
+  | Page          | Endpoints refused                                                                                                                                  |
+  | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `overview`    | `GET /api/dashboard`                                                                                                                               |
+  | `explore`     | `GET /api/logs`, `GET /api/logs/labels`                                                                                                            |
+  | `traces`      | `GET /api/traces`, `GET /api/traces/:slug`                                                                                                         |
+  | `serviceMap`  | `GET /api/service-map`                                                                                                                             |
+  | `quality`     | `GET /api/quality`                                                                                                                                 |
+  | `siteMetrics` | `GET /api/site-metrics/process`, and the socket's `subscribe:metrics` (answers `{ ok: false, error: 'page_disabled' }` to everyone, see Real-time) |
+  | `about`       | none                                                                                                                                               |
   - `about` has no endpoint to refuse: it uses `GET /api/resume`, which the plain view needs, so `/api/resume` is never refused.
-  - A request with a valid admin token is still served, so the admin can preview a hidden page.
+  - A request with a valid admin token is still served, so the admin can preview a hidden page. Sockets carry no token, so while `siteMetrics` is disabled the admin previewing the page falls back to the HTTP endpoint, which honours the admin token.
+  - **Disabling `siteMetrics` and the socket:** it refuses new `subscribe:metrics` (`page_disabled`) but doesn't end existing subscriptions; they stop when the client unsubscribes, reloads or disconnects.
+  - **Caching delay:** the server may cache the page flags for up to 5 seconds. The instance that handles the admin's `PATCH` applies the change immediately; other instances apply it within 5 s. This holds for every endpoint above (and for `subscribe:metrics`), in both directions (disabling and re-enabling).
   - On these public routes an invalid or expired token is ignored (the request is treated as a visitor's), never a `401`.
 
 ```ts
 /** The public pages the admin can enable or disable. The plain view (/resume) is not one: it is always available. */
-type PublicPageId = 'overview' | 'explore' | 'traces' | 'serviceMap' | 'quality' | 'about';
+type PublicPageId =
+  | 'overview'
+  | 'explore'
+  | 'traces'
+  | 'serviceMap'
+  | 'quality'
+  | 'siteMetrics'
+  | 'about';
 
 /** true = visible to visitors. Every page id is always present in responses. */
 type PagePreferences = Record<PublicPageId, boolean>;

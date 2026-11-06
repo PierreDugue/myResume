@@ -17,6 +17,7 @@ const ALL_ENABLED: SitePreferences = {
     traces: true,
     serviceMap: true,
     quality: true,
+    siteMetrics: true,
     about: true,
   },
   overview: { skillsOverTime: [] },

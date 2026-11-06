@@ -16,6 +16,7 @@ const ALL_ENABLED: PagePreferences = {
   traces: true,
   serviceMap: true,
   quality: true,
+  siteMetrics: true,
   about: true,
 };
 
@@ -117,6 +118,7 @@ describe('Preferences API', () => {
         traces: false,
         serviceMap: false,
         quality: false,
+        siteMetrics: false,
         about: false,
       };
       const res = await http.patch('/api/preferences', { pages: allDisabled });
@@ -416,6 +418,7 @@ describe('Preferences API', () => {
           traces: false,
           serviceMap: false,
           quality: false,
+          siteMetrics: false,
           about: false,
         },
       });

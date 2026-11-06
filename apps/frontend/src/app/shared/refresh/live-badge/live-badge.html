@@ -1,0 +1,3 @@
+<span class="badge" role="status" [attr.data-status]="status()">
+  <span class="dot" [class.pulse]="status() === 'live'" aria-hidden="true"></span>{{ label() }}
+</span>

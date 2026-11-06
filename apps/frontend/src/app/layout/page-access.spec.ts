@@ -12,6 +12,7 @@ const pages = (off: (keyof PagePreferences)[] = []): SitePreferences => ({
     traces: !off.includes('traces'),
     serviceMap: !off.includes('serviceMap'),
     quality: !off.includes('quality'),
+    siteMetrics: !off.includes('siteMetrics'),
     about: !off.includes('about'),
   },
   overview: { skillsOverTime: [] },
@@ -22,6 +23,7 @@ const ALL: (keyof PagePreferences)[] = [
   'traces',
   'serviceMap',
   'quality',
+  'siteMetrics',
   'about',
 ];
 

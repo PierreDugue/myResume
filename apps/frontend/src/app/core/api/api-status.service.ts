@@ -1,31 +1,31 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
-import { DOCUMENT } from '@angular/common';
 import { DestroyRef, Service, inject, signal } from '@angular/core';
 import type { HealthResponse } from '@my-resume/api-models';
+import { PageVisibility } from '../visibility/page-visibility.service';
 import {
   EMPTY,
   Observable,
   Subscription,
   catchError,
   defer,
-  distinctUntilChanged,
-  fromEvent,
   map,
   merge,
   of,
   repeat,
   share,
-  startWith,
   switchMap,
   takeUntil,
   tap,
   timer,
 } from 'rxjs';
 
-/** `starting`: the hosting platform is waking a sleeping backend (a cold start, see docs/spec.md). */
+/**
+ * `starting`: the backend is starting: after a deploy or restart, or because the hosting platform
+ * is waking a sleeping free-plan service (a cold start, see docs/spec.md).
+ */
 export type ApiStatus = 'unknown' | 'starting' | 'up' | 'down';
 
-/** A health check slower than this means the backend is being woken up. */
+/** A health check slower than this means the backend is still starting. */
 const SLOW_CHECK_MS = 3_000;
 /** How often to check while starting, so the banner goes away soon after the backend is up. */
 const STARTING_POLL_MS = 5_000;
@@ -42,7 +42,7 @@ const PROXY_ERRORS = [502, 503, 504];
 export class ApiStatusService {
   private readonly http = inject(HttpClient);
   private readonly destroyRef = inject(DestroyRef);
-  private readonly document = inject(DOCUMENT);
+  private readonly visibility = inject(PageVisibility);
   private readonly current = signal<ApiStatus>('unknown');
   private polling?: Subscription;
   /** When the current cold start began, or undefined when not starting. */
@@ -68,23 +68,16 @@ export class ApiStatusService {
         delay: () => timer(this.current() === 'starting' ? STARTING_POLL_MS : intervalMs),
       }),
     );
-    this.polling = this.pageVisible()
-      .pipe(switchMap((visible) => (visible ? poll : EMPTY)))
+    this.polling = this.visibility.visible$
+      .pipe(
+        // Hidden time doesn't count toward STARTING_LIMIT_MS.
+        tap((visible) => {
+          if (!visible) this.startingSince = undefined;
+        }),
+        switchMap((visible) => (visible ? poll : EMPTY)),
+      )
       .subscribe((status) => this.update(status));
     this.destroyRef.onDestroy(() => this.polling?.unsubscribe());
-  }
-
-  /** Whether the browser tab is visible, starting with now; emits only when that changes. */
-  private pageVisible(): Observable<boolean> {
-    return fromEvent(this.document, 'visibilitychange').pipe(
-      startWith(undefined),
-      map(() => this.document.visibilityState !== 'hidden'),
-      distinctUntilChanged(),
-      // Hidden time doesn't count toward STARTING_LIMIT_MS.
-      tap((visible) => {
-        if (!visible) this.startingSince = undefined;
-      }),
-    );
   }
 
   /** Emits "starting" if the answer is slow, then the result of the check. */

@@ -11,6 +11,7 @@ const all = (visible: boolean): SitePreferences['pages'] => ({
   traces: visible,
   serviceMap: visible,
   quality: visible,
+  siteMetrics: visible,
   about: visible,
 });
 
