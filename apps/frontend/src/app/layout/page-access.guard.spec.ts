@@ -9,7 +9,15 @@ import { PAGE_PREFERENCES_WAIT_MS, pageAccessGuard } from './page-access.guard';
 
 const prefs = (off: PublicPageId[] = []): SitePreferences => {
   const pages = {} as PagePreferences;
-  for (const id of ['overview', 'explore', 'traces', 'serviceMap', 'quality', 'about'] as const) {
+  for (const id of [
+    'overview',
+    'explore',
+    'traces',
+    'serviceMap',
+    'quality',
+    'siteMetrics',
+    'about',
+  ] as const) {
     pages[id] = !off.includes(id);
   }
   return { pages, overview: { skillsOverTime: [] } };
@@ -49,7 +57,9 @@ describe('pageAccessGuard', () => {
 
   it('allows routes that are not public pages', async () => {
     load = () => {
-      preferences.set(prefs(['overview', 'explore', 'traces', 'serviceMap', 'quality', 'about']));
+      preferences.set(
+        prefs(['overview', 'explore', 'traces', 'serviceMap', 'quality', 'siteMetrics', 'about']),
+      );
       return of(undefined);
     };
     expect(path(await firstValueFrom(run({})))).toBe(true);
@@ -77,7 +87,9 @@ describe('pageAccessGuard', () => {
 
   it('redirects to the plain view when every page is disabled', async () => {
     load = () => {
-      preferences.set(prefs(['overview', 'explore', 'traces', 'serviceMap', 'quality', 'about']));
+      preferences.set(
+        prefs(['overview', 'explore', 'traces', 'serviceMap', 'quality', 'siteMetrics', 'about']),
+      );
       return of(undefined);
     };
     expect(path(await firstValueFrom(run({ page: 'about' })))).toBe('/resume');

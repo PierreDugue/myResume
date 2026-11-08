@@ -32,6 +32,12 @@ export class EChart {
   readonly options = input.required<ChartOption>();
   /** Text alternative of the chart. */
   readonly label = input.required<string>();
+  /**
+   * Merge each new `options` into the chart instead of replacing it. For charts redrawn often
+   * (live data): the legend selection the visitor made survives the update. Replacing is the
+   * default, so an option that drops a series really removes it.
+   */
+  readonly mergeUpdates = input(false);
   /** ECharts click events (the clicked item is in `params.data`). */
   readonly chartClick = output<unknown>();
 
@@ -69,7 +75,8 @@ export class EChart {
     effect(() => {
       const chart = this.chart();
       const options = this.options();
-      if (chart) chart.setOption(options, { notMerge: true });
+      const notMerge = !this.mergeUpdates();
+      if (chart) chart.setOption(options, { notMerge });
     });
 
     inject(DestroyRef).onDestroy(() => {

@@ -12,6 +12,8 @@ import { TracesModule } from './traces/traces.module';
 import { QualityModule } from './quality/quality.module';
 import { ServiceMapModule } from './service-map/service-map.module';
 import { PreferencesModule } from './preferences/preferences.module';
+import { SiteMetricsModule } from './site-metrics/site-metrics.module';
+import { LiveModule } from './live/live.module';
 
 @Module({
   imports: [
@@ -48,6 +50,8 @@ import { PreferencesModule } from './preferences/preferences.module';
     ServiceMapModule,
     QualityModule,
     PreferencesModule,
+    SiteMetricsModule,
+    LiveModule,
   ],
 })
 export class AppModule {}

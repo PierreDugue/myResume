@@ -19,6 +19,7 @@ const prefs = (
     traces: !off.includes('traces'),
     serviceMap: !off.includes('serviceMap'),
     quality: !off.includes('quality'),
+    siteMetrics: !off.includes('siteMetrics'),
     about: !off.includes('about'),
   },
   overview: { skillsOverTime },
@@ -54,6 +55,7 @@ const LABELS = [
   'Traces',
   'Service map',
   'Code quality',
+  'Site metrics',
   'About this site',
 ];
 
@@ -125,6 +127,7 @@ describe('PreferencesPage', () => {
       true,
       true,
       true,
+      true,
     ]);
     expect(field(el, 'Explore').type).toBe('checkbox');
     const labelText = (label: string) =>
@@ -134,6 +137,7 @@ describe('PreferencesPage', () => {
         .trim();
     expect(labelText('Explore')).toContain('/explore');
     expect(labelText('Code quality')).toContain('/dashboards/quality');
+    expect(labelText('Site metrics')).toContain('/dashboards/meta');
   });
 
   it('says the plain view is always available', async () => {
@@ -161,6 +165,7 @@ describe('PreferencesPage', () => {
         traces: false,
         serviceMap: true,
         quality: true,
+        siteMetrics: true,
         about: true,
       },
       overview: { skillsOverTime: [] },

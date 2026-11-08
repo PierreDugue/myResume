@@ -12,6 +12,7 @@ import { ClientIpThrottlerGuard } from './client-ip-throttler.guard';
 import { AdminUser } from './entities/admin-user.entity';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JWT_EXPIRES_IN_SECONDS } from './jwt-payload';
+import { ProxyTrust } from './proxy-trust';
 import { TrustedProxyGuard } from './trusted-proxy.guard';
 
 /**
@@ -36,11 +37,19 @@ import { TrustedProxyGuard } from './trusted-proxy.guard';
   providers: [
     AuthService,
     AdminAccountService,
+    // The proxy-secret rule, shared by TrustedProxyGuard (HTTP) and LiveIoAdapter (Socket.IO handshake).
+    {
+      provide: ProxyTrust,
+      inject: [ConfigService],
+      useFactory: (config: ConfigService<AppEnv, true>) =>
+        new ProxyTrust(config.get('PROXY_SECRET', { infer: true })),
+    },
     // Global guards run in this order: proxy secret, then rate limit (keyed by the visitor IP the
     // proxy guard vouched for), then JWT.
     { provide: APP_GUARD, useClass: TrustedProxyGuard },
     { provide: APP_GUARD, useClass: ClientIpThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
+  exports: [ProxyTrust],
 })
 export class AuthModule {}

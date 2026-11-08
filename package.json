@@ -80,9 +80,11 @@
     "@nestjs/jwt": "12.0.2",
     "@nestjs/mapped-types": "12.0.0",
     "@nestjs/platform-express": "^11.0.0",
+    "@nestjs/platform-socket.io": "^11.2.8",
     "@nestjs/terminus": "12.1.0",
     "@nestjs/throttler": "6.7.1",
     "@nestjs/typeorm": "12.0.2",
+    "@nestjs/websockets": "^11.2.8",
     "axios": "^1.6.0",
     "bcryptjs": "3.0.3",
     "class-transformer": "0.5.1",
@@ -92,6 +94,7 @@
     "re2js": "2.8.6",
     "reflect-metadata": "^0.2.0",
     "rxjs": "~7.8.0",
+    "socket.io-client": "^4.8.4",
     "typeorm": "1.1.2"
   }
 }

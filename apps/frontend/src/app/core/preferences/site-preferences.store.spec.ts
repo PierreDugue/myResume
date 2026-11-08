@@ -11,6 +11,7 @@ const prefs = (explore = true): SitePreferences => ({
     traces: true,
     serviceMap: true,
     quality: true,
+    siteMetrics: true,
     about: true,
   },
   overview: { skillsOverTime: [] },

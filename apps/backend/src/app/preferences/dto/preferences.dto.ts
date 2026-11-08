@@ -30,6 +30,7 @@ export const DEFAULT_PAGE_PREFERENCES: Readonly<PagePreferences> = Object.freeze
   traces: true,
   serviceMap: true,
   quality: true,
+  siteMetrics: true,
   about: true,
 });
 
@@ -56,6 +57,10 @@ export class UpdatePagePreferencesDto implements Partial<PagePreferences> {
   @IsOptionalButNotNull()
   @IsBoolean()
   quality?: boolean;
+
+  @IsOptionalButNotNull()
+  @IsBoolean()
+  siteMetrics?: boolean;
 
   @IsOptionalButNotNull()
   @IsBoolean()

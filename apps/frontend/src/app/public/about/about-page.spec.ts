@@ -132,22 +132,42 @@ describe('AboutPage', () => {
   it('links each concept to the page that shows it', async () => {
     const { el } = await render();
     const hrefs = [...el.querySelectorAll('.concepts a')].map((a) => a.getAttribute('href'));
-    expect(hrefs).toEqual(['/', '/explore', '/traces', '/service-map', '/resume']);
+    expect(hrefs).toEqual([
+      '/',
+      '/explore',
+      '/traces',
+      '/service-map',
+      '/dashboards/meta',
+      '/resume',
+    ]);
   });
 
   it('shows the name of a page the viewer cannot see, without a link', async () => {
-    const { el } = await render({ disabled: ['overview', 'traces'] });
+    const { el } = await render({ disabled: ['overview', 'traces', 'siteMetrics'] });
     const hrefs = [...el.querySelectorAll('.concepts a')].map((a) => a.getAttribute('href'));
     expect(hrefs).toEqual(['/explore', '/service-map', '/resume']);
     const concepts = (el.querySelector('.concepts')?.textContent ?? '').replace(/\s+/g, ' ');
     expect(concepts).toContain('on the Career Overview dashboard.');
     expect(concepts).toContain('in Traces.');
     expect(concepts).toContain('log lines in Explore.');
+    expect(concepts).toContain('in This site, observed.');
+  });
+
+  it('presents the live mode, with the Socket.IO gateway in the architecture', async () => {
+    const { el } = await render();
+    const concepts = (el.querySelector('.concepts')?.textContent ?? '').replace(/\s+/g, ' ');
+    expect(concepts).toContain('Live');
+    expect(concepts).toContain('Process health');
+    const architecture = [...el.querySelectorAll('app-panel')].find(
+      (p) => p.querySelector('h2')?.textContent?.trim() === 'Architecture',
+    );
+    expect(architecture?.textContent).toContain('Socket.IO');
+    expect(architecture?.textContent).toContain('/live');
   });
 
   it('keeps the link to the plain view when every page is disabled', async () => {
     const { el } = await render({
-      disabled: ['overview', 'explore', 'traces', 'serviceMap', 'quality', 'about'],
+      disabled: ['overview', 'explore', 'traces', 'serviceMap', 'quality', 'siteMetrics', 'about'],
     });
     const hrefs = [...el.querySelectorAll('.concepts a')].map((a) => a.getAttribute('href'));
     expect(hrefs).toEqual(['/resume']);

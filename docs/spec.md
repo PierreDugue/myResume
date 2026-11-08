@@ -101,26 +101,32 @@ A grid of panels. Each panel has a title, an info tooltip, and a menu with **Vie
   - `LearningNewSkill`, firing with what I'm currently learning
 - A "Contact points" tab lists my contact links.
 
-### 6. Live site metrics `/dashboards/meta` ("This site, observed")
+### 6. Live site metrics `/dashboards/meta` ("This site, observed") ✅ (process health; request metrics deferred)
 
-**Real** monitoring of this application. The backend is instrumented with OpenTelemetry and Prometheus metrics. Panels show:
+**Real** monitoring of this application: the health of the backend's **own Node.js process**. The site has too few visitors for traffic metrics to mean much (they would be flat zero), but the process itself always has something to show. Panels:
 
-- requests per second
-- p50 and p95 API latency
-- error rate
-- visits per day
-- how long since the last deploy (uptime)
-- (optional) a real trace of the request that loaded the page you're looking at
+- **Stats:** uptime (ticking each second), event-loop lag p99 (with p50 as a hint), heap used of heap total, RSS, CPU %, and GC pauses in the last minute (count and total time).
+- **Charts** (time series over the last 2 minutes, each with a table alternative):
+  - event-loop lag, p50 and p99
+  - memory: RSS, heap total, heap used
+  - CPU, as a share of one core
+  - garbage collection: pause time per second, minor and major as stacked bars (major bars carry a pattern, so colour is not the only signal)
+- **Stream inspector:** the last 8 messages of the feed, newest first, in monospace: what was sent to the server (↑), received from it (↓), connection events (•) and HTTP polls. It makes the real-time plumbing visible, and is not an `aria-live` region.
 
-- In `Live` mode, these panels are fed by WebSocket: the server pushes one aggregated data point per second, and the charts scroll in real time.
-- A **"Visitors right now"** stat shows the number of open WebSocket connections.
-- A **live event stream** shows the latest events across the site, e.g. "someone opened /traces/acme-platform", "PDF downloaded".
+How the data is made:
 
-**Privacy:**
+- The backend samples its own process **every second, in memory**: event-loop delay (p50, p99), `memoryUsage` (RSS, heap), CPU usage, GC pauses and uptime. It keeps the last 5 minutes (300 samples) and never stores them.
+- The page loads the history, then follows it **live over the WebSocket** (one sample per second). Gaps (a hidden tab, a dropped connection, a backend restart) are filled from the history with a `since` cursor, merged by timestamp.
+- **Refresh control and LIVE badge**, on this page for now (a global control in the top bar needs every page to support refresh): `Off / 5s / 30s / 1m / Live`, kept in the URL (`?refresh=`, default Live). Live mode falls back to HTTP polling every 5 s while the socket is offline or the subscription is refused. The badge says in words where the data comes from: LIVE, Reconnecting, Offline and polling, Polling every 30s, Paused (tab hidden) or Off.
+
+**Deferred** (not built yet): requests per second, p50 and p95 API latency, error rate, visits per day, the "Visitors right now" stat, the live event stream across the site and a real trace of the request that loaded the page. They need request instrumentation first (see Build order, step 8).
+
+**Privacy** (these rules will apply to the request metrics when they are built):
 
 - No personal data about visitors is stored or streamed: no IP addresses, no full user agent, and no request bodies or headers.
 - Only aggregated counts, the HTTP method, the route pattern (e.g. `/projects/:slug/trace`, not query strings), the status code, the response time and (optionally) a coarse country are kept.
 - Admin routes and `/auth/*` are never shown in the live streams.
+- The process samples carry no environment data: no hostnames, paths, environment variables or versions.
 
 ### 7. Quality dashboard `/dashboards/quality` ("This codebase, observed") ✅
 
@@ -165,10 +171,10 @@ This connects to the resume's AI skills (Claude, Claude skills) and to "Generate
 - **Live data is optional:**
   - Every page works without WebSockets. If the socket can't connect, it retries with increasing delays and falls back to normal HTTP refresh.
   - Streams only run while a page that needs them is visible; they pause when the browser tab is hidden.
-- **Cold starts:** free hosting (Render) puts the backend to sleep after 15 idle minutes, and waking it takes about a minute. The frontend makes this visible instead of looking broken:
+- **Cold starts:** a free hosting plan (Render) puts the backend to sleep after 15 idle minutes, and waking it takes about a minute. The current plan is paid, so the backend **no longer sleeps**; the starting state and the banner stay, because a deploy or a restart takes the backend down for up to a minute in the same way. The frontend makes this visible instead of looking broken:
   - The sidebar's API status (from `GET /api/health`) shows **starting** when the health check takes more than 3 seconds, or when it gets a 502, 503 or 504 that didn't come from the backend (a 503 health report from the backend itself means **down**). While starting, it checks every 5 seconds, and it reports **down** after 2 minutes without an answer.
     It only checks while the browser tab is visible: hidden tabs send no health checks (so an open tab doesn't keep the free backend awake), and it checks right away when the tab becomes visible again. The status keeps its last value while hidden, and hidden time doesn't count toward the 2 minutes.
-  - While the API is starting, a banner above the page says the backend is waking up and that the page will load by itself.
+  - While the API is starting, a banner above the page says the backend is waking up (it was just deployed or restarted) and that the page will load by itself.
   - Failed `GET /api/...` calls (502, 503 or 504) are retried with increasing delays for about 90 seconds, so pages fill in once the backend is up. Writes (`POST`, `PUT`, `PATCH`, `DELETE`) are never retried.
 - **First visit:** an optional short guided tour explains the concept: "This resume is an observability platform. Try changing the time range…"
 
@@ -183,7 +189,7 @@ This connects to the resume's AI skills (Claude, Claude skills) and to "Generate
   - Skills
   - Projects and their spans
   - Alerts/status
-- `/admin/preferences` ("Preferences"): which public pages visitors see (Career Overview, Explore, Traces, Service map, Quality, About this site).
+- `/admin/preferences` ("Preferences"): which public pages visitors see (Career Overview, Explore, Traces, Service map, Code quality, Site metrics, About this site).
   - Every page is enabled by default. A disabled page is hidden from the menu, its route redirects visitors, and its API endpoints answer `404`. The admin still sees it, to preview it.
   - The plain view `/resume` can't be disabled; visitors land there when every page is disabled.
   - **Skills over time:** up to 8 skills (checkboxes grouped by category) for the Career Overview's line chart. The selection is used when the Career Overview shows the whole career with no filter; with none checked, or when a visitor filters by category, skill or years, the chart shows the most used skills of the view.
@@ -222,25 +228,33 @@ All tables have `id` (uuid), `createdAt` and `updatedAt`. Lists use `sortOrder` 
 - `GET /logs?query=<logql-lite>&from&to`: highlight search. The query is parsed on the server, the same way real log tools do it.
 - `GET /traces` and `GET /traces/:slug`: projects as traces (the trace search, and one project's spans).
 - `GET /service-map`: nodes and edges.
-- `GET /site-metrics?from&to`: aggregated live metrics of the site.
+- `GET /site-metrics/process?since`: the backend process's samples (last 5 minutes); `since` returns only the samples after that timestamp.
 - `GET /resume-file`: download the active PDF.
 - `GET /preferences` (public) and `PATCH /preferences` (admin): the site preferences, such as which public pages are enabled.
 - Admin create/update/delete for every entity, plus `POST /resume-file` (PDF upload), all protected by JWT.
 
 ### Real-time (WebSocket)
 
-Socket.IO namespace `/live`, reached by the browser at path `/api/socket.io`. Clients subscribe to a "channel" (a group of messages) by sending an event.
+Socket.IO namespace `/live`, reached by the browser at path `/api/socket.io`. Clients subscribe to a "channel" (a group of messages, one room each) by sending an event. Every subscribe and unsubscribe is **acknowledged** (`{ ok: true, data }`, or `{ ok: false, error, message }`), and the server only builds and sends a channel's messages while someone is subscribed. Subscriptions don't survive a reconnect: the client subscribes again on every `connect`.
 
-| Client → server                            | Server → client                                      | Content                                                                         |
-| ------------------------------------------ | ---------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `subscribe:metrics` `{ panels: string[] }` | `metrics:tick` (every 1 s)                           | `{ ts, rps, p50, p95, errorRate, activeVisitors }`                              |
-| `subscribe:logs` `{ query?: string }`      | `logs:line` (sent in batches, at most 10 per second) | `{ ts, level, method, route, status, durationMs, country? }[]`                  |
-| `subscribe:events`                         | `events:new`                                         | `{ ts, type, message }` (page viewed, PDF downloaded, ...)                      |
-| —                                          | `content:changed`                                    | `{ entity, id }`: sent when the admin edits content, so open dashboards refresh |
-| —                                          | `alert:state`                                        | `{ name, state }`: sent when a status alert changes                             |
-| `unsubscribe:<channel>`                    | —                                                    | stop receiving that channel                                                     |
+| Client → server                                                           | Server → client                                      | Content                                                                             | Status        |
+| ------------------------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------------------------------------- | ------------- |
+| `subscribe:metrics` `{ since? }` (acknowledged with the buffered history) | `metrics:tick` (every 1 s)                           | a process sample: `{ ts, uptimeSeconds, eventLoopLagMs, memoryMb, cpuPercent, gc }` | ✅ built      |
+| `unsubscribe:metrics`                                                     | —                                                    | stop receiving the metrics                                                          | ✅ built      |
+| `subscribe:logs` `{ query?: string }`                                     | `logs:line` (sent in batches, at most 10 per second) | `{ ts, level, method, route, status, durationMs, country? }[]`                      | not built yet |
+| `subscribe:events`                                                        | `events:new`                                         | `{ ts, type, message }` (page viewed, PDF downloaded, ...)                          | not built yet |
+| —                                                                         | `content:changed`                                    | `{ entity, id }`: sent when the admin edits content, so open dashboards refresh     | not built yet |
+| —                                                                         | `alert:state`                                        | `{ name, state }`: sent when a status alert changes                                 | not built yet |
 
-The server checks every message the client sends, limits each connection to 20 messages per second, and caps connections at 200 per IP.
+Limits, enforced by the server:
+
+- every message is validated (an invalid one is answered `invalid_message` in its ack)
+- at most 20 messages per second per connection (extra ones are dropped, answered `rate_limited` when they carry an ack)
+- at most 200 connections per visitor IP, and messages of at most 4 kB
+- with `PROXY_SECRET` set, a handshake without the proxy secret is refused, like HTTP requests
+- while a channel's page is disabled (Preferences), its subscribe is answered `page_disabled`, because sockets carry no token
+
+Messages are merged by timestamp on the client: a tick can arrive around the history ack. The channel payloads marked "not built yet" are indicative; their types are written when each channel is designed.
 
 ## Auth
 
@@ -267,15 +281,15 @@ The server checks every message the client sends, limits each connection to 20 m
   - Stat, impact, bar-gauge, logs and trace-waterfall panels are plain HTML/CSS/SVG: lighter, more accessible, easier to style.
 - **Dashboard grid:** CSS grid, with the layout set in code. Drag-and-drop editing of panels is out of scope.
 - **Site metrics:**
-  - `@opentelemetry/sdk-node` plus `prom-client` in NestJS, with a `/metrics` endpoint that is only reachable inside the Docker network.
-  - A lightweight aggregation table (or the Prometheus HTTP API) feeds `/site-metrics`.
+  - **Process health (built):** plain Node.js `perf_hooks` and `process`: `monitorEventLoopDelay`, a `PerformanceObserver` on `'gc'`, `memoryUsage` and `cpuUsage`, sampled every second into an in-memory ring buffer of 300 samples. No extra dependency, and no `/metrics` endpoint needed yet.
+  - **Request metrics (planned):** `@opentelemetry/sdk-node` plus `prom-client` in NestJS, with a `/metrics` endpoint that is only reachable inside the Docker network, and a lightweight aggregation table (or the Prometheus HTTP API) behind the API. prom-client and OpenTelemetry stay the plan for these.
   - Optional later: real Prometheus and Tempo containers in `docker-compose.yml`.
 - **Real-time:**
   - `@nestjs/websockets` and `@nestjs/platform-socket.io` on the backend, `socket.io-client` in Angular.
   - Socket.IO is chosen for automatic reconnection, rooms (one per channel) and its HTTP long-polling fallback.
-  - A request-logging interceptor in NestJS publishes anonymized request events to an in-memory event bus (RxJS `Subject`). The gateway combines them into one data point per second and sends them only to the subscribed channels (rooms).
+  - The gateway pushes the process sampler's ticks to the `metrics` room. Still planned: a request-logging interceptor in NestJS publishing anonymized request events to an in-memory event bus (RxJS `Subject`), which the gateway combines into one data point per second for the request channels.
   - If several backend instances are run one day, the Socket.IO Redis adapter can share events between them.
-  - In Angular, a `LiveService` wraps the socket in RxJS Observables (or signals) and takes care of subscribing, retrying and pausing when the tab is hidden.
+  - In Angular, a `LiveService` is the only owner of the socket, and wraps it in RxJS Observables with a status signal. It connects only while a page needs it (reference-counted: it closes about 5 seconds after the last consumer leaves, and is reused if one comes back sooner), subscribes again on every reconnect, and `socket.io-client` is imported dynamically, so it stays out of the initial bundle. Pages pause their streams while the tab is hidden and fill the gap from the history when it is shown again.
 - **PDF storage:** a Docker volume mounted into the backend container. Limit: 5 MB, `application/pdf` only.
 
 ## Build order
@@ -303,11 +317,17 @@ The server checks every message the client sends, limits each connection to 20 m
    - `GET /api/traces`, `GET /api/traces/:slug` and `GET /api/service-map`, calculated in `libs/shared/resume-metrics`
    - `/traces` (trace search table), `/traces/:slug` (HTML/CSS waterfall with expandable spans and a table view), `/service-map` (ECharts force graph with a table view; a node opens the filtered dashboard, the trace or the job's logs)
 7. **Alerts:** StatusAlert entity and admin screen, alerting page.
-8. **Live site metrics and streaming:**
-   - Request instrumentation and `/site-metrics`.
-   - The WebSocket gateway (`/live` namespace) and the Angular `LiveService`.
-   - The meta dashboard in `Live` mode, the Explore live tail, and the "Visitors right now" stat.
-   - `content:changed` and `alert:state` push messages.
+8. **Live site metrics and streaming:** partly done
+   - ✅ the backend process sampler and its in-memory ring buffer, `GET /api/site-metrics/process`
+   - ✅ the WebSocket gateway (`/live` namespace) with its limits (validation, rate limit, connection cap, proxy secret)
+   - ✅ the Angular `LiveService` (reference-counted socket, reconnection, pausing when the tab is hidden, gap filling)
+   - ✅ the meta dashboard `/dashboards/meta` with the refresh control, the LIVE badge, the HTTP fallback and the stream inspector
+   - Not done yet:
+     - request instrumentation and the request metrics (requests per second, latency, error rate, visits per day)
+     - the Explore live tail (the `logs` channel)
+     - the `events` channel, `content:changed` and `alert:state` push messages
+     - the "Visitors right now" stat
+     - the global refresh control in the top bar (it is on the meta dashboard only for now)
 9. **PDF:** upload and download, the "Export PDF" button, then optionally pre-filling content from the PDF.
 10. **Quality dashboard and "How this site was built":**
     - ✅ the about page `/about-this-site` (see section 8), with live content counts from `GET /api/resume`

@@ -74,6 +74,27 @@ describe('EChart', () => {
     expect(chart.setOption).toHaveBeenLastCalledWith({ series: [] }, { notMerge: true });
   });
 
+  it('merges new options into the chart when asked to, which keeps the legend selection', async () => {
+    const fixture = TestBed.createComponent(EChart);
+    fixture.componentRef.setInput('options', { series: [{ type: 'line', data: [1] }] });
+    fixture.componentRef.setInput('label', 'Live chart');
+    fixture.componentRef.setInput('mergeUpdates', true);
+    await fixture.whenStable();
+    await new Promise((r) => setTimeout(r));
+    await fixture.whenStable();
+    expect(chart.setOption).toHaveBeenLastCalledWith(
+      { series: [{ type: 'line', data: [1] }] },
+      { notMerge: false },
+    );
+
+    fixture.componentRef.setInput('options', { series: [{ type: 'line', data: [1, 2] }] });
+    await fixture.whenStable();
+    expect(chart.setOption).toHaveBeenLastCalledWith(
+      { series: [{ type: 'line', data: [1, 2] }] },
+      { notMerge: false },
+    );
+  });
+
   it('resizes with its container and disposes the chart when removed', async () => {
     const frames: FrameRequestCallback[] = [];
     vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb));

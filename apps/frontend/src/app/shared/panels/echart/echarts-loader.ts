@@ -14,6 +14,8 @@ export interface EChartsLike {
 
 /** The ECharts option keys this app uses (kept loose: ECharts validates the details). */
 export interface ChartOption {
+  /** `false` for charts redrawn every second: no animation between updates. */
+  animation?: boolean;
   aria?: object;
   backgroundColor?: string;
   color?: string[];
@@ -21,6 +23,8 @@ export interface ChartOption {
   legend?: object;
   textStyle?: object;
   tooltip?: object;
+  /** Time axes in UTC instead of the browser's time zone. */
+  useUTC?: boolean;
   visualMap?: object;
   xAxis?: object;
   yAxis?: object;

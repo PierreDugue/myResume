@@ -47,6 +47,15 @@
             Service map.
           }
         </dd>
+        <dt>Live</dt>
+        <dd>
+          Process health of this site's backend, streamed over WebSocket, in
+          @if (access.canView('siteMetrics')) {
+            <a routerLink="/dashboards/meta">This site, observed</a>.
+          } @else {
+            This site, observed.
+          }
+        </dd>
         <dt>Plain resume</dt>
         <dd>A classic one-page resume, in the <a routerLink="/resume">Plain view</a>.</dd>
       </dl>
@@ -126,6 +135,10 @@
       <li>
         Docker images built by GitHub Actions and published to GHCR. nginx serves the frontend and
         forwards <code>/api</code> to the backend.
+      </li>
+      <li>
+        A <strong>Socket.IO</strong> gateway (<code>/live</code>, same origin) streams the backend's
+        own process health to the browser once a second, with an HTTP polling fallback.
       </li>
       <li>Hosted on Render's web services.</li>
     </ul>

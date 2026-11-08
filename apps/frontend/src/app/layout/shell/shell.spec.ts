@@ -181,6 +181,9 @@ describe('Shell', () => {
       expect(alert?.getAttribute('role')).toBe('status');
       expect(alert?.textContent).toContain('The backend is waking up');
       expect(alert?.textContent).toContain('will load by itself');
+      // The backend no longer sleeps: the cause is a deploy or a restart, not free hosting.
+      expect(alert?.textContent).toContain('deployed or restarted');
+      expect(alert?.textContent).not.toContain('free hosting');
       expect(root.querySelector('.api-status')?.textContent).toMatch(/API\s+starting/);
     });
 
@@ -218,7 +221,13 @@ describe('Shell', () => {
     it('hides them from the menu of visitors', async () => {
       preferences.set(withDisabled('explore', 'quality'));
       const { root } = await render();
-      expect(menu(root)).toEqual(['Career Overview', 'Traces', 'Service map', 'About this site']);
+      expect(menu(root)).toEqual([
+        'Career Overview',
+        'Traces',
+        'Service map',
+        'Site metrics',
+        'About this site',
+      ]);
     });
 
     it('shows them to the admin, marked "Hidden" with text', async () => {
@@ -231,6 +240,7 @@ describe('Shell', () => {
         'Traces',
         'Service map',
         'Code quality',
+        'Site metrics',
         'About this site',
       ]);
       const badge = $(root, 'nav[aria-label="Main"] .tag');

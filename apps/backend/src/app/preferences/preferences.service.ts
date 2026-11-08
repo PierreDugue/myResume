@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import type { PublicPageId, SitePreferences } from '@my-resume/api-models';
+import type { PagePreferences, PublicPageId, SitePreferences } from '@my-resume/api-models';
 import { Repository } from 'typeorm';
+import { CLOCK, Clock } from '../common/clock';
 import { SkillsService } from '../skills/skills.service';
 import {
   sentOverviewPreferences,
@@ -12,19 +13,30 @@ import {
 } from './dto/preferences.dto';
 import { SitePreferencesEntity } from './entities/site-preferences.entity';
 
+/** How long `isPageEnabled` reuses the stored page flags. */
+const PAGE_FLAGS_TTL_MS = 5000;
+
 /**
  * The site preferences are a single row, enforced by a unique index on a constant expression
  * (`UQ_site_preferences_singleton`). PATCH creates the row if needed and merges into it with one
  * atomic upsert, so concurrent requests can't create a second row or lose each other's keys. No
- * row means "all defaults". Read on every call (no cache): one small row, never stale across
- * instances.
+ * row means "all defaults".
+ *
+ * Reads are fresh (one small row), except the page flags behind `isPageEnabled`, which every gated
+ * request and every `subscribe:metrics` message asks for: a short TTL cache (5 s) bounds the reads
+ * they trigger, however many sockets or requests there are. `update()` clears it, so the instance
+ * that handled a change is never stale, and another instance is at most 5 s behind.
  */
 @Injectable()
 export class PreferencesService {
+  /** The pending or finished flag read, shared by concurrent callers; null when none is cached. */
+  private pageFlags: { flags: Promise<PagePreferences>; expiresAt: number } | null = null;
+
   constructor(
     @InjectRepository(SitePreferencesEntity)
     private readonly preferences: Repository<SitePreferencesEntity>,
     private readonly skills: SkillsService,
+    @Inject(CLOCK) private readonly clock: Clock,
   ) {}
 
   async get(): Promise<SitePreferences> {
@@ -49,12 +61,31 @@ export class PreferencesService {
        RETURNING *`,
       [JSON.stringify(sentPageFlags(dto.pages)), JSON.stringify(overview)],
     )) as SitePreferencesEntity[];
+    // Dropping the entry also detaches a read still running: it can't store its older value.
+    this.pageFlags = null;
     return this.toResponse(rows[0] ?? null);
   }
 
-  /** Reads the page flags only: called on every gated request, so it must not look up skills. */
+  /**
+   * Reads the page flags only: called on every gated request and socket subscription, so it must
+   * not look up skills, and it is cached for 5 s (see the class comment).
+   */
   async isPageEnabled(id: PublicPageId): Promise<boolean> {
-    return toSitePreferences(await this.find()).pages[id];
+    return (await this.cachedPageFlags())[id];
+  }
+
+  private cachedPageFlags(): Promise<PagePreferences> {
+    const now = this.clock.now().getTime();
+    if (this.pageFlags && now < this.pageFlags.expiresAt) return this.pageFlags.flags;
+
+    const flags = this.find().then((row) => toSitePreferences(row).pages);
+    const entry = { flags, expiresAt: now + PAGE_FLAGS_TTL_MS };
+    this.pageFlags = entry;
+    // A failed read is not kept (unless update() already replaced the entry).
+    flags.catch(() => {
+      if (this.pageFlags === entry) this.pageFlags = null;
+    });
+    return flags;
   }
 
   /**

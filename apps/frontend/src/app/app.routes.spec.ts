@@ -6,6 +6,7 @@ import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { appRoutes } from './app.routes';
 import { APP_NAME } from './core/app-name';
+import { LIVE_SOCKET_FACTORY } from './core/live/live-socket';
 import { providePageTitleStrategy } from './core/title/page-title.strategy';
 import { AUTH_STORAGE_KEY, AuthService } from './core/auth/auth.service';
 import { fakeJwt, inSeconds } from './core/auth/test-tokens';
@@ -19,12 +20,21 @@ function preferences(off: PageId[] = []): SitePreferences {
       traces: !off.includes('traces'),
       serviceMap: !off.includes('serviceMap'),
       quality: !off.includes('quality'),
+      siteMetrics: !off.includes('siteMetrics'),
       about: !off.includes('about'),
     },
     overview: { skillsOverTime: [] },
   };
 }
-const EVERY_PAGE: PageId[] = ['overview', 'explore', 'traces', 'serviceMap', 'quality', 'about'];
+const EVERY_PAGE: PageId[] = [
+  'overview',
+  'explore',
+  'traces',
+  'serviceMap',
+  'quality',
+  'siteMetrics',
+  'about',
+];
 
 describe('appRoutes', () => {
   let asked: boolean;
@@ -38,6 +48,8 @@ describe('appRoutes', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         providePageTitleStrategy(),
+        // The Site metrics page opens a socket: never connect for real in a unit test.
+        { provide: LIVE_SOCKET_FACTORY, useValue: () => new Promise<never>(() => undefined) },
       ],
     });
   });
@@ -77,6 +89,7 @@ describe('appRoutes', () => {
     ['/traces/pierre-o11y', 'Trace', 'app-trace-page'],
     ['/service-map', 'Service map', 'app-service-map-page'],
     ['/dashboards/quality', 'This codebase, observed', 'app-quality-page'],
+    ['/dashboards/meta', 'This site, observed', 'app-site-metrics-page'],
     ['/about-this-site', 'About this site', 'app-about-page'],
     ['/this/does/not/exist', 'Page not found', 'app-not-found-page'],
   ])('%s renders "%s" inside the app shell', async (url, title, pageSelector) => {
@@ -99,6 +112,7 @@ describe('appRoutes', () => {
     ['/traces/pierre-o11y', 'Traces'],
     ['/service-map', 'Service map'],
     ['/dashboards/quality', 'Code quality'],
+    ['/dashboards/meta', 'Site metrics'],
     ['/about-this-site', 'About this site'],
   ])('marks %s as "%s" in the main navigation', async (url, label) => {
     const root = await visit(url);
@@ -149,6 +163,11 @@ describe('appRoutes', () => {
 
     it('sends a visitor from a disabled page to the home page', async () => {
       await visit('/explore', ['explore']);
+      expect(urlAfter()).toBe('/');
+    });
+
+    it('sends a visitor from the disabled Site metrics page to the home page', async () => {
+      await visit('/dashboards/meta', ['siteMetrics']);
       expect(urlAfter()).toBe('/');
     });
 

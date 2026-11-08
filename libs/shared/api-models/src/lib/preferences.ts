@@ -1,5 +1,12 @@
 /** The public pages the admin can enable or disable. The plain view (/resume) is not one: it is always available. */
-export type PublicPageId = 'overview' | 'explore' | 'traces' | 'serviceMap' | 'quality' | 'about';
+export type PublicPageId =
+  | 'overview'
+  | 'explore'
+  | 'traces'
+  | 'serviceMap'
+  | 'quality'
+  | 'siteMetrics'
+  | 'about';
 
 /** true = visible to visitors. Every page id is always present in responses. */
 export type PagePreferences = Record<PublicPageId, boolean>;
