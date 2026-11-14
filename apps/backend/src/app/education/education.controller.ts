@@ -9,13 +9,16 @@ import {
   Patch,
   Post,
   Put,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Education } from '@my-resume/api-models';
 import { Public } from '../auth/public.decorator';
 import { ReorderDto } from '../common/reorder.dto';
 import { CreateEducationDto, UpdateEducationDto } from './dto/education.dto';
 import { EducationService } from './education.service';
+import { InvalidateResumeCacheInterceptor } from '../resume/invalidate-resume-cache.interceptor';
 
+@UseInterceptors(InvalidateResumeCacheInterceptor)
 @Controller('education')
 export class EducationController {
   constructor(private readonly education: EducationService) {}

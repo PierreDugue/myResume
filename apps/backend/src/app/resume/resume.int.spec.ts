@@ -1,5 +1,5 @@
 import type { ResumeResponse } from '@my-resume/api-models';
-import { Api, api, createTestApp, TestApp } from '../../testing/test-app';
+import { Api, api, createTestApp, MISSING_ID, TestApp } from '../../testing/test-app';
 
 describe('GET /api/resume', () => {
   let t: TestApp;
@@ -77,6 +77,126 @@ describe('GET /api/resume', () => {
       expect(resume.education).toHaveLength(1);
       expect(resume.skills).toHaveLength(1);
       expect(resume.projects).toHaveLength(1);
+    });
+  });
+
+  describe('caching (docs/api-contract.md, Content: caching delay)', () => {
+    beforeEach(() => t.truncateContent());
+
+    const resume = async () => (await http.get('/api/resume')).body as ResumeResponse;
+    const renameSkillInDatabase = (id: string, name: string) =>
+      t.dataSource.query('UPDATE "skill" SET "name" = $1 WHERE "id" = $2', [name, id]);
+
+    it('serves the cached resume: an edit made directly in the database does not show yet', async () => {
+      const skill = (await http.post('/api/skills', { name: 'Angular', category: 'Core' })).body;
+      expect((await resume()).skills.map((s) => s.name)).toEqual(['Angular']);
+
+      await renameSkillInDatabase(skill.id, 'Renamed in SQL');
+
+      expect((await resume()).skills.map((s) => s.name)).toEqual(['Angular']);
+    });
+
+    it('is cleared by a failed write too', async () => {
+      const skill = (await http.post('/api/skills', { name: 'Angular', category: 'Core' })).body;
+      await resume();
+      await renameSkillInDatabase(skill.id, 'Renamed in SQL');
+
+      expect((await http.patch(`/api/skills/${MISSING_ID}`, { name: 'x' })).status).toBe(404);
+
+      expect((await resume()).skills.map((s) => s.name)).toEqual(['Renamed in SQL']);
+    });
+
+    it('is not cleared by a read of another endpoint', async () => {
+      const skill = (await http.post('/api/skills', { name: 'Angular', category: 'Core' })).body;
+      await resume();
+      await renameSkillInDatabase(skill.id, 'Renamed in SQL');
+
+      expect((await http.get('/api/skills')).body[0].name).toBe('Renamed in SQL');
+      expect((await resume()).skills.map((s) => s.name)).toEqual(['Angular']);
+    });
+
+    it('shows a profile replaced with PUT on the next read', async () => {
+      const profile = {
+        fullName: 'Pierre Dugue',
+        headline: 'Before',
+        summary: 's',
+        email: 'pierre@example.com',
+        phone: null,
+        showPhone: false,
+        location: 'Nice, France',
+        openToRelocation: false,
+        avatarUrl: null,
+        links: [],
+        interests: null,
+        yearsInIt: null,
+        yearsOfAngular: null,
+      };
+      expect((await http.put('/api/profile', profile)).status).toBe(200);
+      expect((await resume()).profile?.headline).toBe('Before');
+
+      expect((await http.put('/api/profile', { ...profile, headline: 'After' })).status).toBe(200);
+
+      expect((await resume()).profile?.headline).toBe('After');
+    });
+
+    type ListKey = 'skills' | 'experiences' | 'education' | 'projects';
+    const resources: {
+      path: string;
+      key: ListKey;
+      label: (item: Record<string, unknown>) => unknown;
+      create: (n: string) => object;
+      patch: (n: string) => object;
+    }[] = [
+      {
+        path: '/api/skills',
+        key: 'skills',
+        label: (i) => i['name'],
+        create: (n) => ({ name: n, category: 'Core' }),
+        patch: (n) => ({ name: n }),
+      },
+      {
+        path: '/api/experiences',
+        key: 'experiences',
+        label: (i) => i['company'],
+        create: (n) => ({ company: n, role: 'r', startDate: '2020-01-01' }),
+        patch: (n) => ({ company: n }),
+      },
+      {
+        path: '/api/education',
+        key: 'education',
+        label: (i) => i['school'],
+        create: (n) => ({ school: n, degree: 'd', startDate: '2010-01-01' }),
+        patch: (n) => ({ school: n }),
+      },
+      {
+        path: '/api/projects',
+        key: 'projects',
+        label: (i) => i['title'],
+        create: (n) => ({ title: n, description: 'd' }),
+        patch: (n) => ({ title: n }),
+      },
+    ];
+
+    describe.each(resources)('$path', ({ path, key, label, create, patch }) => {
+      const labels = async () =>
+        ((await resume())[key] as unknown as Record<string, unknown>[]).map(label);
+
+      it('shows every write on the next read: POST, PATCH, PUT order, DELETE', async () => {
+        const a = (await http.post(path, create('A'))).body;
+        expect(await labels()).toEqual(['A']);
+
+        const b = (await http.post(path, create('B'))).body;
+        expect(await labels()).toEqual(['A', 'B']);
+
+        expect((await http.patch(`${path}/${a.id}`, patch('A2'))).status).toBe(200);
+        expect(await labels()).toEqual(['A2', 'B']);
+
+        expect((await http.put(`${path}/order`, { ids: [b.id, a.id] })).status).toBe(204);
+        expect(await labels()).toEqual(['B', 'A2']);
+
+        expect((await http.delete(`${path}/${b.id}`)).status).toBe(204);
+        expect(await labels()).toEqual(['A2']);
+      });
     });
   });
 });

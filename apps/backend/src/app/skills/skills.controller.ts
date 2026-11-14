@@ -9,13 +9,16 @@ import {
   Patch,
   Post,
   Put,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Skill } from '@my-resume/api-models';
 import { Public } from '../auth/public.decorator';
 import { ReorderDto } from '../common/reorder.dto';
 import { CreateSkillDto, UpdateSkillDto } from './dto/skill.dto';
 import { SkillsService } from './skills.service';
+import { InvalidateResumeCacheInterceptor } from '../resume/invalidate-resume-cache.interceptor';
 
+@UseInterceptors(InvalidateResumeCacheInterceptor)
 @Controller('skills')
 export class SkillsController {
   constructor(private readonly skills: SkillsService) {}
