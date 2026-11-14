@@ -9,13 +9,16 @@ import {
   Patch,
   Post,
   Put,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Project } from '@my-resume/api-models';
 import { Public } from '../auth/public.decorator';
 import { ReorderDto } from '../common/reorder.dto';
 import { CreateProjectDto, UpdateProjectDto } from './dto/project.dto';
 import { ProjectsService } from './projects.service';
+import { InvalidateResumeCacheInterceptor } from '../resume/invalidate-resume-cache.interceptor';
 
+@UseInterceptors(InvalidateResumeCacheInterceptor)
 @Controller('projects')
 export class ProjectsController {
   constructor(private readonly projects: ProjectsService) {}

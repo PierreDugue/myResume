@@ -9,13 +9,16 @@ import {
   Patch,
   Post,
   Put,
+  UseInterceptors,
 } from '@nestjs/common';
 import type { Experience } from '@my-resume/api-models';
 import { Public } from '../auth/public.decorator';
 import { ReorderDto } from '../common/reorder.dto';
 import { CreateExperienceDto, UpdateExperienceDto } from './dto/experience.dto';
 import { ExperiencesService } from './experiences.service';
+import { InvalidateResumeCacheInterceptor } from '../resume/invalidate-resume-cache.interceptor';
 
+@UseInterceptors(InvalidateResumeCacheInterceptor)
 @Controller('experiences')
 export class ExperiencesController {
   constructor(private readonly experiences: ExperiencesService) {}

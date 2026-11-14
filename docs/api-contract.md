@@ -123,6 +123,7 @@ interface AuthUser {
 - **Slugs** match `^[a-z0-9]+(-[a-z0-9]+)*$`. If left out on create, the slug is generated from the name or title.
 - **URLs** must be `http(s)://…`.
 - **Text limits:** names and titles up to 120 characters; summaries, descriptions and messages up to 2000.
+- **Caching delay:** the server may cache the public resume (the data behind `GET /api/resume`, `/api/dashboard`, `/api/logs`, `/api/logs/labels`, `/api/traces` and `/api/service-map`) for up to 60 seconds. Any write on the routes above (`POST`, `PATCH`, `PUT`, `DELETE`, success or failure) clears it on the instance that handled it, so the change shows on the next read; other instances, or edits made directly in the database, show within 60 s. The per-resource `GET` lists and the admin `GET /api/profile` are never cached.
 
 **Per resource:**
 

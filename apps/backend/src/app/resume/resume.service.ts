@@ -5,8 +5,12 @@ import { ExperiencesService } from '../experiences/experiences.service';
 import { ProfileService } from '../profile/profile.service';
 import { ProjectsService } from '../projects/projects.service';
 import { SkillsService } from '../skills/skills.service';
+import { ResumeCache } from './resume-cache';
 
-/** The public resume bundle, shared by GET /api/resume and the dashboard. */
+/**
+ * The public resume bundle, behind GET /api/resume and every public page built from it (dashboard,
+ * logs, traces, service map). Cached in memory, see `ResumeCache`.
+ */
 @Injectable()
 export class ResumeService {
   constructor(
@@ -15,9 +19,14 @@ export class ResumeService {
     private readonly education: EducationService,
     private readonly skills: SkillsService,
     private readonly projects: ProjectsService,
+    private readonly cache: ResumeCache,
   ) {}
 
-  async get(): Promise<ResumeResponse> {
+  get(): Promise<ResumeResponse> {
+    return this.cache.get(() => this.load());
+  }
+
+  private async load(): Promise<ResumeResponse> {
     const [profile, experiences, education, skills, projects] = await Promise.all([
       this.profile.getPublic(),
       this.experiences.list(),

@@ -5,10 +5,11 @@ import { Client } from 'pg';
 import request from 'supertest';
 import { DataSource } from 'typeorm';
 import { validateEnv } from '../app/config/env.validation';
+import { ResumeCache } from '../app/resume/resume-cache';
 
 export const TEST_ADMIN = { email: 'admin@test.local', password: 'integration-test-password' };
 
-/** Content tables, emptied between tests (the admin account is kept). */
+/** Content tables, emptied between tests (the admin account is kept; the resume cache is cleared). */
 const CONTENT_TABLES = [
   'experience_skill',
   'project_skill',
@@ -91,6 +92,8 @@ export async function createTestApp(): Promise<TestApp> {
     token: login.body.accessToken as string,
     truncateContent: async () => {
       await dataSource.query(`TRUNCATE ${CONTENT_TABLES.map((t) => `"${t}"`).join(', ')} CASCADE`);
+      // The truncate bypasses the API, so it doesn't clear the cached resume by itself.
+      await app.get(ResumeCache).invalidate();
     },
     close: async () => {
       await app.close();
