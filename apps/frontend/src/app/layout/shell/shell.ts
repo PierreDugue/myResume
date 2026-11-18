@@ -10,6 +10,7 @@ import { PageTitleStrategy } from '../../core/title/page-title.strategy';
 import { NAV_ITEMS } from '../nav-items';
 import { PageAccess } from '../page-access';
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- polling temporarily disabled (see constructor)
 const API_STATUS_POLL_MS = 30_000;
 
 /** App layout: sidebar (brand, navigation, API status), top bar (breadcrumb, actions) and content. */
@@ -34,7 +35,8 @@ export class Shell {
   protected readonly sidebarOpen = signal(false);
 
   constructor() {
-    inject(ApiStatusService).startPolling(API_STATUS_POLL_MS);
+    // Temporarily disabled: checking whether this polling (GET /api/health pings the database) is
+    // what keeps Neon awake. To restore: inject(ApiStatusService).startPolling(API_STATUS_POLL_MS);
     this.router.events
       .pipe(
         filter((e) => e instanceof NavigationEnd),
