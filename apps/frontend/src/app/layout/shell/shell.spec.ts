@@ -156,9 +156,15 @@ describe('Shell', () => {
     expect(root.querySelector('aside.sidebar')?.classList).not.toContain('open');
   });
 
-  it('starts polling the API status and shows it with text, not only color', async () => {
+  // Temporarily disabled: checking whether the polling (GET /api/health pings the database) is
+  // what keeps Neon awake.
+  it('does not poll the API status', async () => {
+    await render();
+    expect(startPolling).not.toHaveBeenCalled();
+  });
+
+  it('shows the API status with text, not only color', async () => {
     const { root, harness } = await render();
-    expect(startPolling).toHaveBeenCalledWith(30_000);
 
     const status = root.querySelector('.api-status');
     expect(status?.getAttribute('data-status')).toBe('up');
