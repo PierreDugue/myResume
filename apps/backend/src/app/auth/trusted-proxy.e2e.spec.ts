@@ -139,6 +139,10 @@ describe('Trusted proxy (HTTP)', () => {
       expect((await get('/api/health')).status).toBe(200);
     });
 
+    it('lets the platform liveness check call GET /api/health/live without the secret', async () => {
+      expect((await get('/api/health/live')).status).toBe(200);
+    });
+
     it('counts login attempts per visitor IP sent by the proxy (X-Client-IP)', async () => {
       const from = (ip: string) => login().set('X-Proxy-Secret', SECRET).set('X-Client-IP', ip);
       for (let i = 0; i < 5; i++) {

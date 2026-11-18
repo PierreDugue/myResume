@@ -73,8 +73,10 @@ The images contain no secrets; those are environment variables set on Render. Yo
 | ------------- | ---------------------------------------------- |
 | Image URL     | `ghcr.io/pierredugue/my-resume-backend:latest` |
 | Instance type | Free                                           |
-| Health check  | `/api/health`                                  |
+| Health check  | `/api/health/live`                             |
 | Region        | Same region for both services and the database |
+
+Use `/api/health/live`, not `/api/health`: Render calls its health check every few seconds, around the clock, and `/api/health` pings the database. That would keep Neon awake 24/7 and use up its monthly compute allowance. `/api/health/live` never touches the database.
 
 Set these environment variables:
 
@@ -90,7 +92,7 @@ Set these environment variables:
 
 Don't set `PORT`. Render sets it, and the backend listens on it. Migrations and the seed run on the first start.
 
-With `PROXY_SECRET` set, the backend's own `onrender.com` address answers `403` to everything except `/api/health`. Only requests that come through nginx carry the secret. This is expected: use the frontend's address.
+With `PROXY_SECRET` set, the backend's own `onrender.com` address answers `403` to everything except `/api/health` and `/api/health/live`. Only requests that come through nginx carry the secret. This is expected: use the frontend's address.
 
 ### 3. Create the frontend service
 

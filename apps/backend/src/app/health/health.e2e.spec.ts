@@ -74,4 +74,23 @@ describe('GET /api/health', () => {
     pingCheck.mockReturnValue(attempt({ database: { status: 'up' } }));
     await request(app.getHttpServer()).get('/api/health').expect(200);
   });
+
+  describe('GET /api/health/live', () => {
+    it('returns 200 and status "ok" with no checks, even when the database is down', async () => {
+      pingCheck.mockReturnValue(attempt({ database: { status: 'down', message: 'timeout' } }));
+
+      const res = await request(app.getHttpServer()).get('/api/health/live');
+
+      expect(res.status).toBe(200);
+      const body = res.body as HealthResponse;
+      expect(body.status).toBe('ok');
+      expect(body.details).toEqual({});
+    });
+
+    it('never touches the database, so platform health checks let it sleep', async () => {
+      await request(app.getHttpServer()).get('/api/health/live').expect(200);
+
+      expect(pingCheck).not.toHaveBeenCalled();
+    });
+  });
 });

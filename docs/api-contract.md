@@ -14,7 +14,7 @@ This file is the single source of truth for the HTTP and WebSocket API between `
   - Timestamps are ISO 8601 strings.
 - **Auth:** every endpoint needs `Authorization: Bearer <jwt>` unless it's marked public (–) in the tables. A missing, invalid or expired token returns `401`. Public endpoints are `GET` only, plus `POST /api/auth/login`.
 - **Rate limits:** too many requests return `429`. Login allows 5 attempts per minute per IP.
-- **Proxy secret (some deployments only):** when the backend is configured with `PROXY_SECRET`, requests that don't come through nginx (no valid `X-Proxy-Secret` header) return `403`, except `GET /api/health`. Browsers never see this, since they always go through nginx.
+- **Proxy secret (some deployments only):** when the backend is configured with `PROXY_SECRET`, requests that don't come through nginx (no valid `X-Proxy-Secret` header) return `403`, except `GET /api/health` and `GET /api/health/live`. Browsers never see this, since they always go through nginx.
 - **Errors:** Nest's default shape, `{ "statusCode": number, "message": string | string[], "error": string }`. Validation errors return `400` with `message` as an array.
 - **Lists:** plain arrays sorted by `sortOrder` ascending (no pagination; the data sets are small).
 - **Create vs update:** `POST` creates and returns `201` with the created object. `PATCH /:id` updates only the fields sent (partial update) and returns the updated object. `DELETE /:id` returns `204`.
@@ -26,15 +26,18 @@ Each endpoint moves from **planned** to **done** once the backend and frontend b
 
 ### Foundation
 
-| Method | Path          | Auth | Request | Response                                     | Status |
-| ------ | ------------- | ---- | ------- | -------------------------------------------- | ------ |
-| GET    | `/api/health` | –    | –       | `HealthResponse`, `200` (up) or `503` (down) | done   |
+| Method | Path               | Auth | Request | Response                                     | Status |
+| ------ | ------------------ | ---- | ------- | -------------------------------------------- | ------ |
+| GET    | `/api/health`      | –    | –       | `HealthResponse`, `200` (up) or `503` (down) | done   |
+| GET    | `/api/health/live` | –    | –       | `HealthResponse`, `200`                      | done   |
 
 `GET /api/health` reports whether the API and its dependencies work. It checks:
 
 - `database`: a ping to PostgreSQL, timing out after 5 s. A hosted database that sleeps when idle (Neon's free plan) can take a few seconds to wake up, which is slow but not down.
 
 If any check fails, it returns `503` with `status: "error"`, and the failing check appears under `error` and `details`. The frontend shows this as the "API" status in the sidebar, and Docker uses it as the backend's health check.
+
+`GET /api/health/live` is the liveness check for hosting platforms (Render's health check): it answers `200` with `status: "ok"` and no checks (`details: {}`) as long as the process serves HTTP, and **never touches the database**. Platforms call their health check around the clock, and a database ping every few seconds would keep a hosted database that sleeps when idle (Neon) awake, and billed, 24/7.
 
 ```ts
 type HealthStatus = 'ok' | 'error' | 'shutting_down';

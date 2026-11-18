@@ -19,4 +19,17 @@ export class HealthController {
     // 5 s: a hosted database that sleeps when idle (Neon's free plan) takes a few seconds to wake.
     return this.health.check([() => this.db.pingCheck('database').withTimeout(5000)]);
   }
+
+  /**
+   * `GET /api/health/live`: liveness for platform health checks (Render), with no checks.
+   * Never touches the database: a ping every few seconds, around the clock, would keep a database
+   * that sleeps when idle (Neon) awake and billed 24/7.
+   */
+  @Public()
+  @AllowDirectAccess()
+  @Get('live')
+  @HealthCheck()
+  live() {
+    return this.health.check([]);
+  }
 }
