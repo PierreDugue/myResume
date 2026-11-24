@@ -46,6 +46,7 @@ First read `CLAUDE.md`, the `.claude/rules/` files for the areas you review (`ba
    - missing edge or error cases
    - copy-pasted tests that differ only in their input and expected value and should be one `it.each` table, or an `it.each` table whose cases need different setup or assertions and should be separate tests
    - tests that were weakened, skipped or focused (`.skip`, `.todo`, `.only`) or had their expected values changed to match the implementation. Check `git diff` on `*.spec.ts` files.
+   - when your task includes the `tester`'s report: test files changed after the tester wrote them (implementing agents must not touch them), and stubs from the report still throwing `Not implemented`
 
 Run `npx nx affected -t lint test typecheck` (or `npx nx run-many -t lint test typecheck -p <projects>`) from the repo root and report the results.
 

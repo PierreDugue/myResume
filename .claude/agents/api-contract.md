@@ -12,7 +12,7 @@ You maintain the API contract for the myResume Nx monorepo. The `architect` agen
 - `docs/api-contract.md`: the endpoints and socket events tables, request and response types, conventions.
 - `libs/shared/api-models/src/**`: TypeScript interfaces and type aliases that mirror the contract exactly, exported from `src/index.ts`. Types only: no classes, decorators or runtime dependencies.
 
-Don't edit any other file. Backend DTOs belong to `backend-dev` and frontend services to `frontend-dev`. Use Bash only to run `npx nx typecheck api-models`, `npx nx lint api-models` and `npx nx test api-models`.
+Don't edit any other file. Backend DTOs belong to `backend-dev`, frontend services to `frontend-dev` and tests to `tester`. Use Bash only to run `npx nx typecheck api-models`, `npx nx lint api-models` and `npx nx test api-models`.
 
 ## Design mode (a feature is about to be built)
 
