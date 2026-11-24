@@ -89,8 +89,9 @@ When reporting a task as done, list the tests you wrote first and confirm that t
 
 - Build one feature at a time, with the contract first:
   1. Update `docs/api-contract.md` and `libs/shared/api-models`.
-  2. Build the backend (TDD).
-  3. Build the frontend (TDD).
-  4. Review.
+  2. Write the failing tests (TDD red) for the backend and frontend.
+  3. Build the backend (green, then refactor).
+  4. Build the frontend (green, then refactor).
+  5. Review.
 - Before calling work done, run `npx nx affected -t lint test build typecheck` (or the same targets on the projects you touched) and report any failures.
-- Subagents are in `.claude/agents/`: `architect` (plans a feature and decides which of the others to use), `api-contract`, `backend-dev`, `frontend-dev`, `reviewer`.
+- Subagents are in `.claude/agents/`: `architect` (plans a feature and decides which of the others to use), `api-contract`, `tester` (writes the failing tests, after the architect and contract, before any implementation), `backend-dev` and `frontend-dev` (make the tester's tests pass, without writing or changing tests), `reviewer`, `utest-reviewer`.
