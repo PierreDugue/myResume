@@ -23,6 +23,10 @@ export class SitePreferencesEntity {
   @Column({ type: 'jsonb', default: () => "'{}'" })
   overview!: Record<string, unknown>;
 
+  /** Only the assistant settings the admin has set (`enabled`); missing means disabled. */
+  @Column({ type: 'jsonb', default: () => "'{}'" })
+  assistant!: Record<string, unknown>;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt!: Date;
 

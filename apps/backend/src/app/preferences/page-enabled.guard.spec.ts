@@ -38,7 +38,9 @@ describe('PageEnabledGuard', () => {
     isPageEnabled,
   } as unknown as PreferencesService);
 
-  beforeEach(() => isPageEnabled.mockReset());
+  beforeEach(() => {
+    isPageEnabled.mockReset();
+  });
 
   it('lets a route that is not a public page through, without reading the preferences', async () => {
     await expect(guard.canActivate(contextFor(FreeController))).resolves.toBe(true);

@@ -20,7 +20,11 @@ const prefs = (off: PublicPageId[] = []): SitePreferences => {
   ] as const) {
     pages[id] = !off.includes(id);
   }
-  return { pages, overview: { skillsOverTime: [] } };
+  return {
+    pages,
+    overview: { skillsOverTime: [] },
+    assistant: { enabled: false, configured: false },
+  };
 };
 
 describe('pageAccessGuard', () => {

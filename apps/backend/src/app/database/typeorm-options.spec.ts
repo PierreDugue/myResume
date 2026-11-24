@@ -14,6 +14,9 @@ const env: AppEnv = {
   DATABASE_SSL: false,
   JWT_SECRET: 'x'.repeat(32),
   PASSWORD_PEPPER: 'p'.repeat(32),
+  GEMINI_API_KEY: '',
+  GEMINI_MODEL: ['gemini-3.6-flash'],
+  ASSISTANT_MONTHLY_TOKEN_LIMIT: 2_000_000,
 };
 
 describe('buildTypeOrmOptions', () => {

@@ -1,0 +1,25 @@
+<p class="question">
+  <span class="prompt" aria-hidden="true">›</span> {{ exchange().question }}&ngsp;
+</p>
+@switch (exchange().state) {
+  @case ('pending') {
+    <p class="muted">Thinking…</p>
+  }
+  @case ('failed') {
+    <p class="error">{{ failedMessage() }}</p>
+  }
+  @default {
+    @if (answered(); as a) {
+      <p class="answer">{{ a.answer }}</p>
+      @if (a.explore; as explore) {
+        <div class="suggestion">
+          <code>{{ explore.query }}</code>
+          <span class="muted">
+            {{ explore.matches }} matching log {{ explore.matches === 1 ? 'line' : 'lines' }}
+          </span>
+          <a routerLink="/explore" [queryParams]="{ query: explore.query }">Open in Explore</a>
+        </div>
+      }
+    }
+  }
+}

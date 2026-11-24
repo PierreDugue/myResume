@@ -27,6 +27,9 @@ const env: AppEnv = {
   DATABASE_SSL: false,
   JWT_SECRET: 'test-secret-that-is-at-least-32-chars!',
   PASSWORD_PEPPER: 'test-pepper-that-is-at-least-32-chars!',
+  GEMINI_API_KEY: '',
+  GEMINI_MODEL: ['gemini-3.6-flash'],
+  ASSISTANT_MONTHLY_TOKEN_LIMIT: 2_000_000,
 };
 
 describe('GET /api/quality', () => {

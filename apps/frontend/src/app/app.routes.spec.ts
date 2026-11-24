@@ -24,6 +24,7 @@ function preferences(off: PageId[] = []): SitePreferences {
       about: !off.includes('about'),
     },
     overview: { skillsOverTime: [] },
+    assistant: { enabled: false, configured: false },
   };
 }
 const EVERY_PAGE: PageId[] = [

@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CLOCK, systemClock } from '../common/clock';
+import { assistantConfiguredProvider } from '../config/assistant-configured';
 import { SkillsModule } from '../skills/skills.module';
 import { SitePreferencesEntity } from './entities/site-preferences.entity';
 import { PageEnabledGuard } from './page-enabled.guard';
@@ -14,7 +15,12 @@ import { PreferencesService } from './preferences.service';
 @Module({
   imports: [TypeOrmModule.forFeature([SitePreferencesEntity]), SkillsModule],
   controllers: [PreferencesController],
-  providers: [PreferencesService, PageEnabledGuard, { provide: CLOCK, useValue: systemClock }],
+  providers: [
+    PreferencesService,
+    PageEnabledGuard,
+    { provide: CLOCK, useValue: systemClock },
+    assistantConfiguredProvider,
+  ],
   exports: [PreferencesService],
 })
 export class PreferencesModule {}

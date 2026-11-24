@@ -64,6 +64,24 @@
         </div>
       </fieldset>
 
+      <fieldset>
+        <legend>AI assistant</legend>
+        <label class="check" for="pref-assistant">
+          <input type="checkbox" id="pref-assistant" [formField]="form.assistant.enabled" />
+          Let visitors ask the AI assistant (Ask my resume)
+        </label>
+        <p class="hint">
+          Off by default. When off, nobody sees the chat (you included) and the API refuses
+          questions.
+        </p>
+        @if (!assistantConfigured()) {
+          <p class="warning">
+            The server has no GEMINI_API_KEY, so the assistant stays unavailable even when this is
+            checked.
+          </p>
+        }
+      </fieldset>
+
       <div class="form-actions">
         <button class="button primary" type="submit" [disabled]="form().submitting()">
           Save preferences

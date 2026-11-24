@@ -17,6 +17,12 @@ export interface AppEnv {
   ADMIN_PASSWORD?: string;
   /** Shared with nginx when it reaches the backend over a public address (see TrustedProxyGuard). */
   PROXY_SECRET?: string;
+  /** Google Gemini API key of the "Ask my resume" assistant; '' (unset or blank) = unavailable. */
+  GEMINI_API_KEY: string;
+  /** Gemini models to try, in order (the first one that answers is kept for the next questions). */
+  GEMINI_MODEL: string[];
+  /** Input + output tokens per UTC month; above it the assistant answers 503. */
+  ASSISTANT_MONTHLY_TOKEN_LIMIT: number;
 }
 
 /**
@@ -68,7 +74,44 @@ export function validateEnv(raw: Record<string, unknown>): AppEnv {
     DATABASE_SSL: false,
     JWT_SECRET: '',
     PASSWORD_PEPPER: '',
+    GEMINI_API_KEY: '',
+    GEMINI_MODEL: ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'],
+    ASSISTANT_MONTHLY_TOKEN_LIMIT: 2_000_000,
   };
+
+  // The "Ask my resume" assistant: optional, unavailable without a key.
+  const geminiApiKey = read('GEMINI_API_KEY');
+  if (geminiApiKey !== undefined && !/^\S{20,200}$/.test(geminiApiKey)) {
+    errors.push('GEMINI_API_KEY must be 20 to 200 characters, without spaces');
+  }
+  const geminiModel = read('GEMINI_MODEL');
+  const geminiModels = (geminiModel ?? '')
+    .split(',')
+    .map((model) => model.trim())
+    .filter((model) => model !== '');
+  if (geminiModels.length > 0) {
+    if (
+      geminiModels.length <= 5 &&
+      new Set(geminiModels).size === geminiModels.length &&
+      geminiModels.every((model) => /^[a-z0-9][a-z0-9.-]{0,63}$/.test(model))
+    ) {
+      env.GEMINI_MODEL = geminiModels;
+    } else {
+      errors.push(
+        'GEMINI_MODEL must be 1 to 5 different model names separated by commas, such as gemini-3.6-flash,gemini-3.8-flash',
+      );
+    }
+  }
+  const tokenLimit = read('ASSISTANT_MONTHLY_TOKEN_LIMIT');
+  if (tokenLimit !== undefined) {
+    // The monthly totals are int columns: keep the limit below their maximum.
+    const n = Number(tokenLimit);
+    if (/^\d+$/.test(tokenLimit) && n >= 1 && n <= 2_147_483_647) {
+      env.ASSISTANT_MONTHLY_TOKEN_LIMIT = n;
+    } else {
+      errors.push('ASSISTANT_MONTHLY_TOKEN_LIMIT must be an integer between 1 and 2147483647');
+    }
+  }
 
   const databaseSsl = read('DATABASE_SSL')?.toLowerCase();
   if (databaseSsl !== undefined && databaseSsl !== 'true' && databaseSsl !== 'false') {
@@ -128,5 +171,7 @@ export function validateEnv(raw: Record<string, unknown>): AppEnv {
     env.ADMIN_PASSWORD = adminPassword;
   }
   if (proxySecret !== undefined) env.PROXY_SECRET = proxySecret;
+  // Always set (never undefined), so ConfigService never falls back to a blank `process.env` value.
+  env.GEMINI_API_KEY = geminiApiKey ?? '';
   return env;
 }

@@ -1,3 +1,15 @@
+@mixin sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Design tokens: dark is the default theme; [data-theme='light'] switches the palette. */
 :root,
 :root[data-theme='dark'] {
@@ -56,6 +68,7 @@
   --space-5: 24px;
   --radius: 6px;
   --sidebar-width: 232px;
+  --assistant-width: 380px;
   --topbar-height: 56px;
 }
 
@@ -274,6 +287,20 @@ svg {
   }
 }
 
+/* The assistant panel docks as a third column of the shell (shell.scss is at its style budget). */
+@media (min-width: 1280px) {
+  html app-shell.assistant-open {
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr) var(--assistant-width);
+  }
+}
+
+/* The shell's "Ask my resume" button keeps only its icon on phones (the name stays for screen readers). */
+@media (max-width: 767px) {
+  .assistant-toggle .label {
+    @include sr-only;
+  }
+}
+
 /* Print: only the page content (the plain resume prints like a document) */
 @media print {
   :root {
@@ -309,13 +336,5 @@ svg {
 
 /* Visually hidden, still read by screen readers */
 .sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
+  @include sr-only;
 }

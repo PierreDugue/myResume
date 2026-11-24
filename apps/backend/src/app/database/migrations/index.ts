@@ -8,6 +8,7 @@ import { AddProjectSpans1792744929736 } from './1792744929736-AddProjectSpans';
 import { SeedProjectSpans1792744955583 } from './1792744955583-SeedProjectSpans';
 import { AddSitePreferences1793466829834 } from './1793466829834-AddSitePreferences';
 import { AddOverviewPreferences1793629800000 } from './1793629800000-AddOverviewPreferences';
+import { AddAssistant1795531871937 } from './1795531871937-AddAssistant';
 
 /**
  * Every migration of this folder, in order. The backend is bundled with webpack, so TypeORM cannot
@@ -24,4 +25,5 @@ export const MIGRATIONS: MixedList<Function | string> = [
   SeedProjectSpans1792744955583,
   AddSitePreferences1793466829834,
   AddOverviewPreferences1793629800000,
+  AddAssistant1795531871937,
 ];

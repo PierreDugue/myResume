@@ -21,10 +21,18 @@ export interface OverviewPreferences {
 export interface SitePreferences {
   pages: PagePreferences;
   overview: OverviewPreferences;
+  assistant: AssistantPreferences;
+}
+
+/** The "Ask my resume" assistant. */
+export interface AssistantPreferences {
+  enabled: boolean; // the admin's switch; default false
+  configured: boolean; // read-only: the server has an LLM API key
 }
 
 /** `PATCH /api/preferences` body: every group and every key is optional; what is sent is merged into the stored preferences. */
 export interface UpdateSitePreferencesRequest {
   pages?: Partial<PagePreferences>;
   overview?: Partial<OverviewPreferences>;
+  assistant?: Partial<Pick<AssistantPreferences, 'enabled'>>;
 }

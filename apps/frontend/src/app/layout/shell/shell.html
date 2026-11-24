@@ -70,6 +70,30 @@
     </nav>
 
     <div class="actions">
+      @if (assistantVisible()) {
+        <button
+          #assistantToggle
+          class="assistant-toggle button"
+          type="button"
+          aria-controls="assistant-panel"
+          [attr.aria-expanded]="assistantOpen()"
+          (click)="toggleAssistant()"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            width="18"
+            height="18"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M4 5h16v11H9l-5 4z" />
+          </svg>
+          <span class="label">Ask my resume</span>
+        </button>
+      }
       <a class="plain-view button" routerLink="/resume">Plain view</a>
       <button
         class="theme-toggle icon-button"
@@ -112,3 +136,16 @@
     <router-outlet />
   </main>
 </div>
+
+@if (assistantVisible()) {
+  @defer (when assistantOpened()) {
+    <app-assistant-panel
+      id="assistant-panel"
+      role="complementary"
+      aria-label="Ask my resume"
+      [hidden]="!assistantOpen()"
+      (keydown.escape)="closeAssistant()"
+      (closed)="closeAssistant()"
+    />
+  }
+}

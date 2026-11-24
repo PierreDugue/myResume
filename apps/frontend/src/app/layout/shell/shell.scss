@@ -207,6 +207,7 @@ nav[aria-label='Main'] {
   gap: var(--space-2);
 }
 
+// The grid column of the open assistant, and the toggle label's phone style, are in styles.scss (budget).
 .menu-toggle,
 .backdrop {
   display: none;
