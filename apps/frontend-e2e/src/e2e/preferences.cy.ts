@@ -21,6 +21,7 @@ describe('page preferences (stubbed API)', () => {
       .intercept('GET', '/api/preferences', {
         pages: { ...allVisible, ...pages },
         overview: { skillsOverTime },
+        assistant: { enabled: false, configured: false },
       })
       .as('prefs');
   const names = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf', 'Hotel', 'India'];
@@ -94,6 +95,7 @@ describe('page preferences (stubbed API)', () => {
         req.reply({
           pages: { ...allVisible, ...req.body.pages },
           overview: { skillsOverTime: req.body.overview.skillsOverTime },
+          assistant: { enabled: false, configured: false },
         }),
       ).as('save');
       cy.visit('/admin', { onBeforeLoad: (w) => w.localStorage.setItem('auth.token', token) });
@@ -109,6 +111,7 @@ describe('page preferences (stubbed API)', () => {
         .should('deep.equal', {
           pages: { ...allVisible, traces: false },
           overview: { skillsOverTime: [] },
+          assistant: { enabled: false },
         });
       cy.contains('[role="status"]', 'Preferences saved');
       menu().contains('a', 'Traces').should('contain', 'Hidden');
@@ -120,6 +123,7 @@ describe('page preferences (stubbed API)', () => {
         req.reply({
           pages: { ...allVisible, ...req.body.pages },
           overview: { skillsOverTime: req.body.overview.skillsOverTime },
+          assistant: { enabled: false, configured: false },
         }),
       ).as('save');
       cy.visit('/admin/preferences', {

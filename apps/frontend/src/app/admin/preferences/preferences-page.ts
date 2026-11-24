@@ -16,10 +16,11 @@ import { SitePreferencesStore } from '../../core/preferences/site-preferences.st
 import { SkillPicker } from '../shared/skill-picker/skill-picker';
 import { NAV_ITEMS } from '../../layout/nav-items';
 
-/** One key per preference group (`pages`, `overview`): a new group is one more fieldset and one more key. */
+/** One key per preference group (`pages`, `overview`, `assistant`): a new group is one more fieldset and one more key. */
 export interface PreferencesModel {
   pages: PagePreferences;
   overview: OverviewPreferences;
+  assistant: { enabled: boolean };
 }
 
 const EMPTY: PreferencesModel = {
@@ -33,12 +34,15 @@ const EMPTY: PreferencesModel = {
     about: true,
   },
   overview: { skillsOverTime: [] },
+  assistant: { enabled: false },
 };
 
 export function toModel(prefs: SitePreferences): PreferencesModel {
   return {
     pages: { ...prefs.pages },
     overview: { skillsOverTime: [...prefs.overview.skillsOverTime] },
+    // Missing on an old backend during a deploy: read as disabled.
+    assistant: { enabled: prefs.assistant?.enabled ?? false },
   };
 }
 
@@ -47,6 +51,7 @@ export function toRequest(model: PreferencesModel): UpdateSitePreferencesRequest
   return {
     pages: { ...model.pages },
     overview: { skillsOverTime: [...model.overview.skillsOverTime] },
+    assistant: { enabled: model.assistant.enabled },
   };
 }
 
@@ -73,6 +78,11 @@ export class PreferencesPage {
 
   protected readonly pages = NAV_ITEMS;
   protected readonly skillsMax = SKILLS_OVER_TIME_MAX;
+  /** `configured` is read-only: whether the server has the Gemini key. */
+  protected readonly assistantConfigured = computed(
+    () =>
+      !this.loaded.hasValue() || (this.loaded.value().preferences.assistant?.configured ?? false),
+  );
   protected readonly skills = computed<Skill[]>(() =>
     this.loaded.hasValue() ? this.loaded.value().skills : [],
   );

@@ -15,6 +15,7 @@ const prefs = (explore = true): SitePreferences => ({
     about: true,
   },
   overview: { skillsOverTime: [] },
+  assistant: { enabled: false, configured: false },
 });
 
 describe('SitePreferencesStore', () => {

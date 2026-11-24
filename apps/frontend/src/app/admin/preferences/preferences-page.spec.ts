@@ -12,6 +12,7 @@ import { PreferencesPage, toModel, toRequest } from './preferences-page';
 const prefs = (
   off: (keyof SitePreferences['pages'])[] = [],
   skillsOverTime: string[] = [],
+  assistant: SitePreferences['assistant'] = { enabled: false, configured: true },
 ): SitePreferences => ({
   pages: {
     overview: !off.includes('overview'),
@@ -23,6 +24,7 @@ const prefs = (
     about: !off.includes('about'),
   },
   overview: { skillsOverTime },
+  assistant,
 });
 
 const skill = (id: string, name: string, category: string, sortOrder: number): Skill => ({
@@ -60,14 +62,31 @@ const LABELS = [
 ];
 
 describe('toModel / toRequest', () => {
-  it('copies the page flags and the overview group into the form model and back', () => {
-    const loaded = prefs(['explore'], ['s2', 's1']);
+  it('copies the page flags and the overview and assistant groups into the form model and back', () => {
+    const loaded = prefs(['explore'], ['s2', 's1'], { enabled: true, configured: true });
     const model = toModel(loaded);
-    expect(model).toEqual({ pages: loaded.pages, overview: { skillsOverTime: ['s2', 's1'] } });
+    expect(model).toEqual({
+      pages: loaded.pages,
+      overview: { skillsOverTime: ['s2', 's1'] },
+      assistant: { enabled: true },
+    });
     expect(toRequest(model)).toEqual({
       pages: loaded.pages,
       overview: { skillsOverTime: ['s2', 's1'] },
+      assistant: { enabled: true },
     });
+  });
+
+  it('never sends the read-only "configured" flag', () => {
+    const request = toRequest(toModel(prefs([], [], { enabled: true, configured: true })));
+    expect(request.assistant).toEqual({ enabled: true });
+  });
+
+  it('reads a missing assistant group (an old backend) as disabled', () => {
+    const old = { pages: prefs().pages, overview: prefs().overview };
+    const model = toModel(old as unknown as SitePreferences);
+    expect(model.assistant).toEqual({ enabled: false });
+    expect(toRequest(model).assistant).toEqual({ enabled: false });
   });
 
   it('does not share the selection with the loaded preferences', () => {
@@ -111,6 +130,7 @@ describe('PreferencesPage', () => {
       of({
         pages: { ...prefs().pages, ...body.pages },
         overview: { skillsOverTime: body.overview?.skillsOverTime ?? [] },
+        assistant: { enabled: body.assistant?.enabled ?? false, configured: true },
       });
     get.mockClear();
     update.mockClear();
@@ -169,6 +189,7 @@ describe('PreferencesPage', () => {
         about: true,
       },
       overview: { skillsOverTime: [] },
+      assistant: { enabled: false },
     });
     expect($(el, '[role="status"]').textContent).toContain('Preferences saved');
   });
@@ -311,7 +332,7 @@ describe('PreferencesPage', () => {
       const { el } = await render();
       expect(
         [...el.querySelectorAll('form > fieldset > legend')].map((l) => l.textContent?.trim()),
-      ).toEqual(['Pages', 'Skills over time']);
+      ).toEqual(['Pages', 'Skills over time', 'AI assistant']);
       const hint = fieldset(el).querySelector('.hint')?.textContent?.replace(/\s+/g, ' ') ?? '';
       expect(hint).toContain('up to 8');
       expect(hint).toContain('Career Overview');
@@ -346,6 +367,7 @@ describe('PreferencesPage', () => {
       expect(update).toHaveBeenCalledWith({
         pages: prefs().pages,
         overview: { skillsOverTime: ['s1', 's9'] },
+        assistant: { enabled: false },
       });
       expect($(el, '.saved').textContent).toContain('Preferences saved');
       expect(box(el, 'India').checked).toBe(true);
@@ -361,6 +383,7 @@ describe('PreferencesPage', () => {
       expect(update).toHaveBeenCalledWith({
         pages: prefs().pages,
         overview: { skillsOverTime: [] },
+        assistant: { enabled: false },
       });
     });
 
@@ -444,6 +467,65 @@ describe('PreferencesPage', () => {
       skillsAnswer.complete();
       await settle();
       expect(el.querySelector('form')).not.toBeNull();
+    });
+  });
+
+  describe('AI assistant', () => {
+    const fieldset = (el: HTMLElement) =>
+      [...el.querySelectorAll('fieldset')].find(
+        (f) => f.querySelector(':scope > legend')?.textContent?.trim() === 'AI assistant',
+      ) as HTMLElement;
+    const checkbox = (el: HTMLElement) =>
+      $<HTMLInputElement>(fieldset(el), 'input[type="checkbox"]');
+
+    it('has a checkbox that is unchecked while the assistant is off', async () => {
+      const { el } = await render();
+      expect(checkbox(el).checked).toBe(false);
+    });
+
+    it('checks the box when the assistant is on', async () => {
+      loaded = () => of(prefs([], [], { enabled: true, configured: true }));
+      const { el } = await render();
+      expect(checkbox(el).checked).toBe(true);
+    });
+
+    it('saves the switch together with the other groups, and confirms', async () => {
+      const { el, settle } = await render();
+      checkbox(el).click();
+      await settle();
+      save(el);
+      await settle();
+
+      expect(update).toHaveBeenCalledOnce();
+      expect(update).toHaveBeenCalledWith({
+        pages: prefs(['explore']).pages,
+        overview: { skillsOverTime: [] },
+        assistant: { enabled: true },
+      });
+      expect($(el, '.saved').textContent).toContain('Preferences saved');
+    });
+
+    it('updates the store with the saved switch', async () => {
+      const { el, settle } = await render();
+      checkbox(el).click();
+      await settle();
+      save(el);
+      await settle();
+      expect(TestBed.inject(SitePreferencesStore).preferences()?.assistant).toEqual({
+        enabled: true,
+        configured: true,
+      });
+    });
+
+    it('warns that GEMINI_API_KEY is not set when the server has no key', async () => {
+      loaded = () => of(prefs([], [], { enabled: false, configured: false }));
+      const { el } = await render();
+      expect(fieldset(el).textContent).toContain('GEMINI_API_KEY');
+    });
+
+    it('shows no key warning when the server has one', async () => {
+      const { el } = await render();
+      expect(fieldset(el).textContent).not.toContain('GEMINI_API_KEY');
     });
   });
 

@@ -1,4 +1,5 @@
 import type {
+  AssistantPreferences,
   OverviewPreferences,
   PagePreferences,
   PublicPageId,
@@ -78,6 +79,15 @@ export class UpdateOverviewPreferencesDto implements Partial<OverviewPreferences
   skillsOverTime?: string[];
 }
 
+/** Partial assistant settings: only `enabled` can be sent (`configured` is read-only), never null. */
+export class UpdateAssistantPreferencesDto implements Partial<
+  Pick<AssistantPreferences, 'enabled'>
+> {
+  @IsOptionalButNotNull()
+  @IsBoolean()
+  enabled?: boolean;
+}
+
 /** PATCH body: unknown groups and page ids are refused by the global ValidationPipe (400). */
 export class UpdateSitePreferencesDto implements UpdateSitePreferencesRequest {
   @IsOptionalButNotNull()
@@ -91,16 +101,24 @@ export class UpdateSitePreferencesDto implements UpdateSitePreferencesRequest {
   @ValidateNested()
   @Type(() => UpdateOverviewPreferencesDto)
   overview?: UpdateOverviewPreferencesDto;
+
+  @IsOptionalButNotNull()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => UpdateAssistantPreferencesDto)
+  assistant?: UpdateAssistantPreferencesDto;
 }
 
 /**
  * Every page id with its stored flag, or the default; stored keys that aren't page ids are dropped.
  * `skillsOverTime` is the selection already resolved against the existing skills (the mapper stays
- * pure): empty = automatic.
+ * pure): empty = automatic. The assistant is off unless `true` is stored; `configured` is the
+ * server's setting (GEMINI_API_KEY), never read from the row.
  */
 export function toSitePreferences(
   entity: SitePreferencesEntity | null,
   skillsOverTime: readonly string[] = [],
+  assistantConfigured = false,
 ): SitePreferences {
   const stored: Record<string, unknown> = entity?.pages ?? {};
   const pages = { ...DEFAULT_PAGE_PREFERENCES };
@@ -108,7 +126,14 @@ export function toSitePreferences(
     const value = stored[id];
     if (typeof value === 'boolean') pages[id] = value;
   }
-  return { pages, overview: { skillsOverTime: [...skillsOverTime] } };
+  return {
+    pages,
+    overview: { skillsOverTime: [...skillsOverTime] },
+    assistant: {
+      enabled: entity?.assistant?.['enabled'] === true,
+      configured: assistantConfigured,
+    },
+  };
 }
 
 /** Only the page flags actually sent (class-transformer leaves absent keys undefined). */
@@ -135,5 +160,14 @@ export function sentOverviewPreferences(
 ): Partial<OverviewPreferences> {
   const sent: Partial<OverviewPreferences> = {};
   if (Array.isArray(dto?.skillsOverTime)) sent.skillsOverTime = dto.skillsOverTime;
+  return sent;
+}
+
+/** Only the assistant settings actually sent. */
+export function sentAssistantPreferences(
+  dto: UpdateAssistantPreferencesDto | undefined,
+): Partial<Pick<AssistantPreferences, 'enabled'>> {
+  const sent: Partial<Pick<AssistantPreferences, 'enabled'>> = {};
+  if (typeof dto?.enabled === 'boolean') sent.enabled = dto.enabled;
   return sent;
 }

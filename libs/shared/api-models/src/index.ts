@@ -1,3 +1,4 @@
+export * from './lib/assistant';
 export * from './lib/auth';
 export * from './lib/content';
 export * from './lib/dashboard';

@@ -33,12 +33,19 @@ export interface TestApp {
   close(): Promise<void>;
 }
 
+export interface TestAppOptions {
+  /** Merged into `process.env` before AppModule loads (e.g. `GEMINI_API_KEY`). */
+  env?: Record<string, string>;
+  /** Each entry replaces a provider of AppModule (`overrideProvider(provide).useValue(useValue)`). */
+  providers?: { provide: unknown; useValue: unknown }[];
+}
+
 /**
  * Starts the real backend (AppModule: migrations, seed, guards, validation) on a new, empty
  * PostgreSQL database, signs the test admin in, and drops the database on `close()`.
  * Connection settings come from the same env files as the app (root .env: POSTGRES_*).
  */
-export async function createTestApp(): Promise<TestApp> {
+export async function createTestApp(options: TestAppOptions = {}): Promise<TestApp> {
   for (const file of ['apps/backend/.env', '.env']) {
     try {
       process.loadEnvFile(file);
@@ -72,12 +79,21 @@ export async function createTestApp(): Promise<TestApp> {
     DATABASE_NAME: database,
     ADMIN_EMAIL: TEST_ADMIN.email,
     ADMIN_PASSWORD: TEST_ADMIN.password,
+    // Never the developer's real assistant settings from .env: a test that needs them sets them.
+    GEMINI_API_KEY: '',
+    GEMINI_MODEL: '',
+    ASSISTANT_MONTHLY_TOKEN_LIMIT: '',
+    ...options.env,
   });
 
   // Imported after the environment is set: ConfigModule reads it when the module is loaded.
   const { AppModule } = await import('../app/app.module');
   const { configureApp } = await import('../app/app.setup');
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const builder = Test.createTestingModule({ imports: [AppModule] });
+  for (const { provide, useValue } of options.providers ?? []) {
+    builder.overrideProvider(provide).useValue(useValue);
+  }
+  const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication({ logger: ['error'] });
   configureApp(app);
   await app.init();
@@ -97,6 +113,7 @@ export async function createTestApp(): Promise<TestApp> {
     },
     close: async () => {
       await app.close();
+      for (const name of Object.keys(options.env ?? {})) delete process.env[name];
       await admin.query(`DROP DATABASE IF EXISTS "${database}" WITH (FORCE)`);
       await admin.end();
     },

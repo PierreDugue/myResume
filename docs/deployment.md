@@ -80,15 +80,16 @@ Use `/api/health/live`, not `/api/health`: Render calls its health check every f
 
 Set these environment variables:
 
-| Variable                                                                                | Value                                                                                                 |
-| --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                                                                              | `production`                                                                                          |
-| `JWT_SECRET`                                                                            | `openssl rand -base64 48`                                                                             |
-| `PASSWORD_PEPPER`                                                                       | another `openssl rand -base64 48`                                                                     |
-| `ADMIN_EMAIL`, `ADMIN_PASSWORD`                                                         | your admin login (password at least 12 characters)                                                    |
-| `PROXY_SECRET`                                                                          | `openssl rand -base64 48`, the **same value** as on the frontend service                              |
-| `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME` | from the database's connection string (for Neon: the **direct** one, connection pooling off)          |
-| `DATABASE_SSL`                                                                          | `true` for Neon (it only accepts SSL connections); leave unset for Render Postgres's internal address |
+| Variable                                                                                | Value                                                                                                                                                                            |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                                                                              | `production`                                                                                                                                                                     |
+| `JWT_SECRET`                                                                            | `openssl rand -base64 48`                                                                                                                                                        |
+| `PASSWORD_PEPPER`                                                                       | another `openssl rand -base64 48`                                                                                                                                                |
+| `ADMIN_EMAIL`, `ADMIN_PASSWORD`                                                         | your admin login (password at least 12 characters)                                                                                                                               |
+| `PROXY_SECRET`                                                                          | `openssl rand -base64 48`, the **same value** as on the frontend service                                                                                                         |
+| `GEMINI_API_KEY`, `GEMINI_MODEL`, `ASSISTANT_MONTHLY_TOKEN_LIMIT`                       | optional: the "Ask my resume" assistant (see CLAUDE.md, Configuration). Use a key from a billing-enabled Google Cloud project and set a budget alert there. Never commit the key |
+| `DATABASE_HOST`, `DATABASE_PORT`, `DATABASE_USER`, `DATABASE_PASSWORD`, `DATABASE_NAME` | from the database's connection string (for Neon: the **direct** one, connection pooling off)                                                                                     |
+| `DATABASE_SSL`                                                                          | `true` for Neon (it only accepts SSL connections); leave unset for Render Postgres's internal address                                                                            |
 
 Don't set `PORT`. Render sets it, and the backend listens on it. Migrations and the seed run on the first start.
 

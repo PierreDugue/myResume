@@ -193,6 +193,7 @@ This connects to the resume's AI skills (Claude, Claude skills) and to "Generate
   - Every page is enabled by default. A disabled page is hidden from the menu, its route redirects visitors, and its API endpoints answer `404`. The admin still sees it, to preview it.
   - The plain view `/resume` can't be disabled; visitors land there when every page is disabled.
   - **Skills over time:** up to 8 skills (checkboxes grouped by category) for the Career Overview's line chart. The selection is used when the Career Overview shows the whole career with no filter; with none checked, or when a visitor filters by category, skill or years, the chart shows the most used skills of the view.
+  - **AI assistant ("Ask my resume"):** on or off, **off by default**. When off, nobody sees the chat or its button (the admin included), and the API refuses every question. When the server has no `GEMINI_API_KEY`, the page says so and the assistant stays unavailable.
   - Built so more site preferences can be added later (one group per kind of setting).
 - **Resume PDF:** upload a PDF file; the latest one is offered as "Export PDF" on the public site.
 - **Import from PDF (later):** read text out of the uploaded PDF to pre-fill content, which the owner then checks and edits. The first content will be entered by hand or with a seed script based on the owner's PDF.
@@ -230,7 +231,8 @@ All tables have `id` (uuid), `createdAt` and `updatedAt`. Lists use `sortOrder` 
 - `GET /service-map`: nodes and edges.
 - `GET /site-metrics/process?since`: the backend process's samples (last 5 minutes); `since` returns only the samples after that timestamp.
 - `GET /resume-file`: download the active PDF.
-- `GET /preferences` (public) and `PATCH /preferences` (admin): the site preferences, such as which public pages are enabled.
+- `GET /preferences` (public) and `PATCH /preferences` (admin): the site preferences, such as which public pages are enabled and whether the AI assistant is on.
+- `POST /assistant/ask` (public, rate-limited): a question to the "Ask my resume" assistant; the answer, with an optional Explore query.
 - Admin create/update/delete for every entity, plus `POST /resume-file` (PDF upload), all protected by JWT.
 
 ### Real-time (WebSocket)
@@ -260,7 +262,7 @@ Messages are merged by timestamp on the client: a tick can arrive around the his
 
 - **A single admin account**, kept in sync with `ADMIN_EMAIL` / `ADMIN_PASSWORD` on every startup. The backend creates the account, or updates its email or password if they changed. Changing `ADMIN_PASSWORD` and restarting is how the password is reset. Passwords are **salted and peppered**: `HMAC-SHA256(PASSWORD_PEPPER, password)`, then bcrypt (random salt, cost 12). The pepper is a server secret kept outside the database. This also means bcrypt's 72-byte limit doesn't cut long passwords short.
 - `POST /api/auth/login` returns a JWT (HS256, signed with `JWT_SECRET`, 24 h). It's limited to 5 attempts per minute per IP, and answers the same way for an unknown email and a wrong password.
-- **Secure by default:** every API route needs the token unless it's marked public (public routes are `GET` only, plus login).
+- **Secure by default:** every API route needs the token unless it's marked public (public routes are `GET` only, plus login and `POST /api/assistant/ask`).
 - Frontend:
   - The token is kept in memory and `localStorage`, and the session ends automatically when the token expires.
   - An HTTP interceptor adds `Authorization: Bearer <token>` to `/api` calls only. If the API answers 401, the frontend signs out and opens the login page, returning to the original page after signing in. Only same-site return paths are allowed.
@@ -290,6 +292,7 @@ Messages are merged by timestamp on the client: a tick can arrive around the his
   - The gateway pushes the process sampler's ticks to the `metrics` room. Still planned: a request-logging interceptor in NestJS publishing anonymized request events to an in-memory event bus (RxJS `Subject`), which the gateway combines into one data point per second for the request channels.
   - If several backend instances are run one day, the Socket.IO Redis adapter can share events between them.
   - In Angular, a `LiveService` is the only owner of the socket, and wraps it in RxJS Observables with a status signal. It connects only while a page needs it (reference-counted: it closes about 5 seconds after the last consumer leaves, and is reused if one comes back sooner), subscribes again on every reconnect, and `socket.io-client` is imported dynamically, so it stays out of the initial bundle. Pages pause their streams while the tab is hidden and fill the gap from the history when it is shown again.
+- **AI assistant:** Google Gemini (by default `gemini-3.6-flash`, falling back to `gemini-3.8-flash` then `gemini-3.5-flash-lite` when Google rejects a model) through the official `@google/genai` SDK, behind our own `LlmClient` interface so tests use a fake and the provider can change. No LangChain/LangGraph (one stateless call, no tools or retriever), no RAG (the whole public resume fits in the prompt), no streaming (short JSON answers, and no proxy buffering changes).
 - **PDF storage:** a Docker volume mounted into the backend container. Limit: 5 MB, `application/pdf` only.
 
 ## Build order
@@ -337,15 +340,23 @@ Messages are merged by timestamp on the client: a tick can arrive around the his
 10b. **Admin preferences:** page visibility and the skills of the overview's line chart (`/admin/preferences`, `GET`/`PATCH /api/preferences`)
 
 11. **Polish:** guided tour, SEO/OpenGraph tags (a preview image showing the dashboard), accessibility checks, performance budgets.
-12. **Later: "Ask my resume" AI assistant.**
-    - A chat assistant styled like a monitoring tool's query assistant. It answers questions about the resume using RAG over the stored content.
-    - It can also turn a question into an Explore query or dashboard filters, e.g. "Angular projects in Australia" → `{location=~"Sydney.*"} |= "Angular"`.
-    - Built with LangChain.js / LangGraph in NestJS and the Claude API.
-    - Needs: an API key in the environment, a monthly spending cap, per-IP rate limits, answers based only on the resume (no made-up facts), and no storage of visitors' questions beyond aggregated counts.
+12. **"Ask my resume" AI assistant**, in two parts.
+    - **12a (first slice):**
+      - a chat panel on the right of every public page, the plain view `/resume` included (not admin, not printed), opened from the top bar, closed by default and lazy-loaded;
+      - styled like a monitoring tool's query assistant;
+      - single-turn questions answered **only from the public resume**, in the language of the question; the whole resume goes into the prompt (no vector search at this size);
+      - an optional Explore query suggestion, checked with `@my-resume/query-parser` and opened as `/explore?query=`, e.g. "Angular projects in Australia" → `{location=~"Sydney.*"} |= "Angular"`;
+      - provider **Google Gemini** through the official `@google/genai` SDK, behind an `LlmClient` interface (LangChain/LangGraph not needed for one stateless call);
+      - `POST /api/assistant/ask`, plain request/response (no streaming);
+      - `GEMINI_API_KEY` (optional: without it the feature is unavailable), `GEMINI_MODEL`, and a monthly token cap `ASSISTANT_MONTHLY_TOKEN_LIMIT`;
+      - 10 questions per 10 minutes per visitor IP;
+      - only monthly totals stored (questions, failures, tokens), never the questions;
+      - visitor input treated as untrusted: the model must not reveal its instructions or leave its task, and answers are shown as plain text.
+    - **12b (later):** an admin view of the month's usage, dashboard-filter suggestions, follow-up questions, streaming answers, showing up front that the monthly limit is reached.
 
 ## Out of scope (for now)
 
-Multiple users, user-editable dashboard layouts, translations into other languages, storing data about individual visitors. The "Ask my resume" assistant is planned for later (step 12), not for the first release.
+Multiple users, user-editable dashboard layouts, translations into other languages, storing data about individual visitors. The "Ask my resume" assistant is built in step 12a; 12b comes later.
 
 ## Alternative themes considered
 

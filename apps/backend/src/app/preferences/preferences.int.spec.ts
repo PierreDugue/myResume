@@ -1,4 +1,5 @@
 import type {
+  AssistantPreferences,
   OverviewPreferences,
   PagePreferences,
   PublicPageId,
@@ -22,6 +23,7 @@ const ALL_ENABLED: PagePreferences = {
 
 const DISABLED = 'This page is disabled';
 const NO_SELECTION: OverviewPreferences = { skillsOverTime: [] };
+const NO_ASSISTANT: AssistantPreferences = { enabled: false, configured: false };
 const MISSING = '00000000-0000-4000-8000-000000000000';
 
 describe('Preferences API', () => {
@@ -43,13 +45,21 @@ describe('Preferences API', () => {
     it('is public and enables every page by default', async () => {
       const res = await http.get('/api/preferences');
       expect(res.status).toBe(200);
-      expect(res.body as SitePreferences).toEqual({ pages: ALL_ENABLED, overview: NO_SELECTION });
+      expect(res.body as SitePreferences).toEqual({
+        pages: ALL_ENABLED,
+        overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
+      });
     });
 
     it('ignores an invalid token (public route, never 401)', async () => {
       const res = await getAs('/api/preferences', 'Bearer not.a.jwt');
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ pages: ALL_ENABLED, overview: NO_SELECTION });
+      expect(res.body).toEqual({
+        pages: ALL_ENABLED,
+        overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
+      });
     });
   });
 
@@ -60,6 +70,7 @@ describe('Preferences API', () => {
       expect((await http.get('/api/preferences')).body).toEqual({
         pages: ALL_ENABLED,
         overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
       });
     });
 
@@ -69,10 +80,12 @@ describe('Preferences API', () => {
       expect(res.body).toEqual({
         pages: { ...ALL_ENABLED, explore: false },
         overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
       });
       expect((await http.get('/api/preferences')).body).toEqual({
         pages: { ...ALL_ENABLED, explore: false },
         overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
       });
     });
 
@@ -83,6 +96,7 @@ describe('Preferences API', () => {
       expect(res.body).toEqual({
         pages: { ...ALL_ENABLED, explore: false, quality: false },
         overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
       });
     });
 
@@ -92,6 +106,7 @@ describe('Preferences API', () => {
       expect(res.body).toEqual({
         pages: { ...ALL_ENABLED, traces: false },
         overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
       });
     });
 
@@ -102,13 +117,18 @@ describe('Preferences API', () => {
       expect(res.body).toEqual({
         pages: { ...ALL_ENABLED, serviceMap: false },
         overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
       });
     });
 
     it('changes nothing for an empty pages object (200)', async () => {
       const res = await http.patch('/api/preferences', { pages: {} });
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ pages: ALL_ENABLED, overview: NO_SELECTION });
+      expect(res.body).toEqual({
+        pages: ALL_ENABLED,
+        overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
+      });
     });
 
     it('allows every page to be disabled', async () => {
@@ -123,7 +143,11 @@ describe('Preferences API', () => {
       };
       const res = await http.patch('/api/preferences', { pages: allDisabled });
       expect(res.status).toBe(200);
-      expect(res.body).toEqual({ pages: allDisabled, overview: NO_SELECTION });
+      expect(res.body).toEqual({
+        pages: allDisabled,
+        overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
+      });
     });
 
     describe('concurrency and the single row', () => {
@@ -141,6 +165,7 @@ describe('Preferences API', () => {
         expect((await http.get('/api/preferences')).body).toEqual({
           pages: { ...ALL_ENABLED, explore: false, quality: false },
           overview: NO_SELECTION,
+          assistant: NO_ASSISTANT,
         });
       });
 
@@ -156,6 +181,7 @@ describe('Preferences API', () => {
         expect((await http.get('/api/preferences')).body).toEqual({
           pages: { ...ALL_ENABLED, about: false, explore: false, quality: false },
           overview: NO_SELECTION,
+          assistant: NO_ASSISTANT,
         });
       });
 
@@ -184,6 +210,7 @@ describe('Preferences API', () => {
       expect((await http.get('/api/preferences')).body).toEqual({
         pages: ALL_ENABLED,
         overview: NO_SELECTION,
+        assistant: NO_ASSISTANT,
       });
     });
   });
@@ -212,6 +239,7 @@ describe('Preferences API', () => {
       expect(res.body).toEqual({
         pages: ALL_ENABLED,
         overview: { skillsOverTime: [ids[0], ids[3], ids[5]] },
+        assistant: NO_ASSISTANT,
       });
       expect(await selection()).toEqual([ids[0], ids[3], ids[5]]);
     });
@@ -253,6 +281,7 @@ describe('Preferences API', () => {
       expect(pagesOnly.body).toEqual({
         pages: { ...ALL_ENABLED, explore: false },
         overview: { skillsOverTime: [ids[1]] },
+        assistant: NO_ASSISTANT,
       });
 
       const overviewOnly = await http.patch('/api/preferences', {
@@ -261,6 +290,7 @@ describe('Preferences API', () => {
       expect(overviewOnly.body).toEqual({
         pages: { ...ALL_ENABLED, explore: false },
         overview: { skillsOverTime: [ids[2]] },
+        assistant: NO_ASSISTANT,
       });
     });
 
@@ -276,7 +306,11 @@ describe('Preferences API', () => {
 
     it('creates the row with a selection and default pages on an empty table', async () => {
       const res = await http.patch('/api/preferences', { overview: { skillsOverTime: [ids[0]] } });
-      expect(res.body).toEqual({ pages: ALL_ENABLED, overview: { skillsOverTime: [ids[0]] } });
+      expect(res.body).toEqual({
+        pages: ALL_ENABLED,
+        overview: { skillsOverTime: [ids[0]] },
+        assistant: NO_ASSISTANT,
+      });
     });
 
     it('silently drops a deleted skill from the selection (no write needed)', async () => {
@@ -362,6 +396,96 @@ describe('Preferences API', () => {
       const res = await http.patch('/api/preferences', { overview: { skillsOverTime: [MISSING] } });
       expect(res.status).toBe(400);
       expect(res.body.message).toBe('Unknown skill ids');
+    });
+  });
+
+  describe('assistant', () => {
+    const enabled = async () =>
+      ((await http.get('/api/preferences')).body as SitePreferences).assistant.enabled;
+
+    it('is disabled by default, and not configured when the server has no key', async () => {
+      const res = await http.get('/api/preferences');
+      expect(res.body.assistant).toEqual({ enabled: false, configured: false });
+    });
+
+    it('stores the switch and returns the complete preferences (200)', async () => {
+      const res = await http.patch('/api/preferences', { assistant: { enabled: true } });
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({
+        pages: ALL_ENABLED,
+        overview: NO_SELECTION,
+        assistant: { enabled: true, configured: false },
+      });
+      expect(await enabled()).toBe(true);
+    });
+
+    it('can switch the assistant off again', async () => {
+      await http.patch('/api/preferences', { assistant: { enabled: true } });
+      const res = await http.patch('/api/preferences', { assistant: { enabled: false } });
+      expect(res.status).toBe(200);
+      expect(res.body.assistant.enabled).toBe(false);
+      expect(await enabled()).toBe(false);
+    });
+
+    it('is merged: sending pages or overview only keeps it, and sending it only keeps them', async () => {
+      await http.patch('/api/preferences', { assistant: { enabled: true } });
+      const pagesOnly = await http.patch('/api/preferences', { pages: { explore: false } });
+      expect(pagesOnly.body).toEqual({
+        pages: { ...ALL_ENABLED, explore: false },
+        overview: NO_SELECTION,
+        assistant: { enabled: true, configured: false },
+      });
+
+      const assistantOnly = await http.patch('/api/preferences', { assistant: { enabled: false } });
+      expect(assistantOnly.body).toEqual({
+        pages: { ...ALL_ENABLED, explore: false },
+        overview: NO_SELECTION,
+        assistant: { enabled: false, configured: false },
+      });
+    });
+
+    it('keeps the switch for an empty body or an empty assistant object (200)', async () => {
+      await http.patch('/api/preferences', { assistant: { enabled: true } });
+      expect((await http.patch('/api/preferences', {})).body.assistant.enabled).toBe(true);
+      const res = await http.patch('/api/preferences', { assistant: {} });
+      expect(res.status).toBe(200);
+      expect(res.body.assistant.enabled).toBe(true);
+    });
+
+    it('creates the row on an empty table, with default pages', async () => {
+      const res = await http.patch('/api/preferences', { assistant: { enabled: true } });
+      expect(res.body.pages).toEqual(ALL_ENABLED);
+      expect(await enabled()).toBe(true);
+    });
+
+    it('requires a token to change it (401) and changes nothing', async () => {
+      const res = await http.patch('/api/preferences', { assistant: { enabled: true } }, false);
+      expect(res.status).toBe(401);
+      expect(await enabled()).toBe(false);
+    });
+
+    it.each([
+      ['null for assistant', { assistant: null }],
+      ['a string for assistant', { assistant: 'on' }],
+      ['a boolean for assistant', { assistant: true }],
+      ['an array for assistant', { assistant: [] }],
+      ['a string for enabled', { assistant: { enabled: 'yes' } }],
+      ['a number for enabled', { assistant: { enabled: 1 } }],
+      ['null for enabled', { assistant: { enabled: null } }],
+      ['the read-only `configured`', { assistant: { configured: true } }],
+      ['`configured` next to `enabled`', { assistant: { enabled: true, configured: true } }],
+      ['an unknown key', { assistant: { enabled: true, model: 'gemini-x' } }],
+      [
+        'valid pages next to an invalid assistant',
+        { pages: { explore: false }, assistant: { enabled: 'yes' } },
+      ],
+    ])('returns 400 for %s and changes nothing', async (_case, body) => {
+      await http.patch('/api/preferences', { assistant: { enabled: true } });
+      const before = (await http.get('/api/preferences')).body;
+
+      const res = await http.patch('/api/preferences', body);
+      expect(res.status).toBe(400);
+      expect((await http.get('/api/preferences')).body).toEqual(before);
     });
   });
 

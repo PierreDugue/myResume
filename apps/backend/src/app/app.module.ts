@@ -14,6 +14,7 @@ import { ServiceMapModule } from './service-map/service-map.module';
 import { PreferencesModule } from './preferences/preferences.module';
 import { SiteMetricsModule } from './site-metrics/site-metrics.module';
 import { LiveModule } from './live/live.module';
+import { AssistantModule } from './assistant/assistant.module';
 
 @Module({
   imports: [
@@ -39,6 +40,11 @@ import { LiveModule } from './live/live.module';
           DATABASE_SSL: config.get('DATABASE_SSL', { infer: true }),
           JWT_SECRET: config.get('JWT_SECRET', { infer: true }),
           PASSWORD_PEPPER: config.get('PASSWORD_PEPPER', { infer: true }),
+          GEMINI_API_KEY: config.get('GEMINI_API_KEY', { infer: true }),
+          GEMINI_MODEL: config.get('GEMINI_MODEL', { infer: true }),
+          ASSISTANT_MONTHLY_TOKEN_LIMIT: config.get('ASSISTANT_MONTHLY_TOKEN_LIMIT', {
+            infer: true,
+          }),
         }),
     }),
     AuthModule,
@@ -52,6 +58,7 @@ import { LiveModule } from './live/live.module';
     PreferencesModule,
     SiteMetricsModule,
     LiveModule,
+    AssistantModule,
   ],
 })
 export class AppModule {}

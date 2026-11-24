@@ -1,9 +1,11 @@
 import type { SitePreferences } from '@my-resume/api-models';
 import { SitePreferencesEntity } from '../entities/site-preferences.entity';
 import {
+  sentAssistantPreferences,
   sentOverviewPreferences,
   parseStoredSkillsOverTime,
   toSitePreferences,
+  UpdateAssistantPreferencesDto,
   UpdateOverviewPreferencesDto,
 } from './preferences.dto';
 
@@ -21,16 +23,19 @@ const ALL_ENABLED: SitePreferences = {
     about: true,
   },
   overview: { skillsOverTime: [] },
+  assistant: { enabled: false, configured: false },
 };
 
 function entity(
   pages: Record<string, unknown>,
   overview: Record<string, unknown> = {},
+  assistant: Record<string, unknown> = {},
 ): SitePreferencesEntity {
   return Object.assign(new SitePreferencesEntity(), {
     id: '00000000-0000-4000-8000-000000000001',
     pages,
     overview,
+    assistant,
     createdAt: new Date('2026-10-01T00:00:00Z'),
     updatedAt: new Date('2026-10-02T00:00:00Z'),
   });
@@ -49,13 +54,14 @@ describe('toSitePreferences', () => {
     expect(toSitePreferences(entity({ explore: false, quality: false, traces: true }))).toEqual({
       pages: { ...ALL_ENABLED.pages, explore: false, quality: false },
       overview: { skillsOverTime: [] },
+      assistant: { enabled: false, configured: false },
     });
   });
 
   it('drops stored keys that are not page ids (any more), and never leaks row fields', () => {
     const result = toSitePreferences(entity({ resume: false, legacyPage: false, about: false }));
     expect(result).toEqual({ ...ALL_ENABLED, pages: { ...ALL_ENABLED.pages, about: false } });
-    expect(Object.keys(result)).toEqual(['pages', 'overview']);
+    expect(Object.keys(result)).toEqual(['pages', 'overview', 'assistant']);
   });
 
   it('ignores stored values that are not booleans', () => {
@@ -132,5 +138,52 @@ describe('sentOverviewPreferences', () => {
   it('keeps a sent list, including the empty one', () => {
     expect(sentOverviewPreferences(dto([ID_A]))).toEqual({ skillsOverTime: [ID_A] });
     expect(sentOverviewPreferences(dto([]))).toEqual({ skillsOverTime: [] });
+  });
+});
+
+describe('toSitePreferences, assistant', () => {
+  it('is disabled by default, with or without a row', () => {
+    expect(toSitePreferences(null).assistant.enabled).toBe(false);
+    expect(toSitePreferences(entity({})).assistant.enabled).toBe(false);
+  });
+
+  it('reports the stored switch', () => {
+    expect(toSitePreferences(entity({}, {}, { enabled: true })).assistant.enabled).toBe(true);
+    expect(toSitePreferences(entity({}, {}, { enabled: false })).assistant.enabled).toBe(false);
+  });
+
+  it.each([
+    ['"true"', 'true'],
+    ['1', 1],
+    ['null', null],
+  ])('ignores a stored enabled value that is not a boolean (%s)', (_case, value) => {
+    expect(toSitePreferences(entity({}, {}, { enabled: value })).assistant.enabled).toBe(false);
+  });
+
+  it('takes `configured` from the server, never from the stored row', () => {
+    const stored = entity({}, {}, { enabled: true, configured: true });
+    expect(toSitePreferences(stored, [], false).assistant).toEqual({
+      enabled: true,
+      configured: false,
+    });
+    expect(toSitePreferences(null, [], true).assistant).toEqual({
+      enabled: false,
+      configured: true,
+    });
+  });
+});
+
+describe('sentAssistantPreferences', () => {
+  const dto = (enabled?: boolean) =>
+    Object.assign(new UpdateAssistantPreferencesDto(), { enabled });
+
+  it('is empty when nothing was sent', () => {
+    expect(sentAssistantPreferences(undefined)).toEqual({});
+    expect(sentAssistantPreferences(dto())).toEqual({});
+  });
+
+  it('keeps a sent boolean, false included', () => {
+    expect(sentAssistantPreferences(dto(true))).toEqual({ enabled: true });
+    expect(sentAssistantPreferences(dto(false))).toEqual({ enabled: false });
   });
 });

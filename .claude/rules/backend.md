@@ -37,7 +37,7 @@ Load the `nestjs-11` skill ([.claude/skills/nestjs-11/SKILL.md](../skills/nestjs
 - `AuthModule` installs three app-wide guards, in this order:
   1. `TrustedProxyGuard`: only active when `PROXY_SECRET` is set (see below).
   2. Rate limiting (`ClientIpThrottlerGuard`, 300 requests/min per visitor IP). Tune per route with `@Throttle()`.
-  3. JWT. Every route needs a token unless marked `@Public()`, and public routes are `GET` only (login is the exception). Use `@CurrentUser()` to get the token claims.
+  3. JWT. Every route needs a token unless marked `@Public()`, and public routes are `GET` only (login and `POST /api/assistant/ask` are the exceptions). Use `@CurrentUser()` to get the token claims.
 - `configureApp` trusts `X-Forwarded-For` from local and private-network proxies (nginx, the dev proxy), so limits apply per visitor IP. Don't publish the backend port on a public network.
 - Where the backend has a public address (Render), `PROXY_SECRET` is shared with nginx, which sends it in `X-Proxy-Secret` with the visitor IP in `X-Client-IP`:
   - Requests without the secret get `403`, except routes marked `@AllowDirectAccess()` (only `GET /api/health`, for platform health checks).

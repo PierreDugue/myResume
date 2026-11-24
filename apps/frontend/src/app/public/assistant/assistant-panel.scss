@@ -1,0 +1,124 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border-left: 1px solid var(--color-border);
+  overflow-y: auto;
+  // Narrow screens: an overlay drawer on the right.
+  position: fixed;
+  inset: 0 0 0 auto;
+  z-index: 25;
+  width: min(100vw, var(--assistant-width));
+  box-shadow: -8px 0 24px rgb(0 0 0 / 30%);
+}
+:host([hidden]) {
+  display: none;
+}
+@media (max-width: 767px) {
+  :host {
+    width: 100vw;
+  }
+}
+// Wide screens: docked as a third column.
+@media (min-width: 1280px) {
+  :host {
+    position: sticky;
+    top: 0;
+    inset: auto;
+    z-index: auto;
+    width: auto;
+    height: 100dvh;
+    box-shadow: none;
+  }
+}
+@media print {
+  :host {
+    display: none;
+  }
+}
+
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+h2 {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 1rem;
+}
+.tag {
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius);
+  color: var(--color-accent);
+  font: var(--font-mono-sm);
+}
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.intro,
+.footer {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+.footer {
+  font-size: 0.8125rem;
+}
+.examples,
+.transcript {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.transcript li {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+}
+.examples .button {
+  width: 100%;
+  min-height: 36px;
+  height: auto;
+  padding: var(--space-2) var(--space-3);
+  justify-content: flex-start;
+  text-align: left;
+}
+form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+textarea {
+  width: 100%;
+  resize: vertical;
+  padding: var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+  &:disabled {
+    opacity: 0.6;
+  }
+}
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.counter {
+  font: var(--font-mono-sm);
+  color: var(--color-text-muted);
+  &.over {
+    color: var(--color-error);
+  }
+}

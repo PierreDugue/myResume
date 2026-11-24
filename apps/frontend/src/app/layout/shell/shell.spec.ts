@@ -2,6 +2,9 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
+import { of } from 'rxjs';
+import { AssistantApi } from '../../core/assistant/assistant-api.service';
+import { type } from '../../admin/testing/render';
 import { ApiStatus, ApiStatusService } from '../../core/api/api-status.service';
 import { APP_NAME } from '../../core/app-name';
 import { AuthService } from '../../core/auth/auth.service';
@@ -22,9 +25,11 @@ describe('Shell', () => {
   const isAuthenticated = signal(false);
   const logout = vi.fn();
   const preferences = signal<SitePreferences | null>(null);
+  const ask = vi.fn(() => of({ answer: 'Ten years in IT.', explore: null }));
   const withDisabled = (...off: PublicPageId[]): SitePreferences => ({
     pages: Object.fromEntries(NAV_ITEMS.map((i) => [i.page, !off.includes(i.page)])) as never,
     overview: { skillsOverTime: [] },
+    assistant: { enabled: false, configured: false },
   });
 
   async function render(url = '/') {
@@ -38,6 +43,7 @@ describe('Shell', () => {
               { path: '', title: 'Career Overview', component: Page },
               { path: 'resume', title: 'Plain view', component: Page },
               { path: 'admin', title: 'Admin', component: Page },
+              { path: 'admin/login', title: 'Sign in', component: Page },
             ],
           },
         ]),
@@ -47,6 +53,7 @@ describe('Shell', () => {
           provide: AuthService,
           useValue: { isAuthenticated: isAuthenticated.asReadonly(), logout },
         },
+        { provide: AssistantApi, useValue: { ask } },
         { provide: SitePreferencesStore, useValue: { preferences: preferences.asReadonly() } },
       ],
     });
@@ -63,6 +70,7 @@ describe('Shell', () => {
     isAuthenticated.set(false);
     preferences.set(null);
     logout.mockReset();
+    ask.mockClear();
   });
 
   it('shows the app name as a link to the home dashboard', async () => {
@@ -308,6 +316,222 @@ describe('Shell', () => {
       await harness.fixture.whenStable();
       expect(logout).toHaveBeenCalledOnce();
       expect(TestBed.inject(Router).url).toBe('/');
+    });
+  });
+
+  describe('"Ask my resume" assistant', () => {
+    const withAssistant = (enabled: boolean, configured: boolean): SitePreferences => ({
+      ...withDisabled(),
+      assistant: { enabled, configured },
+    });
+    const toggle = (root: HTMLElement) =>
+      [...root.querySelectorAll<HTMLButtonElement>('header button')].find(
+        (b) => (b.getAttribute('aria-label') ?? b.textContent)?.trim() === 'Ask my resume',
+      );
+    const panel = (root: HTMLElement) => root.querySelector<HTMLElement>('#assistant-panel');
+    /** Lets the lazy panel load, then renders. */
+    const settle = async (harness: {
+      fixture: { whenStable(): Promise<unknown> };
+      detectChanges(): void;
+    }) => {
+      harness.detectChanges();
+      await new Promise((resolve) => setTimeout(resolve));
+      await harness.fixture.whenStable();
+      harness.detectChanges();
+    };
+    const closeButton = (root: HTMLElement) =>
+      [...$(root, '#assistant-panel').querySelectorAll('button')].find((b) =>
+        /close/i.test(b.getAttribute('aria-label') ?? b.textContent ?? ''),
+      );
+    const isShown = (root: HTMLElement) => {
+      const el = panel(root);
+      return el !== null && !el.hidden;
+    };
+
+    it('has a collapsed "Ask my resume" button in the top bar, and no panel yet', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root } = await render('/');
+      const button = toggle(root);
+      expect(button).toBeDefined();
+      expect(button?.getAttribute('aria-expanded')).toBe('false');
+      expect(button?.getAttribute('aria-controls')).toBe('assistant-panel');
+      expect(panel(root)).toBeNull();
+      expect(root.querySelector('app-assistant-panel')).toBeNull();
+    });
+
+    it('opens the panel, a landmark named "Ask my resume", when the button is clicked', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      toggle(root)?.click();
+      await settle(harness);
+
+      expect(toggle(root)?.getAttribute('aria-expanded')).toBe('true');
+      const region = $(root, '#assistant-panel');
+      expect(region.hidden).toBe(false);
+      expect(region.getAttribute('aria-label')).toBe('Ask my resume');
+      expect(['complementary', 'region']).toContain(
+        region.getAttribute('role') ?? (region.tagName === 'ASIDE' ? 'complementary' : ''),
+      );
+    });
+
+    it('is also available on the plain view', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root } = await render('/resume');
+      expect(toggle(root)).toBeDefined();
+    });
+
+    it('closes with its close button, and focus goes back to the toggle', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      toggle(root)?.click();
+      await settle(harness);
+      $<HTMLTextAreaElement>(root, '#assistant-panel textarea').focus();
+
+      closeButton(root)?.click();
+      await settle(harness);
+
+      expect(isShown(root)).toBe(false);
+      expect(toggle(root)?.getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(toggle(root));
+    });
+
+    it('closes with Escape, and focus goes back to the toggle', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      toggle(root)?.click();
+      await settle(harness);
+      const input = $<HTMLTextAreaElement>(root, '#assistant-panel textarea');
+      input.focus();
+
+      input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settle(harness);
+
+      expect(isShown(root)).toBe(false);
+      expect(document.activeElement).toBe(toggle(root));
+    });
+
+    it('still closes with Escape after a question was answered, without re-focusing the box', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      toggle(root)?.click();
+      await settle(harness);
+      const input = $<HTMLTextAreaElement>(root, '#assistant-panel textarea');
+      input.focus();
+      type(input, 'How long in IT?');
+      await settle(harness);
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }),
+      );
+      await settle(harness);
+      expect($(root, '#assistant-panel').textContent).toContain('Ten years in IT.');
+
+      document.activeElement?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      await settle(harness);
+
+      expect(isShown(root)).toBe(false);
+      expect(document.activeElement).toBe(toggle(root));
+    });
+
+    it('closes when the toggle is clicked again', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      toggle(root)?.click();
+      await settle(harness);
+      toggle(root)?.click();
+      await settle(harness);
+      expect(isShown(root)).toBe(false);
+      expect(toggle(root)?.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('keeps the conversation when the panel is closed and opened again', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      toggle(root)?.click();
+      await settle(harness);
+      type($(root, '#assistant-panel textarea'), 'How long in IT?');
+      await settle(harness);
+      $<HTMLButtonElement>(root, '#assistant-panel button[type="submit"]').click();
+      await settle(harness);
+      expect($(root, '#assistant-panel').textContent).toContain('Ten years in IT.');
+
+      closeButton(root)?.click();
+      await settle(harness);
+      toggle(root)?.click();
+      await settle(harness);
+
+      expect(isShown(root)).toBe(true);
+      expect($(root, '#assistant-panel').textContent).toContain('How long in IT?');
+      expect($(root, '#assistant-panel').textContent).toContain('Ten years in IT.');
+      expect(ask).toHaveBeenCalledOnce();
+    });
+
+    it.each<[string, SitePreferences | null]>([
+      ['the admin turned it off', withAssistant(false, true)],
+      ['the server has no key', withAssistant(true, false)],
+      ['the preferences are not loaded', null],
+    ])('has no button and no panel when %s', async (_name, prefs) => {
+      preferences.set(prefs);
+      const { root } = await render('/');
+      expect(toggle(root)).toBeUndefined();
+      expect(panel(root)).toBeNull();
+    });
+
+    it.each(['/admin', '/admin/login'])('has no button on %s', async (url) => {
+      preferences.set(withAssistant(true, true));
+      const { root } = await render(url);
+      expect(toggle(root)).toBeUndefined();
+      expect(panel(root)).toBeNull();
+    });
+
+    it('drops the button when the admin turns the assistant off', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      expect(toggle(root)).toBeDefined();
+
+      preferences.set(withAssistant(false, true));
+      harness.detectChanges();
+      expect(toggle(root)).toBeUndefined();
+    });
+
+    it('stays closed when the assistant comes back after navigating to an admin page', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      toggle(root)?.click();
+      await settle(harness);
+      expect(isShown(root)).toBe(true);
+
+      await harness.navigateByUrl('/admin');
+      await settle(harness);
+      await harness.navigateByUrl('/');
+      await settle(harness);
+
+      expect(toggle(root)?.getAttribute('aria-expanded')).toBe('false');
+      expect(isShown(root)).toBe(false);
+    });
+
+    it('stays closed when the admin turns it off and on again', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      toggle(root)?.click();
+      await settle(harness);
+
+      preferences.set(withAssistant(false, true));
+      await settle(harness);
+      preferences.set(withAssistant(true, true));
+      await settle(harness);
+
+      expect(toggle(root)?.getAttribute('aria-expanded')).toBe('false');
+      expect(isShown(root)).toBe(false);
+    });
+
+    it('drops the button when navigating to an admin page', async () => {
+      preferences.set(withAssistant(true, true));
+      const { root, harness } = await render('/');
+      await harness.navigateByUrl('/admin');
+      harness.detectChanges();
+      expect(toggle(root)).toBeUndefined();
     });
   });
 });

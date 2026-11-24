@@ -23,6 +23,9 @@ describe('validateEnv', () => {
       DATABASE_SSL: false,
       JWT_SECRET: 'x'.repeat(32),
       PASSWORD_PEPPER: 'p'.repeat(32),
+      GEMINI_API_KEY: '',
+      GEMINI_MODEL: ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'],
+      ASSISTANT_MONTHLY_TOKEN_LIMIT: 2000000,
     });
   });
 
@@ -250,5 +253,120 @@ describe('validateEnv', () => {
         expect(String(e)).not.toContain('tiny');
       }
     });
+  });
+
+  describe('assistant settings', () => {
+    const KEY = 'k'.repeat(39);
+
+    it.each([
+      ['unset', undefined],
+      ['empty', ''],
+      ['only spaces', '   '],
+      ['only a newline and tabs', '\n\t '],
+    ])(
+      'gives an empty GEMINI_API_KEY (never undefined) when it is %s: the assistant is then unavailable',
+      (_name, value) => {
+        expect(validateEnv({ ...db, GEMINI_API_KEY: value }).GEMINI_API_KEY).toBe('');
+      },
+    );
+
+    it('returns a GEMINI_API_KEY of 20 to 200 characters', () => {
+      expect(validateEnv({ ...db, GEMINI_API_KEY: KEY }).GEMINI_API_KEY).toBe(KEY);
+      expect(validateEnv({ ...db, GEMINI_API_KEY: 'k'.repeat(20) }).GEMINI_API_KEY).toBeDefined();
+      expect(validateEnv({ ...db, GEMINI_API_KEY: 'k'.repeat(200) }).GEMINI_API_KEY).toBeDefined();
+    });
+
+    it.each([
+      ['too short', 'k'.repeat(19)],
+      ['too long', 'k'.repeat(201)],
+      ['containing a space', `${'k'.repeat(15)} ${'k'.repeat(15)}`],
+      ['containing a newline', `${'k'.repeat(15)}\n${'k'.repeat(15)}`],
+    ])('rejects a GEMINI_API_KEY %s, without printing it', (_name, value) => {
+      let message = '';
+      try {
+        validateEnv({ ...db, GEMINI_API_KEY: value });
+      } catch (e) {
+        message = String(e);
+      }
+      expect(message).toMatch(/GEMINI_API_KEY/);
+      expect(message).not.toContain(value);
+    });
+
+    const DEFAULT_MODELS = ['gemini-3.6-flash', 'gemini-3.8-flash', 'gemini-3.5-flash-lite'];
+
+    it('defaults GEMINI_MODEL to the fallback list, in order', () => {
+      expect(validateEnv(db).GEMINI_MODEL).toEqual(DEFAULT_MODELS);
+      expect(validateEnv({ ...db, GEMINI_MODEL: '' }).GEMINI_MODEL).toEqual(DEFAULT_MODELS);
+      expect(validateEnv({ ...db, GEMINI_MODEL: ' , ' }).GEMINI_MODEL).toEqual(DEFAULT_MODELS);
+    });
+
+    it.each(['gemini-3-flash', 'gemini-2.5-pro', 'g', 'a1.b-c'])(
+      'accepts GEMINI_MODEL %s',
+      (model) => {
+        expect(validateEnv({ ...db, GEMINI_MODEL: model }).GEMINI_MODEL).toEqual([model]);
+      },
+    );
+
+    it('reads GEMINI_MODEL as a comma-separated list, trimmed, in order', () => {
+      expect(
+        validateEnv({ ...db, GEMINI_MODEL: ' gemini-b , gemini-a,,gemini-c ' }).GEMINI_MODEL,
+      ).toEqual(['gemini-b', 'gemini-a', 'gemini-c']);
+    });
+
+    it('rejects a GEMINI_MODEL list with more than 5 models or a repeated model', () => {
+      expect(() => validateEnv({ ...db, GEMINI_MODEL: 'a,b,c,d,e,f' })).toThrow(/GEMINI_MODEL/);
+      expect(validateEnv({ ...db, GEMINI_MODEL: 'a,b,c,d,e' }).GEMINI_MODEL).toHaveLength(5);
+      expect(() => validateEnv({ ...db, GEMINI_MODEL: 'a,b,a' })).toThrow(/GEMINI_MODEL/);
+    });
+
+    it('rejects a GEMINI_MODEL list with one invalid name', () => {
+      expect(() => validateEnv({ ...db, GEMINI_MODEL: 'gemini-a,models/gemini' })).toThrow(
+        /GEMINI_MODEL/,
+      );
+    });
+
+    it.each([
+      'Gemini-Flash',
+      '-flash',
+      '.flash',
+      'models/gemini',
+      'gemini flash',
+      `g${'a'.repeat(64)}`,
+    ])('rejects GEMINI_MODEL %s', (model) => {
+      expect(() => validateEnv({ ...db, GEMINI_MODEL: model })).toThrow(/GEMINI_MODEL/);
+    });
+
+    it('defaults ASSISTANT_MONTHLY_TOKEN_LIMIT to 2000000', () => {
+      expect(validateEnv(db).ASSISTANT_MONTHLY_TOKEN_LIMIT).toBe(2000000);
+      expect(
+        validateEnv({ ...db, ASSISTANT_MONTHLY_TOKEN_LIMIT: '' }).ASSISTANT_MONTHLY_TOKEN_LIMIT,
+      ).toBe(2000000);
+    });
+
+    it('accepts the largest limit the database int column holds, and no more', () => {
+      expect(
+        validateEnv({ ...db, ASSISTANT_MONTHLY_TOKEN_LIMIT: '2147483647' })
+          .ASSISTANT_MONTHLY_TOKEN_LIMIT,
+      ).toBe(2147483647);
+    });
+
+    it('reads ASSISTANT_MONTHLY_TOKEN_LIMIT as a number', () => {
+      expect(
+        validateEnv({ ...db, ASSISTANT_MONTHLY_TOKEN_LIMIT: '500000' })
+          .ASSISTANT_MONTHLY_TOKEN_LIMIT,
+      ).toBe(500000);
+      expect(
+        validateEnv({ ...db, ASSISTANT_MONTHLY_TOKEN_LIMIT: '1' }).ASSISTANT_MONTHLY_TOKEN_LIMIT,
+      ).toBe(1);
+    });
+
+    it.each(['0', '-5', '1.5', 'lots', '1e6', '12 000', '2147483648'])(
+      'rejects ASSISTANT_MONTHLY_TOKEN_LIMIT %s',
+      (limit) => {
+        expect(() => validateEnv({ ...db, ASSISTANT_MONTHLY_TOKEN_LIMIT: limit })).toThrow(
+          /ASSISTANT_MONTHLY_TOKEN_LIMIT/,
+        );
+      },
+    );
   });
 });

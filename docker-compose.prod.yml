@@ -45,6 +45,10 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       # Optional: only needed where nginx reaches the backend through a public address (Render).
       PROXY_SECRET: ${PROXY_SECRET:-}
+      # Optional: the "Ask my resume" assistant (see CLAUDE.md, Configuration). Never commit the key.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      ASSISTANT_MONTHLY_TOKEN_LIMIT: ${ASSISTANT_MONTHLY_TOKEN_LIMIT:-}
     depends_on:
       postgres:
         condition: service_healthy

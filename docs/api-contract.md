@@ -12,8 +12,8 @@ This file is the single source of truth for the HTTP and WebSocket API between `
   - Ids are uuid strings.
   - Dates are `YYYY-MM-DD` strings.
   - Timestamps are ISO 8601 strings.
-- **Auth:** every endpoint needs `Authorization: Bearer <jwt>` unless it's marked public (–) in the tables. A missing, invalid or expired token returns `401`. Public endpoints are `GET` only, plus `POST /api/auth/login`.
-- **Rate limits:** too many requests return `429`. Login allows 5 attempts per minute per IP.
+- **Auth:** every endpoint needs `Authorization: Bearer <jwt>` unless it's marked public (–) in the tables. A missing, invalid or expired token returns `401`. Public endpoints are `GET` only, plus `POST /api/auth/login` and `POST /api/assistant/ask`.
+- **Rate limits:** too many requests return `429`. Login allows 5 attempts per minute per IP. The assistant allows 10 questions per 10 minutes per IP (see Assistant).
 - **Proxy secret (some deployments only):** when the backend is configured with `PROXY_SECRET`, requests that don't come through nginx (no valid `X-Proxy-Secret` header) return `403`, except `GET /api/health` and `GET /api/health/live`. Browsers never see this, since they always go through nginx.
 - **Errors:** Nest's default shape, `{ "statusCode": number, "message": string | string[], "error": string }`. Validation errors return `400` with `message` as an array.
 - **Lists:** plain arrays sorted by `sortOrder` ascending (no pagination; the data sets are small).
@@ -855,7 +855,7 @@ interface LiveClientEvents {
 | GET    | `/api/preferences` | –    | –                              | `SitePreferences` `200`                  | done   |
 | PATCH  | `/api/preferences` | ✔    | `UpdateSitePreferencesRequest` | `SitePreferences` `200`, or `400`, `401` | done   |
 
-Site-wide settings, edited on `/admin/preferences`. There are two groups: `pages` (which public pages visitors can see) and `overview` (settings of the Career Overview page). More groups can be added later.
+Site-wide settings, edited on `/admin/preferences`. There are three groups: `pages` (which public pages visitors can see), `overview` (settings of the Career Overview page) and `assistant` (the "Ask my resume" assistant). More groups can be added later.
 
 - **Pages and their ids:**
 
@@ -884,6 +884,14 @@ Site-wide settings, edited on `/admin/preferences`. There are two groups: `pages
   - **Order:** ids come back in skills-list order (the skills' `sortOrder`), whatever order they were sent in. A skill that has been deleted silently drops out of the selection (no error, no write needed).
   - **`PATCH`:** `overview` is merged like `pages` (keys left out are kept), but `skillsOverTime` is one value: sending it **replaces the whole list**, and `[]` goes back to automatic. The order sent doesn't matter.
   - The selection isn't private, so `GET /api/preferences` stays public.
+- **Assistant group:**
+  - `assistant.enabled` is the admin's switch, `false` by default.
+  - `assistant.configured` is read-only: `true` when the server has the LLM API key. The chat is shown and served only when both are `true`.
+  - `GET` always includes `assistant` with both keys.
+  - `PATCH` merges `assistant` like `pages`. It accepts only `enabled`: sending `configured` or any other key is `400`.
+  - `400` (nothing changes) for `assistant` that is `null` or not an object, and for `enabled` that is not a boolean or is `null`.
+  - The 5 s caching delay below also applies to `assistant.enabled`, in both directions.
+  - The assistant is not a page: there is no `PublicPageId` for it and no row in the "Endpoints refused" table, but its endpoint answers `404` while it is off (see Assistant).
 - **Disabled pages are refused by the API too.** Each page's own endpoints answer `404` `{ "statusCode": 404, "message": "This page is disabled", "error": "Not Found" }` to visitors while it is disabled:
 
   | Page          | Endpoints refused                                                                                                                                  |
@@ -898,7 +906,7 @@ Site-wide settings, edited on `/admin/preferences`. There are two groups: `pages
   - `about` has no endpoint to refuse: it uses `GET /api/resume`, which the plain view needs, so `/api/resume` is never refused.
   - A request with a valid admin token is still served, so the admin can preview a hidden page. Sockets carry no token, so while `siteMetrics` is disabled the admin previewing the page falls back to the HTTP endpoint, which honours the admin token.
   - **Disabling `siteMetrics` and the socket:** it refuses new `subscribe:metrics` (`page_disabled`) but doesn't end existing subscriptions; they stop when the client unsubscribes, reloads or disconnects.
-  - **Caching delay:** the server may cache the page flags for up to 5 seconds. The instance that handles the admin's `PATCH` applies the change immediately; other instances apply it within 5 s. This holds for every endpoint above (and for `subscribe:metrics`), in both directions (disabling and re-enabling).
+  - **Caching delay:** the server may cache the page flags (and `assistant.enabled`) for up to 5 seconds. The instance that handles the admin's `PATCH` applies the change immediately; other instances apply it within 5 s. This holds for every endpoint above (and for `subscribe:metrics`), in both directions (disabling and re-enabling).
   - On these public routes an invalid or expired token is ignored (the request is treated as a visitor's), never a `401`.
 
 ```ts
@@ -919,6 +927,7 @@ type PagePreferences = Record<PublicPageId, boolean>;
 interface SitePreferences {
   pages: PagePreferences;
   overview: OverviewPreferences;
+  assistant: AssistantPreferences;
 }
 
 /** Settings of the Career Overview page (`/`). */
@@ -927,10 +936,63 @@ interface OverviewPreferences {
   skillsOverTime: string[];
 }
 
+/** The "Ask my resume" assistant. */
+interface AssistantPreferences {
+  enabled: boolean; // the admin's switch; default false
+  configured: boolean; // read-only: the server has an LLM API key
+}
+
 /** `PATCH /api/preferences` body: every group and every key is optional; what is sent is merged into the stored preferences. */
 interface UpdateSitePreferencesRequest {
   pages?: Partial<PagePreferences>;
   overview?: Partial<OverviewPreferences>;
+  assistant?: Partial<Pick<AssistantPreferences, 'enabled'>>;
+}
+```
+
+### Assistant ("Ask my resume")
+
+| Method | Path                 | Auth | Request               | Response                                                      | Status  |
+| ------ | -------------------- | ---- | --------------------- | ------------------------------------------------------------- | ------- |
+| POST   | `/api/assistant/ask` | –    | `AskAssistantRequest` | `AssistantAnswer` `200`, or `400`, `404`, `429`, `502`, `503` | done    |
+
+A visitor asks a question about the resume and gets a short answer from a language model (Google Gemini). It is turned on in the admin Preferences (`assistant.enabled`, off by default).
+
+- **`question`:** trimmed, then 1..500 characters. Unknown fields give `400`.
+- **Order of the checks:**
+  1. `403`: proxy secret, as everywhere.
+  2. `429`: at most 10 questions per 10 minutes per visitor IP (this route's limit replaces the global one, as for login).
+  3. `400`: validation.
+  4. `404` `"The assistant is disabled"`: the Preferences switch is off (the default). Unlike disabled pages, a valid admin token does **not** bypass it: it is refused to everyone.
+  5. `404` `"The assistant is not configured"`: the server has no LLM API key.
+  6. `503` `"The assistant has reached its monthly limit"`: the tokens used this UTC month (input + output) have reached the server's monthly limit. It resets on the 1st, UTC. It is a soft cap: questions already in flight may go slightly over it.
+  7. `502` `"The assistant could not answer"`: the model failed, timed out (20 s) or returned malformed output.
+
+  All errors use Nest's standard shape, with these exact messages.
+
+- **Answers:**
+  - grounded only in the public resume (the content of `GET /api/resume`);
+  - when the resume doesn't say, the answer says so;
+  - in the language of the question;
+  - plain text (no Markdown or HTML), possibly with line breaks, at most 2000 characters;
+  - clients render it as text, never as HTML.
+- **`explore`:** an optional Explore query that lists the log lines behind the answer. It is always a query that parses with `@my-resume/query-parser` and matches at least one line over the default range (`matches`). The frontend opens it as `/explore?query=<query>`. It is `null` when the model proposed none, when its query is invalid or matches nothing, or when the Explore page is disabled.
+- **Not retried by clients** (it is not a `GET`).
+- **Privacy:** the question is sent to Google Gemini to produce the answer. The backend never stores or logs it, and keeps only monthly totals (questions asked, failures, input and output tokens). No request ever reaches the model while the assistant is disabled or not configured.
+
+```ts
+interface AskAssistantRequest {
+  question: string; // trimmed, 1..500 characters
+}
+
+interface ExploreSuggestion {
+  query: string; // an Explore query that parses with @my-resume/query-parser; at most 500 characters
+  matches: number; // >= 1: the lines it matches over the default range
+}
+
+interface AssistantAnswer {
+  answer: string; // plain text, may contain line breaks, at most 2000 characters
+  explore: ExploreSuggestion | null;
 }
 ```
 
