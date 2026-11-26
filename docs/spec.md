@@ -161,6 +161,7 @@ This connects to the resume's AI skills (Claude, Claude skills) and to "Generate
 - A classic one-page resume (profile, experience, projects, skills, education).
 - Printable, easy to read for screen readers and applicant-tracking software, with a link to download the original PDF.
 - Every dashboard page has a link to it.
+- The owner can edit it in place from the admin area (`/admin/resume`, see [Admin area](#admin-area)).
 
 ### Cross-cutting requirements
 
@@ -195,6 +196,14 @@ This connects to the resume's AI skills (Claude, Claude skills) and to "Generate
   - **Skills over time:** up to 8 skills (checkboxes grouped by category) for the Career Overview's line chart. The selection is used when the Career Overview shows the whole career with no filter; with none checked, or when a visitor filters by category, skill or years, the chart shows the most used skills of the view.
   - **AI assistant ("Ask my resume"):** on or off, **off by default**. When off, nobody sees the chat or its button (the admin included), and the API refuses every question. When the server has no `GEMINI_API_KEY`, the page says so and the assistant stays unavailable.
   - Built so more site preferences can be added later (one group per kind of setting).
+- `/admin/resume` ("Edit resume"): the plain view `/resume`, edited in place.
+  - It looks the same as the public plain view (same component and layout, same order of sections and items), so the owner edits the resume as recruiters will read it.
+  - **Editing:** clicking a text (or focusing it with the keyboard and pressing Enter) turns it into a field: one line for names, titles and dates, a text area for descriptions and the summary. Enter (Ctrl/Cmd+Enter in a text area) or leaving the field saves it; Escape cancels. Fields that aren't plain text (dates, the skills of an item, profile links) open a small form next to the item.
+  - **Saving:** each change is saved straight away through the existing admin endpoints (`PATCH`/`POST`/`DELETE` and `PUT …/order`); no draft, no "publish" step. A saving / saved / failed state shows next to the field. A rejected value (validation error) keeps what the owner typed, with the error under the field.
+  - **Items:** add an item at the end of a section (experience, project, education, skill), delete one (with a confirmation), and move one up or down (buttons, keyboard-reachable; drag and drop optional).
+  - **Only what the plain view shows** is editable here. Everything else (highlight labels and impact, project spans, skill levels and colors, the phone visibility, ...) stays in the section screens, and each item has a link to its full form there.
+  - Same validation rules as the section screens (shared form models, not a second copy).
+  - On the public `/resume`, a logged-in admin sees an "Edit" button that opens `/admin/resume`. Visitors never see it.
 - **Resume PDF:** upload a PDF file; the latest one is offered as "Export PDF" on the public site.
 - **Import from PDF (later):** read text out of the uploaded PDF to pre-fill content, which the owner then checks and edits. The first content will be entered by hand or with a seed script based on the owner's PDF.
 
@@ -353,6 +362,7 @@ Messages are merged by timestamp on the client: a tick can arrive around the his
       - only monthly totals stored (questions, failures, tokens), never the questions;
       - visitor input treated as untrusted: the model must not reveal its instructions or leave its task, and answers are shown as plain text.
     - **12b (later):** an admin view of the month's usage, dashboard-filter suggestions, follow-up questions, streaming answers, showing up front that the monthly limit is reached.
+13. **Edit the plain view in place:** `/admin/resume` (see [Admin area](#admin-area)), built on the existing content endpoints (no API change), plus the "Edit" button on `/resume` for the logged-in admin.
 
 ## Out of scope (for now)
 

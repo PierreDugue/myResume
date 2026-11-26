@@ -1,0 +1,93 @@
+@if (tools(); as t) {
+  <div class="item-tools no-print" [class.compact]="t.item?.kind === 'skill'">
+    <div class="buttons">
+      @if (t.item) {
+        <button
+          class="icon-button"
+          type="button"
+          [disabled]="!canMove(-1) || status.busy()"
+          [attr.aria-label]="'Move &quot;' + t.title + '&quot; up'"
+          (click)="move(-1)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
+        </button>
+        <button
+          class="icon-button"
+          type="button"
+          [disabled]="!canMove(1) || status.busy()"
+          [attr.aria-label]="'Move &quot;' + t.title + '&quot; down'"
+          (click)="move(1)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7" /></svg>
+        </button>
+      }
+      @if (t.dates) {
+        <button
+          class="button"
+          type="button"
+          [attr.aria-expanded]="open() === 'dates'"
+          [attr.aria-label]="'Edit dates of &quot;' + t.title + '&quot;'"
+          (click)="toggle('dates')"
+        >
+          Dates
+        </button>
+      }
+      @if (t.stack) {
+        <button
+          class="button"
+          type="button"
+          [attr.aria-expanded]="open() === 'stack'"
+          [attr.aria-label]="'Edit tech stack of &quot;' + t.title + '&quot;'"
+          (click)="toggle('stack')"
+        >
+          Tech stack
+        </button>
+      }
+      @if (t.links) {
+        <button
+          class="button"
+          type="button"
+          [attr.aria-expanded]="open() === 'links'"
+          aria-label="Edit links"
+          (click)="toggle('links')"
+        >
+          Links
+        </button>
+      }
+      <a
+        class="button"
+        [routerLink]="t.fullForm"
+        [attr.aria-label]="'Full form for &quot;' + t.title + '&quot;'"
+        >Full form</a
+      >
+      @if (t.item) {
+        <button
+          class="icon-button delete"
+          type="button"
+          [disabled]="status.busy()"
+          [attr.aria-label]="'Delete &quot;' + t.title + '&quot;'"
+          (click)="remove()"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+          </svg>
+        </button>
+      }
+      <span class="save-status" role="status">{{ status.text() }}</span>
+    </div>
+    @if (status.error(); as error) {
+      <p class="form-error" role="alert">{{ error }}</p>
+    }
+    @if (t.item; as item) {
+      @if (open() === 'dates' && t.dates) {
+        <app-dates-form [kind]="t.dates" [id]="item.id" (closed)="open.set(null)" />
+      }
+      @if (open() === 'stack' && t.stack) {
+        <app-item-skills-form [kind]="t.stack" [id]="item.id" (closed)="open.set(null)" />
+      }
+    }
+    @if (open() === 'links' && t.links) {
+      <app-profile-links-form (closed)="open.set(null)" />
+    }
+  </div>
+}

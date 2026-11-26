@@ -24,6 +24,7 @@ describe('AdminLayout', () => {
     const tabs = [...el.querySelectorAll<HTMLAnchorElement>('nav[aria-label="Admin sections"] a')];
     expect(tabs.map((a) => [a.textContent?.trim(), a.getAttribute('href')])).toEqual([
       ['Overview', '/admin'],
+      ['Edit resume', '/admin/resume'],
       ['Profile', '/admin/profile'],
       ['Skills', '/admin/skills'],
       ['Experience', '/admin/experiences'],

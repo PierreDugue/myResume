@@ -1,0 +1,57 @@
+<div class="section-tools no-print">
+  @if (session(); as s) {
+    <form class="small-form" novalidate (submit)="submit($event)">
+      <div class="small-form-fields">
+        @for (f of s.fields; track f.key) {
+          <div class="field" [class.wide]="f.type === 'textarea'">
+            <label [for]="uid + f.key">{{ f.label }}</label>
+            @if (f.type === 'textarea') {
+              <textarea
+                rows="3"
+                [id]="uid + f.key"
+                [formField]="f.field"
+                [attr.aria-invalid]="showError(f.field()) || null"
+              ></textarea>
+            } @else if (f.type === 'date') {
+              <input
+                type="date"
+                [id]="uid + f.key"
+                [formField]="f.field"
+                [attr.aria-invalid]="showError(f.field()) || null"
+              />
+            } @else {
+              <input
+                type="text"
+                [id]="uid + f.key"
+                [attr.list]="f.key === 'category' ? uid + '-categories' : null"
+                [formField]="f.field"
+                [attr.aria-invalid]="showError(f.field()) || null"
+              />
+            }
+            @if (f.key === 'category') {
+              <datalist [id]="uid + '-categories'">
+                @for (c of categories(); track c) {
+                  <option [value]="c"></option>
+                }
+              </datalist>
+            }
+            @if (showError(f.field())) {
+              @for (e of f.field().errors(); track e.kind) {
+                <p class="field-error">{{ e.message }}</p>
+              }
+            }
+          </div>
+        }
+      </div>
+      @if (status.error(); as error) {
+        <p class="form-error" role="alert">{{ error }}</p>
+      }
+      <div class="small-form-actions">
+        <button class="button primary" type="submit" [disabled]="status.busy()">Add</button>
+        <button class="button" type="button" (click)="close()">Cancel</button>
+      </div>
+    </form>
+  } @else {
+    <button #add class="button add" type="button" (click)="open()">{{ label() }}</button>
+  }
+</div>

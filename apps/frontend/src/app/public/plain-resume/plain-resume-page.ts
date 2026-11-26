@@ -1,43 +1,27 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import type { Skill } from '@my-resume/api-models';
+import { RouterLink } from '@angular/router';
+import { AuthService } from '../../core/auth/auth.service';
 import { ContentApi } from '../../core/content/content-api.service';
-import { formatPeriod } from '../../shared/format/period';
+import { PlainResume } from './plain-resume';
 
 /** The classic resume: readable, printable (Save as PDF), and ATS-friendly. */
 @Component({
   selector: 'app-plain-resume-page',
+  imports: [PlainResume, RouterLink],
   templateUrl: './plain-resume-page.html',
-  styleUrl: './plain-resume-page.scss',
+  styles: `
+    .loading {
+      color: var(--color-text-muted);
+    }
+  `,
 })
 export class PlainResumePage {
   private readonly api = inject(ContentApi);
 
   protected readonly resume = rxResource({ stream: () => this.api.resume() });
-  protected readonly period = formatPeriod;
-
-  private readonly skillNames = computed(() => {
-    const skills = this.resume.hasValue() ? this.resume.value().skills : [];
-    return new Map(skills.map((s) => [s.id, s.name]));
-  });
-
-  protected readonly skillGroups = computed(() => {
-    const groups = new Map<string, Skill[]>();
-    for (const skill of this.resume.hasValue() ? this.resume.value().skills : []) {
-      groups.set(skill.category, [...(groups.get(skill.category) ?? []), skill]);
-    }
-    return [...groups].map(([category, skills]) => ({
-      category,
-      names: skills.map((s) => s.name).join(', '),
-    }));
-  });
-
-  protected stack(skillIds: string[]): string {
-    return skillIds
-      .map((id) => this.skillNames().get(id))
-      .filter(Boolean)
-      .join(', ');
-  }
+  /** Only the signed-in admin gets the Edit link to the in-place editor. */
+  protected readonly signedIn = inject(AuthService).isAuthenticated;
 
   protected print(): void {
     window.print();

@@ -1,0 +1,56 @@
+.item-tools {
+  margin: var(--space-2) 0;
+  padding: var(--space-2);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius);
+
+  // Next to a skill name, inside its category line.
+  &.compact {
+    display: inline-flex;
+    margin: 0 var(--space-1);
+    padding: 0;
+    border: 0;
+    vertical-align: middle;
+
+    .icon-button {
+      width: 28px;
+      min-height: 28px;
+    }
+
+    .button {
+      min-height: 28px;
+      font-size: 0.8125rem;
+    }
+  }
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.button {
+  min-height: 32px;
+  font-size: 0.875rem;
+}
+
+.icon-button {
+  width: 32px;
+  min-height: 32px;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.save-status {
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.form-error {
+  margin-top: var(--space-2);
+}

@@ -149,6 +149,17 @@ describe('appRoutes', () => {
     );
   });
 
+  it('shows the in-place resume editor to the signed-in admin', async () => {
+    localStorage.setItem(AUTH_STORAGE_KEY, fakeJwt({ exp: inSeconds(3600) }));
+    const harness = await RouterTestingHarness.create();
+    await navigate(harness, '/admin/resume');
+    const root = harness.fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('app-shell main app-resume-editor-page')).not.toBeNull();
+    expect(root.querySelector('nav[aria-label="Breadcrumb"] h1')?.textContent).toContain(
+      'Edit resume',
+    );
+  });
+
   it('checks the session again when moving between admin pages', async () => {
     localStorage.setItem(AUTH_STORAGE_KEY, fakeJwt({ exp: inSeconds(3600) }));
     const harness = await RouterTestingHarness.create();

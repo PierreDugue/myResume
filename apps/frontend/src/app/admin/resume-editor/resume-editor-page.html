@@ -1,0 +1,15 @@
+@if (store.view(); as view) {
+  <app-plain-resume [resume]="view">
+    <p class="intro">
+      Click a text (or focus it and press Enter) to edit it; changes are saved straight away.
+    </p>
+    <a class="button" routerLink="/resume">View public resume</a>
+  </app-plain-resume>
+} @else if (error(); as message) {
+  <section class="panel empty-state">
+    <p role="alert">The resume could not be loaded. {{ message }}</p>
+    <button class="button retry" type="button" (click)="load()">Try again</button>
+  </section>
+} @else {
+  <p class="loading">Loading…</p>
+}

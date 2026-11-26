@@ -41,6 +41,14 @@ describe('AdminHomePage', () => {
     }
   });
 
+  it('starts the content list with the in-place resume editor', async () => {
+    const { el } = await render();
+    const first = $<HTMLAnchorElement>(el, 'ul.sections li a');
+    expect(first.textContent?.trim()).toBe('Edit resume');
+    // relative link, resolved against the admin route (here the page is rendered outside it)
+    expect(first.getAttribute('href')).toBe('/resume');
+  });
+
   it('links to the site preferences under their own "Site" heading', async () => {
     const { el } = await render();
     const headings = [...el.querySelectorAll('h2')].map((h) => h.textContent?.trim());

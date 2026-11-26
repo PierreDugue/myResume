@@ -15,6 +15,12 @@ export const adminRoutes: Route[] = [
         loadComponent: () => import('./admin-home/admin-home-page').then((m) => m.AdminHomePage),
       },
       {
+        path: 'resume',
+        title: 'Edit resume',
+        loadComponent: () =>
+          import('./resume-editor/resume-editor-page').then((m) => m.ResumeEditorPage),
+      },
+      {
         path: 'profile',
         title: 'Profile',
         loadComponent: () => import('./profile/profile-page').then((m) => m.ProfilePage),

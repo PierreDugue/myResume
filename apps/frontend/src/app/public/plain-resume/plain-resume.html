@@ -1,0 +1,247 @@
+@let r = resume();
+<article class="resume">
+  <div class="toolbar no-print"><ng-content /></div>
+
+  @if (r.profile; as p) {
+    <header class="resume-header">
+      <h2>
+        <app-resume-text [ref]="{ kind: 'profile', field: 'fullName' }" [value]="p.fullName" />
+      </h2>
+      <p class="headline">
+        <app-resume-text [ref]="{ kind: 'profile', field: 'headline' }" [value]="p.headline" />
+      </p>
+      <p class="contact">
+        @if (p.location || editable) {
+          <span
+            ><app-resume-text
+              [ref]="{ kind: 'profile', field: 'location' }"
+              [value]="p.location"
+            />{{ p.location && p.openToRelocation ? ' (open to relocation)' : '' }}</span
+          >
+        }
+        @if (editable) {
+          <span
+            ><app-resume-text [ref]="{ kind: 'profile', field: 'email' }" [value]="p.email"
+          /></span>
+        } @else {
+          <a [href]="'mailto:' + p.email">{{ p.email }}</a>
+        }
+        @if (p.phone) {
+          @if (editable) {
+            <span
+              ><app-resume-text [ref]="{ kind: 'profile', field: 'phone' }" [value]="p.phone"
+            /></span>
+          } @else {
+            <a [href]="'tel:' + p.phone">{{ p.phone }}</a>
+          }
+        }
+        @for (link of p.links; track link.url) {
+          <a [href]="link.url" rel="noopener" target="_blank">{{ link.label }}</a>
+        }
+      </p>
+      <p class="summary">
+        <app-resume-text [ref]="{ kind: 'profile', field: 'summary' }" [value]="p.summary" />
+      </p>
+      @if (slots; as s) {
+        <ng-container *ngComponentOutlet="s.item; inputs: { item: { kind: 'profile' } }" />
+      }
+    </header>
+  } @else if (slots; as s) {
+    <div class="resume-header-empty">
+      <ng-container *ngComponentOutlet="s.item; inputs: { item: { kind: 'profile' } }" />
+    </div>
+  }
+
+  @if (skillGroups().length || editable) {
+    <section class="skills">
+      <h3>Skills</h3>
+      <dl>
+        @for (group of skillGroups(); track group.category) {
+          <dt>{{ group.category }}</dt>
+          <dd>
+            @for (skill of group.skills; track skill.id; let last = $last) {
+              <span class="skill"
+                ><app-resume-text
+                  [ref]="{ kind: 'skill', id: skill.id, field: 'name' }"
+                  [value]="skill.name"
+                />
+                @if (slots; as s) {
+                  <ng-container
+                    *ngComponentOutlet="s.item; inputs: { item: { kind: 'skill', id: skill.id } }"
+                  />
+                }</span
+              >{{ last ? '' : ', ' }}
+            }
+          </dd>
+        }
+      </dl>
+      @if (slots; as s) {
+        <ng-container *ngComponentOutlet="s.section; inputs: { section: 'skill' }" />
+      }
+    </section>
+  }
+
+  @if (r.experiences.length || editable) {
+    <section class="experience">
+      <h3>Experience</h3>
+      @for (job of r.experiences; track job.id) {
+        <article>
+          <h3>
+            <app-resume-text
+              [ref]="{ kind: 'experience', id: job.id, field: 'role' }"
+              [value]="job.role"
+            />
+            ·
+            <app-resume-text
+              [ref]="{ kind: 'experience', id: job.id, field: 'company' }"
+              [value]="job.company"
+            />
+          </h3>
+          <p class="meta">
+            {{ period(job.startDate, job.endDate) }}
+            @if (job.location || editable) {
+              —
+              <app-resume-text
+                [ref]="{ kind: 'experience', id: job.id, field: 'location' }"
+                [value]="job.location"
+              />
+            }
+          </p>
+          @if (job.summary || editable) {
+            <p class="job-summary">
+              <app-resume-text
+                [ref]="{ kind: 'experience', id: job.id, field: 'summary' }"
+                [value]="job.summary"
+              />
+            </p>
+          }
+          @if (job.highlights.length) {
+            <ul>
+              @for (h of job.highlights; track h.id) {
+                <li class="highlight">
+                  <app-resume-text
+                    [ref]="{ kind: 'highlight', experienceId: job.id, id: h.id }"
+                    [value]="h.message"
+                  />
+                </li>
+              }
+            </ul>
+          }
+          @if (job.skillIds.length) {
+            <p class="stack">Tech stack: {{ stack(job.skillIds) }}</p>
+          }
+          @if (slots; as s) {
+            <ng-container
+              *ngComponentOutlet="s.item; inputs: { item: { kind: 'experience', id: job.id } }"
+            />
+          }
+        </article>
+      }
+      @if (slots; as s) {
+        <ng-container *ngComponentOutlet="s.section; inputs: { section: 'experience' }" />
+      }
+    </section>
+  }
+
+  @if (r.projects.length || editable) {
+    <section class="projects">
+      <h3>Projects</h3>
+      @for (project of r.projects; track project.id) {
+        <article>
+          <h3>
+            @if (project.url && !editable) {
+              <a [href]="project.url" rel="noopener" target="_blank">{{ project.title }}</a>
+            } @else {
+              <app-resume-text
+                [ref]="{ kind: 'project', id: project.id, field: 'title' }"
+                [value]="project.title"
+              />
+            }
+          </h3>
+          <p class="meta">{{ period(project.startDate, project.endDate) }}</p>
+          <p>
+            <app-resume-text
+              [ref]="{ kind: 'project', id: project.id, field: 'description' }"
+              [value]="project.description"
+            />
+          </p>
+          @if (project.skillIds.length) {
+            <p class="stack">Tech stack: {{ stack(project.skillIds) }}</p>
+          }
+          @if (slots; as s) {
+            <ng-container
+              *ngComponentOutlet="s.item; inputs: { item: { kind: 'project', id: project.id } }"
+            />
+          }
+        </article>
+      }
+      @if (slots; as s) {
+        <ng-container *ngComponentOutlet="s.section; inputs: { section: 'project' }" />
+      }
+    </section>
+  }
+
+  @if (r.education.length || editable) {
+    <section class="education">
+      <h3>Education</h3>
+      @for (ed of r.education; track ed.id) {
+        <article>
+          <h3>
+            <app-resume-text
+              [ref]="{ kind: 'education', id: ed.id, field: 'school' }"
+              [value]="ed.school"
+            />
+            —
+            <app-resume-text
+              [ref]="{ kind: 'education', id: ed.id, field: 'degree' }"
+              [value]="ed.degree"
+            />
+            @if (ed.field || editable) {
+              (<app-resume-text
+                [ref]="{ kind: 'education', id: ed.id, field: 'field' }"
+                [value]="ed.field"
+              />)
+            }
+          </h3>
+          <p class="meta">
+            {{ period(ed.startDate, ed.endDate) }}
+            @if (ed.location || editable) {
+              |
+              <app-resume-text
+                [ref]="{ kind: 'education', id: ed.id, field: 'location' }"
+                [value]="ed.location"
+              />
+            }
+          </p>
+          @if (ed.description || editable) {
+            <p>
+              <app-resume-text
+                [ref]="{ kind: 'education', id: ed.id, field: 'description' }"
+                [value]="ed.description"
+              />
+            </p>
+          }
+          @if (slots; as s) {
+            <ng-container
+              *ngComponentOutlet="s.item; inputs: { item: { kind: 'education', id: ed.id } }"
+            />
+          }
+        </article>
+      }
+      @if (slots; as s) {
+        <ng-container *ngComponentOutlet="s.section; inputs: { section: 'education' }" />
+      }
+    </section>
+  }
+
+  @if (r.profile; as p) {
+    @if (p.interests || editable) {
+      <section class="interests">
+        <h3>Interests</h3>
+        <p>
+          <app-resume-text [ref]="{ kind: 'profile', field: 'interests' }" [value]="p.interests" />
+        </p>
+      </section>
+    }
+  }
+</article>

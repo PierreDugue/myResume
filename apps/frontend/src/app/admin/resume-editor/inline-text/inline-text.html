@@ -1,0 +1,46 @@
+@if (session(); as s) {
+  @let invalid = showError(s.field()) || !!status.error();
+  @if (info().multiline) {
+    <textarea
+      #editor
+      class="inline-editor"
+      rows="4"
+      [attr.aria-label]="info().label"
+      [attr.aria-invalid]="invalid || null"
+      [attr.aria-describedby]="invalid ? errorId : null"
+      [formField]="s.field"
+      (keydown)="keydown($event)"
+      (blur)="blur()"
+    ></textarea>
+  } @else {
+    <input
+      #editor
+      class="inline-editor"
+      type="text"
+      [attr.aria-label]="info().label"
+      [attr.aria-invalid]="invalid || null"
+      [attr.aria-describedby]="invalid ? errorId : null"
+      [formField]="s.field"
+      (keydown)="keydown($event)"
+      (blur)="blur()"
+    />
+  }
+  @if (invalid) {
+    <span class="errors" [id]="errorId">
+      @if (showError(s.field())) {
+        @for (e of s.field().errors(); track e.kind) {
+          <span class="field-error">{{ e.message }}</span>
+        }
+      }
+      @if (status.error(); as error) {
+        <span class="field-error">{{ error }}</span>
+      }
+    </span>
+  }
+} @else {
+  <button #text type="button" class="inline-text" [class.empty]="!value()" (click)="open()">
+    <span class="sr-only">Edit {{ info().label }}: </span
+    >{{ value() || 'Add ' + info().label.toLowerCase() }}
+  </button>
+}
+<span class="save-status no-print" role="status">{{ status.text() }}</span>

@@ -16,6 +16,7 @@ export class AdminHomePage {
 
   protected readonly user = rxResource({ stream: () => this.auth.me() });
   protected readonly sections = [
+    { label: 'Edit resume', path: 'resume', hint: 'The plain view, edited in place' },
     { label: 'Profile', path: 'profile', hint: 'Name, headline, summary, contact, links' },
     { label: 'Skills', path: 'skills', hint: 'Skills by category, with levels' },
     { label: 'Experience', path: 'experiences', hint: 'Jobs, tech stacks and achievements' },

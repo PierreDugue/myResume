@@ -46,6 +46,7 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 export class AdminLayout {
   protected readonly tabs = [
     { label: 'Overview', path: '/admin', exact: true },
+    { label: 'Edit resume', path: '/admin/resume', exact: false },
     { label: 'Profile', path: '/admin/profile', exact: false },
     { label: 'Skills', path: '/admin/skills', exact: false },
     { label: 'Experience', path: '/admin/experiences', exact: false },

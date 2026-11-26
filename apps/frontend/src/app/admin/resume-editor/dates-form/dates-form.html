@@ -1,0 +1,31 @@
+@if (session(); as s) {
+  <form class="small-form no-print" novalidate (submit)="submit($event)">
+    <!-- Read-only while the write is queued or in flight. -->
+    <fieldset class="small-form-fields" [disabled]="status.busy()">
+      @for (f of s.fields; track f.key) {
+        <div class="field">
+          <label [for]="uid + f.key">{{ f.label }}</label>
+          <input
+            type="date"
+            [id]="uid + f.key"
+            [formField]="f.field"
+            [attr.aria-invalid]="showError(f.field()) || null"
+          />
+          @if (showError(f.field())) {
+            @for (e of f.field().errors(); track e.kind) {
+              <p class="field-error">{{ e.message }}</p>
+            }
+          }
+        </div>
+      }
+    </fieldset>
+    <p class="hint">Leave the end date empty for a current item.</p>
+    @if (status.error(); as error) {
+      <p class="form-error" role="alert">{{ error }}</p>
+    }
+    <div class="small-form-actions">
+      <button class="button primary" type="submit" [disabled]="status.busy()">Save</button>
+      <button class="button" type="button" (click)="closed.emit()">Cancel</button>
+    </div>
+  </form>
+}

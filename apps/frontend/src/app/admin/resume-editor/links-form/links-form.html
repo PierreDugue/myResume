@@ -1,0 +1,58 @@
+<form class="small-form no-print" novalidate (submit)="submit($event)">
+  <!-- Read-only while the write is queued or in flight. -->
+  <fieldset class="small-form-group" [disabled]="status.busy()">
+    <legend>Links</legend>
+    @for (link of form.links; track $index; let i = $index) {
+      <div class="small-form-fields">
+        <div class="field">
+          <label [for]="uid + '-label-' + i">Link {{ i + 1 }} label</label>
+          <input
+            type="text"
+            [id]="uid + '-label-' + i"
+            [formField]="link.label"
+            [attr.aria-invalid]="showError(link.label()) || null"
+          />
+          @if (showError(link.label())) {
+            @for (e of link.label().errors(); track e.kind) {
+              <p class="field-error">{{ e.message }}</p>
+            }
+          }
+        </div>
+        <div class="field">
+          <label [for]="uid + '-url-' + i">Link {{ i + 1 }} URL</label>
+          <input
+            type="url"
+            [id]="uid + '-url-' + i"
+            [formField]="link.url"
+            [attr.aria-invalid]="showError(link.url()) || null"
+          />
+          @if (showError(link.url())) {
+            @for (e of link.url().errors(); track e.kind) {
+              <p class="field-error">{{ e.message }}</p>
+            }
+          }
+        </div>
+        <button
+          class="icon-button"
+          type="button"
+          [attr.aria-label]="'Remove link ' + (i + 1)"
+          (click)="removeLink(i)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+      </div>
+    } @empty {
+      <p class="hint">No links yet.</p>
+    }
+    @if (form.links().value().length < maxLinks) {
+      <button class="button" type="button" (click)="addLink()">Add link</button>
+    }
+  </fieldset>
+  @if (status.error(); as error) {
+    <p class="form-error" role="alert">{{ error }}</p>
+  }
+  <div class="small-form-actions">
+    <button class="button primary" type="submit" [disabled]="status.busy()">Save</button>
+    <button class="button" type="button" (click)="closed.emit()">Cancel</button>
+  </div>
+</form>

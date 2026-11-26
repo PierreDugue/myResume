@@ -1,25 +1,36 @@
+import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import type { PublicProfile, ResumeResponse } from '@my-resume/api-models';
 import { Observable, of, throwError } from 'rxjs';
 import { resume } from '../../admin/testing/fixtures';
+import { AuthService } from '../../core/auth/auth.service';
 import { ContentApi } from '../../core/content/content-api.service';
 import { $ } from '../../testing';
 import { PlainResumePage } from './plain-resume-page';
 
 describe('PlainResumePage', () => {
   let load: () => Observable<ResumeResponse>;
+  let signedIn: boolean;
 
   async function render() {
     TestBed.configureTestingModule({
       imports: [PlainResumePage],
-      providers: [{ provide: ContentApi, useValue: { resume: () => load() } }],
+      providers: [
+        provideRouter([]),
+        { provide: ContentApi, useValue: { resume: () => load() } },
+        { provide: AuthService, useValue: { isAuthenticated: signal(signedIn).asReadonly() } },
+      ],
     });
     const fixture = TestBed.createComponent(PlainResumePage);
     await fixture.whenStable();
     return { fixture, el: fixture.nativeElement as HTMLElement };
   }
 
-  beforeEach(() => (load = () => of(structuredClone(resume))));
+  beforeEach(() => {
+    load = () => of(structuredClone(resume));
+    signedIn = false;
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it('shows the profile header with contact details and links', async () => {
@@ -96,5 +107,23 @@ describe('PlainResumePage', () => {
     $<HTMLButtonElement>(el, 'button.retry').click();
     await fixture.whenStable();
     expect(el.textContent).toContain('Pierre Dugue');
+  });
+
+  it('offers the signed-in admin an Edit link to the in-place editor', async () => {
+    signedIn = true;
+    const { el } = await render();
+    const edit = $<HTMLAnchorElement>(el, '.toolbar a.edit-resume');
+    expect(edit.textContent?.trim()).toBe('Edit');
+    expect(edit.getAttribute('href')).toBe('/admin/resume');
+    // `.edit` is the global wrapper of the admin edit pages: the link must not borrow its styles
+    expect(edit.classList.contains('edit')).toBe(false);
+    expect($(el, '.toolbar button.print')).toBeTruthy();
+  });
+
+  it('shows no Edit link to a visitor', async () => {
+    const { el } = await render();
+    expect($(el, 'button.print')).toBeTruthy();
+    expect(el.querySelector('a.edit-resume')).toBeNull();
+    expect(el.querySelector('a[href="/admin/resume"]')).toBeNull();
   });
 });
