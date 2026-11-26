@@ -1,7 +1,7 @@
 # myResume
 
 Personal resume site presented as an observability platform (inspired by Grafana). Anyone can view the public pages; a single admin (the owner) logs in to edit the content.
-The product spec is in [docs/spec.md](docs/spec.md) and the API contract in [docs/api-contract.md](docs/api-contract.md). Read both before starting a feature.
+The product spec is in [docs/spec.md](docs/spec.md) and the API contract in [docs/api-contract.md](docs/api-contract.md). Read both before starting a feature. Past architecture decisions and why they were made are in [docs/adr/](docs/adr/README.md); read the ones the feature touches.
 
 Area-specific conventions are in `.claude/rules/` and load when you work on matching files: [backend.md](.claude/rules/backend.md) (`apps/backend`), [frontend.md](.claude/rules/frontend.md) (`apps/frontend`, e2e, `libs/frontend`), [deployment.md](.claude/rules/deployment.md) (Docker, nginx, CI).
 
@@ -37,6 +37,7 @@ Libraries (unit-test every rule in them, with hand-checkable fixtures):
   - one file in the backend or a library: `npx vitest run apps/backend/src/app/foo.spec.ts`
   - one file in the frontend: `npx nx test frontend --include=apps/frontend/src/app/foo.spec.ts` (the full path from the repo root)
 - `npx nx run backend:integration`: backend integration tests (`*.int.spec.ts`), each file on its own throwaway database; your dev data is never touched. Needs `docker compose up -d postgres`. `nx test backend` excludes them.
+- `npx nx run file-size:check`: the file size limit (see "File size"); every build runs it first
 - `npx nx lint|build|typecheck <project>`, `npm run affected` (lint, test and build what your changes affect), `npm run format` (Prettier), `npx nx graph`
 - `npx nx e2e frontend-e2e`: Cypress (starts the frontend and backend itself; needs the database). From a VS Code terminal, prefix with `env -u ELECTRON_RUN_AS_NODE`, because VS Code sets that variable and it stops Cypress from starting.
 - Generate code with generators: `npx nx g @nx/angular:component apps/frontend/src/app/<area>/<name>/<name>`, `npx nx g @schematics/angular:service --project=frontend --name=<name> --path=apps/frontend/src/app/core/<area>`, and `npx nx g @nx/nest:resource|module|controller|service ... --project=backend`.
@@ -86,6 +87,14 @@ All feature and bug-fix work follows red → green → refactor. Never write pro
 
 When reporting a task as done, list the tests you wrote first and confirm that they failed before the code was written and pass now.
 
+## File size
+
+Source files and tests (`.ts`, `.js`/`.mjs`/`.cjs`, `.html`, `.scss`/`.css`) aim for **about 300 lines** and must not go over **600**. Docs, JSON, YAML and shell scripts are not checked.
+
+- A file over 300 lines usually has more than one responsibility: split it before adding to it (a component into child components, a service into focused services or pure helpers, a big spec into one file per `describe` with the shared setup in a `testing/` helper next to it, as in `admin/resume-editor/testing/editor-harness.ts`).
+- Over 600 fails the build: every `build` depends on `npx nx run file-size:check` ([tools/file-size](tools/file-size/src/cli.ts)), which checks every file git knows about. A Claude Code hook ([.claude/settings.json](.claude/settings.json)) runs the same rule after each Write/Edit and reports the file straight away.
+- Moving tests to another file to split it is not changing them (see TDD below): keep every test and its assertions as they are.
+
 ## Workflow
 
 - Build one feature at a time, with the contract first:
@@ -94,5 +103,6 @@ When reporting a task as done, list the tests you wrote first and confirm that t
   3. Build the backend (green, then refactor).
   4. Build the frontend (green, then refactor).
   5. Review.
+  6. Record the decision: if the design made a significant decision (see [docs/adr/README.md](docs/adr/README.md), "When to write one"), add an ADR in `docs/adr/` from the architect's draft and add it to the index. To change an earlier decision, write a new ADR and mark the old one superseded; never rewrite an accepted one.
 - Before calling work done, run `npx nx affected -t lint test build typecheck` (or the same targets on the projects you touched) and report any failures.
 - Subagents are in `.claude/agents/`: `architect` (plans a feature and decides which of the others to use), `api-contract`, `tester` (writes the failing tests, after the architect and contract, before any implementation), `backend-dev` and `frontend-dev` (make the tester's tests pass, without writing or changing tests), `reviewer`, `utest-reviewer`.

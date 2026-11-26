@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \"$CLAUDE_PROJECT_DIR/tools/file-size/src/hook.ts\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

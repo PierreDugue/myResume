@@ -1,0 +1,28 @@
+{
+  "name": "file-size",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "tools/file-size/src",
+  "projectType": "library",
+  "tags": [],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^default"],
+      "options": {
+        "commands": [
+          "tsc --noEmit -p tools/file-size/tsconfig.lib.json",
+          "tsc --noEmit -p tools/file-size/tsconfig.spec.json"
+        ],
+        "parallel": false
+      }
+    },
+    "check": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "options": {
+        "command": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON tools/file-size/src/cli.ts"
+      }
+    }
+  }
+}

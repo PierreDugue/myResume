@@ -29,6 +29,7 @@ First read `CLAUDE.md`, the `.claude/rules/` files for the areas you review (`ba
    - abstractions are justified: no interfaces or factories with a single implementation and no reason to exist, and no parallel version of a pattern the codebase already has
    - scalability: unbounded queries or lists, N+1 queries, missing pagination or indexes, heavy work on every request or socket message, eager loading of large frontend code
      Report each departure from the design separately from bugs, and say whether the code or the design should change.
+   - decisions: the change doesn't contradict an accepted ADR in `docs/adr/` without a new ADR superseding it; a significant decision ("When to write one" in `docs/adr/README.md`: a new dependency, Nx project, boundary or pattern, a security, data or hosting trade-off) has an ADR, or a draft in your task; accepted ADRs were not rewritten.
 4. **Contract:** routes, field names, optional fields and types match `docs/api-contract.md` on both sides.
 5. **Database:** schema changes without a migration, `synchronize: true`, missing indexes or unique constraints the spec implies.
 6. **Conventions** from `CLAUDE.md` and `.claude/rules/`:

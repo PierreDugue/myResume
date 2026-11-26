@@ -18,7 +18,13 @@
   "targetDefaults": {
     "@angular/build:application": {
       "cache": true,
-      "dependsOn": ["^build"],
+      "dependsOn": [
+        "^build",
+        {
+          "projects": ["file-size"],
+          "target": "check"
+        }
+      ],
       "inputs": ["production", "^production"]
     },
     "@nx/eslint:lint": {
@@ -35,6 +41,15 @@
     "@angular/build:unit-test": {
       "cache": true,
       "inputs": ["default", "^production"]
+    },
+    "build": {
+      "dependsOn": [
+        "^build",
+        {
+          "projects": ["file-size"],
+          "target": "check"
+        }
+      ]
     }
   },
   "plugins": [
