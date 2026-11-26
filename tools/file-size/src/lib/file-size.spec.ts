@@ -1,8 +1,8 @@
 import { checkFileSizes, countLines, formatReport, isChecked, LIMITS } from './file-size.ts';
 
 describe('LIMITS', () => {
-  it('aims at 300 lines and allows at most 600', () => {
-    expect(LIMITS).toEqual({ target: 300, max: 600 });
+  it('aims at about 500 lines and allows at most 800', () => {
+    expect(LIMITS).toEqual({ target: 500, max: 800 });
   });
 });
 
@@ -49,24 +49,24 @@ describe('countLines', () => {
 
 describe('checkFileSizes', () => {
   const files = [
-    { path: 'small.ts', lines: 300 },
-    { path: 'medium.ts', lines: 301 },
-    { path: 'at-max.ts', lines: 600 },
+    { path: 'small.ts', lines: 500 },
+    { path: 'medium.ts', lines: 501 },
+    { path: 'at-max.ts', lines: 800 },
     { path: 'huge.ts', lines: 1908 },
-    { path: 'big.ts', lines: 601 },
+    { path: 'big.ts', lines: 801 },
   ];
 
   it('rejects files over the maximum, biggest first', () => {
     expect(checkFileSizes(files).tooBig).toEqual([
       { path: 'huge.ts', lines: 1908 },
-      { path: 'big.ts', lines: 601 },
+      { path: 'big.ts', lines: 801 },
     ]);
   });
 
   it('lists the files over the target but within the maximum, biggest first', () => {
     expect(checkFileSizes(files).overTarget).toEqual([
-      { path: 'at-max.ts', lines: 600 },
-      { path: 'medium.ts', lines: 301 },
+      { path: 'at-max.ts', lines: 800 },
+      { path: 'medium.ts', lines: 501 },
     ]);
   });
 
@@ -87,19 +87,19 @@ describe('formatReport', () => {
     const report = formatReport({ tooBig: [{ path: 'huge.ts', lines: 1908 }], overTarget: [] });
     expect(report).toContain('huge.ts');
     expect(report).toContain('1908');
-    expect(report).toContain('600');
+    expect(report).toContain('800');
   });
 
   it('mentions the files over the target only as a count', () => {
     const report = formatReport({
       tooBig: [],
       overTarget: [
-        { path: 'a.ts', lines: 400 },
-        { path: 'b.ts', lines: 350 },
+        { path: 'a.ts', lines: 700 },
+        { path: 'b.ts', lines: 650 },
       ],
     });
     expect(report).toContain('2 files');
-    expect(report).toContain('300');
+    expect(report).toContain('500');
     expect(report).not.toContain('a.ts');
   });
 

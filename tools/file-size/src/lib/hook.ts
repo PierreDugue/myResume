@@ -13,7 +13,7 @@ export function hookFeedback(input: unknown, read: (path: string) => string | nu
   if (lines <= LIMITS.max) return null;
   return (
     `${path} now has ${lines} lines, over the ${LIMITS.max}-line limit (the build fails). ` +
-    `Split it by responsibility, aiming for about ${LIMITS.target} lines per file (CLAUDE.md, "File size").`
+    `Split it so each file does one thing (usually about ${LIMITS.target} lines; CLAUDE.md, "File size").`
   );
 }
 

@@ -5,14 +5,14 @@ const edit = (file_path: unknown) => ({ tool_name: 'Edit', tool_input: { file_pa
 
 describe('hookFeedback (Claude Code PostToolUse on Write/Edit)', () => {
   it('asks to split a source file that is now over the maximum', () => {
-    const feedback = hookFeedback(edit('/repo/apps/x/big.ts'), () => lines(601));
+    const feedback = hookFeedback(edit('/repo/apps/x/big.ts'), () => lines(801));
     expect(feedback).toContain('/repo/apps/x/big.ts');
-    expect(feedback).toContain('601');
-    expect(feedback).toContain('600');
+    expect(feedback).toContain('801');
+    expect(feedback).toContain('800');
   });
 
   it('says nothing for a source file at the maximum', () => {
-    expect(hookFeedback(edit('/repo/apps/x/ok.ts'), () => lines(600))).toBeNull();
+    expect(hookFeedback(edit('/repo/apps/x/ok.ts'), () => lines(800))).toBeNull();
   });
 
   it('says nothing for files the check ignores, however long', () => {

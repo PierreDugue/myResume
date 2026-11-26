@@ -1,5 +1,6 @@
 /**
- * The file size rule (CLAUDE.md, "File size"): aim for about 300 lines, never more than 600.
+ * The file size rule (CLAUDE.md, "File size"): one responsibility per file, usually about 500 lines;
+ * never more than 800.
  * Applies to source code and tests; docs, data and config files are not checked.
  */
 
@@ -9,7 +10,7 @@ export interface FileSize {
 }
 
 export interface Limits {
-  /** Where a file should be split, if it has more than one responsibility. */
+  /** Where to check that a file still does one thing (guidance, not enforced). */
   target: number;
   /** The hard limit: a bigger file fails the build. */
   max: number;
@@ -22,7 +23,7 @@ export interface SizeCheck {
   overTarget: FileSize[];
 }
 
-export const LIMITS: Limits = { target: 300, max: 600 };
+export const LIMITS: Limits = { target: 500, max: 800 };
 
 const CHECKED = /\.(?:[cm]?[jt]sx?|html|s?css)$/;
 
@@ -51,12 +52,12 @@ export function formatReport(check: SizeCheck, limits: Limits = LIMITS): string 
     parts.push(
       `${check.tooBig.length} file(s) over the ${limits.max}-line limit:`,
       ...check.tooBig.map((f) => `  ${f.path}: ${f.lines} lines`),
-      `Split each one by responsibility (aim for about ${limits.target} lines); see CLAUDE.md, "File size".`,
+      `Split each one so every file does one thing (usually about ${limits.target} lines); see CLAUDE.md, "File size".`,
     );
   }
   if (check.overTarget.length > 0) {
     parts.push(
-      `${check.overTarget.length} files are over the ${limits.target}-line target (allowed up to ${limits.max}).`,
+      `${check.overTarget.length} files are over ${limits.target} lines (fine up to ${limits.max} if each does one thing).`,
     );
   }
   return parts.join('\n');

@@ -10,7 +10,9 @@ RUN npm ci
 
 COPY . .
 # Builds dist/apps/backend incl. a generated package.json + package-lock.json (runtime deps only)
-RUN npx nx build backend --configuration=production
+# --excludeTaskDependencies skips file-size:check: it lists files with git, which the image has no
+# binary or .git for, and CI's build jobs already ran it before publishing (no project here has its own ^build).
+RUN npx nx build backend --configuration=production --excludeTaskDependencies
 
 # Stage 2: production runtime
 FROM node:24-alpine AS runner

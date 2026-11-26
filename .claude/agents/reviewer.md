@@ -25,7 +25,7 @@ First read `CLAUDE.md`, the `.claude/rules/` files for the areas you review (`ba
 3. **Design:** if your task includes the architect's design, check that the code follows it: the units, their responsibilities, the dependencies and the patterns it names. In every case, check:
    - layers: no business logic in controllers, gateways or templates; no service calls from presentational components; services don't know about HTTP
    - coupling: no new imports that break project boundaries, no circular dependencies, no shared mutable state, no magic strings repeated across files
-   - each class, component or service has one responsibility
+   - each class, component or service has one responsibility; for every changed file over 500 lines (`wc -l`), say whether it still does one thing, and if not, how to split it (`CLAUDE.md`, "File size"). A long file that does one thing is not a finding.
    - abstractions are justified: no interfaces or factories with a single implementation and no reason to exist, and no parallel version of a pattern the codebase already has
    - scalability: unbounded queries or lists, N+1 queries, missing pagination or indexes, heavy work on every request or socket message, eager loading of large frontend code
      Report each departure from the design separately from bugs, and say whether the code or the design should change.

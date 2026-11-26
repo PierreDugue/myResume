@@ -9,7 +9,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-RUN npx nx build frontend --configuration=production
+# --excludeTaskDependencies skips file-size:check: it lists files with git, which the image has no
+# binary or .git for, and CI's build jobs already ran it before publishing (no project here has its own ^build).
+RUN npx nx build frontend --configuration=production --excludeTaskDependencies
 
 # Stage 2: serve with nginx
 FROM nginx:alpine

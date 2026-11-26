@@ -89,10 +89,11 @@ When reporting a task as done, list the tests you wrote first and confirm that t
 
 ## File size
 
-Source files and tests (`.ts`, `.js`/`.mjs`/`.cjs`, `.html`, `.scss`/`.css`) aim for **about 300 lines** and must not go over **600**. Docs, JSON, YAML and shell scripts are not checked.
+The rule is **one responsibility per file**; line counts only tell you when to check it. Source files and tests (`.ts`, `.js`/`.mjs`/`.cjs`, `.html`, `.scss`/`.css`) are usually **around 500 lines**, and never over **800**. Docs, JSON, YAML and shell scripts are not checked.
 
-- A file over 300 lines usually has more than one responsibility: split it before adding to it (a component into child components, a service into focused services or pure helpers, a big spec into one file per `describe` with the shared setup in a `testing/` helper next to it, as in `admin/resume-editor/testing/editor-harness.ts`).
-- Over 600 fails the build: every `build` depends on `npx nx run file-size:check` ([tools/file-size](tools/file-size/src/cli.ts)), which checks every file git knows about. A Claude Code hook ([.claude/settings.json](.claude/settings.json)) runs the same rule after each Write/Edit and reports the file straight away.
+- Around 500 is a goal, not a limit. A longer file is fine if it does one thing; don't split cohesive code just to get under a number, since code that belongs together is easier to read in one place.
+- Before adding to a file over 500 lines, check it still does one thing. If it doesn't, split it by responsibility first (a component into child components, a service into focused services or pure helpers, a big spec into one file per `describe` with the shared setup in a `testing/` helper next to it, as in `admin/resume-editor/testing/editor-harness.ts`).
+- Over 800 fails the build: every `build` depends on `npx nx run file-size:check` ([tools/file-size](tools/file-size/src/cli.ts)), which checks every file git knows about. A Claude Code hook ([.claude/settings.json](.claude/settings.json)) runs the same rule after each Write/Edit and reports the file straight away.
 - Moving tests to another file to split it is not changing them (see TDD below): keep every test and its assertions as they are.
 
 ## Workflow

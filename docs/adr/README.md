@@ -47,4 +47,4 @@ ADRs 0002 to 0018 were written on 2026-11-26 from the spec, the rules and the gi
 | [0016](0016-cold-start-aware-frontend.md)                    | Make backend cold starts visible instead of failing          | Accepted | 2026-11-18 |
 | [0017](0017-gemini-assistant-behind-llmclient.md)            | "Ask my resume" with Gemini behind LlmClient, without RAG    | Accepted | 2026-11-24 |
 | [0018](0018-in-place-resume-editor-on-existing-endpoints.md) | Edit the plain view in place, on existing admin endpoints    | Accepted | 2026-11-26 |
-| [0019](0019-file-size-limit.md)                              | Limit source files to 600 lines, aiming for 300              | Accepted | 2026-11-26 |
+| [0019](0019-file-size-limit.md)                              | One responsibility per file, with an 800-line backstop       | Accepted | 2026-11-26 |
